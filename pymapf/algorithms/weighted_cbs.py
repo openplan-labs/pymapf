@@ -12,6 +12,17 @@ selection typically drives the search straight at a valid plan.
 
 ``w = 1.0`` degenerates to CBS with a conflict tie-break; ``w = 1.5`` solves
 instances in milliseconds that plain CBS cannot finish in minutes.
+
+References
+----------
+* Barer, M.; Sharon, G.; Stern, R.; and Felner, A. 2014. *Suboptimal variants of
+  the conflict-based search algorithm for the multi-agent pathfinding problem.*
+  SOCS 2014: 19-27.  (ECBS: the focal-search high level implemented here)
+* Li, J.; Ruml, W.; and Koenig, S. 2021. *EECBS: A bounded-suboptimal search for
+  multi-agent path finding.* AAAI 2021: 12353-12362.  (adds an inadmissible
+  online-learned high-level heuristic on top of the same focal scheme)
+* Pearl, J.; and Kim, J. H. 1982. *Studies in semi-admissible heuristics.* IEEE
+  TPAMI 4(4): 392-399.  (focal search / A*-epsilon)
 """
 
 from __future__ import annotations

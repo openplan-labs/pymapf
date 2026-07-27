@@ -5,6 +5,17 @@ Conflict-Based Search. It searches over ``(cell, time)`` states, honouring
 vertex/edge :class:`~pymapf.core.solver.Constraints`, allowing *wait* actions,
 and terminating on a provable upper bound so it can never loop forever (a
 concrete failure mode of the legacy ``AStar``).
+
+References
+----------
+* Hart, P. E.; Nilsson, N. J.; and Raphael, B. 1968. *A formal basis for the
+  heuristic determination of minimum cost paths.* IEEE Transactions on Systems
+  Science and Cybernetics 4(2): 100-107.
+* Silver, D. 2005. *Cooperative pathfinding.* AIIDE 2005: 117-122.  (searching
+  over (cell, time) states against a reservation table)
+* Phillips, M.; and Likhachev, M. 2011. *SIPP: Safe interval path planning for
+  dynamic environments.* ICRA 2011: 5628-5635.  (the interval-based alternative
+  in :mod:`pymapf.algorithms.sipp`)
 """
 
 from __future__ import annotations

@@ -11,6 +11,32 @@ On each expansion we find the first conflict in the current joint plan and
 branch by forbidding one of the two involved agents from that (vertex or edge)
 constraint, then replan only that agent. The first conflict-free node is
 returned and is optimal in sum-of-costs.
+
+References
+----------
+* Sharon, G.; Stern, R.; Felner, A.; and Sturtevant, N. R. 2015. *Conflict-based
+  search for optimal multi-agent pathfinding.* Artificial Intelligence 219:
+  40-66.  (Earlier version: AAAI 2012: 563-569.)
+* Boyarski, E.; Felner, A.; Stern, R.; Sharon, G.; Tolpin, D.; Betzalel, O.; and
+  Shimony, S. E. 2015. *ICBS: Improved conflict-based search algorithm for
+  multi-agent pathfinding.* IJCAI 2015: 740-746.  (conflict prioritisation and
+  the meta-agent variant)
+* Boyarski, E.; Felner, A.; Sharon, G.; and Stern, R. 2015. *Don't split, try to
+  work it out: Bypassing conflicts in multi-agent pathfinding.* SOCS 2015:
+  159-162.  (the bypass technique)
+* Felner, A.; Li, J.; Boyarski, E.; Ma, H.; Cohen, L.; Kumar, T. K. S.; and
+  Koenig, S. 2018. *Adding heuristics to conflict-based search for multi-agent
+  path finding.* ICAPS 2018: 83-87.  (CBSH: admissible high-level heuristics)
+* Li, J.; Harabor, D.; Stuckey, P. J.; Ma, H.; and Koenig, S. 2019. *Disjoint
+  splitting for multi-agent path finding with conflict-based search.* ICAPS
+  2019: 279-283.
+* Li, J.; Harabor, D.; Stuckey, P. J.; and Koenig, S. 2021. *Pairwise symmetry
+  reasoning for multi-agent path finding search.* Artificial Intelligence 301:
+  103574.  (corridor and rectangle symmetry breaking)
+* Stern, R.; Sturtevant, N. R.; Felner, A.; Koenig, S.; Ma, H.; Walker, T. T.;
+  Li, J.; Atzmon, D.; Cohen, L.; Kumar, T. K. S.; Boyarski, E.; and Bartak, R.
+  2019. *Multi-agent pathfinding: Definitions, variants, and benchmarks.* SOCS
+  2019: 151-158.  (the problem definitions this implementation follows)
 """
 
 from __future__ import annotations

@@ -37,7 +37,10 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 ## Features 🌱
 
 - 🎮 **[Interactive playground](https://apla-toolbox.github.io/pymapf/)** — run the solvers in your browser, watch the search resolve conflicts live
-- 🧭 Centralized planners: Space-Time A\*, Prioritized Planning, **Conflict-Based Search**, **Weighted CBS** (bounded suboptimal)
+- 🧭 Centralized planners: **CBS**, **Weighted CBS**, Prioritized Planning, **PIBT**, **LaCAM**, **MAPF-LNS** — every one referenced in [REFERENCES.md](REFERENCES.md)
+- 🕸️ Works on **arbitrary graphs**, not just grids (roadmaps, warehouse topologies, PRMs)
+- 🐦 **Decentralized swarm control**: boids, Vicsek, Olfati-Saber and acceleration-based bird-inspired flocking; Voronoi, limited-range and hemispherical coverage
+- 🔬 **[Extended survey](docs/survey.md)** of MAPF 2021→2026 plus an experimental section with measured (and negative) results
 - 🧩 Pluggable solver framework with a name-based registry, pluggable heuristics and deterministic maps
 - 🔭 **Observable search**: every solver streams `SearchEvent`s — record them, animate them, or watch them live
 - 🗺️ **Six reproducible scenario families** (empty room, random obstacles, warehouse, maze, bottleneck, corner swap) plus ASCII maps
@@ -102,14 +105,38 @@ for name, path in solution.paths.items():
 | Solver | Name | Guarantee | Use it when |
 |---|---|---|---|
 | Conflict-Based Search | `"cbs"` | optimal sum-of-costs | you need the best plan and can pay for it |
-| Weighted CBS | `"wcbs"` | cost ≤ `w` × optimal | you need most of the quality, much faster |
-| Prioritized Planning | `"prioritized"` | none (incomplete) | you need an answer in milliseconds |
+| Weighted CBS (ECBS) | `"wcbs"` | cost ≤ `w` × optimal | you need most of the quality, much faster |
+| **LaCAM** | `"lacam"` | complete | large fleets, milliseconds, quality refined later |
+| **PIBT** | `"pibt"` | none (incomplete) | thousands of agents, one timestep at a time |
+| Prioritized Planning | `"prioritized"` | none (incomplete) | the classic baseline |
+| **MAPF-LNS** | `"lns"` | anytime, never worse than its initial plan | you have a deadline and want the best plan by then |
+
+Measured on the 8-agent warehouse instance: CBS spends 6 470 expansions and
+5.3 s for cost 100; weighted CBS reaches 104 in 23 expansions and 18 ms; LaCAM
+returns a valid plan in 4 ms; LNS takes PIBT's 175 down to 113 in two seconds.
+The full picture, including where each one fails, is in
+[`docs/survey.md`](docs/survey.md).
 
 CBS is exponential in the number of conflicts, so give it a budget on hard maps:
 
 ```python
 solution = pymapf.solve(problem, "cbs", time_limit=5.0)      # None if it runs out
 bounded  = pymapf.solve(problem, "wcbs", weight=1.5)         # within 50% of optimal
+```
+
+### Any graph, not just grids 🕸️
+
+```python
+from pymapf import ExplicitGraph
+
+graph = ExplicitGraph.undirected(
+    [("dock", "aisle1"), ("aisle1", "aisle2"), ("aisle2", "pack"), ("dock", "pack")]
+)
+problem = pymapf.MAPFProblem(graph, [
+    pymapf.Agent("r1", "dock", "pack"),
+    pymapf.Agent("r2", "pack", "dock"),
+])
+pymapf.solve(problem, "lacam")      # PIBT and LaCAM use exact graph distances
 ```
 
 ### Scenarios 🗺️
@@ -215,6 +242,29 @@ class Selfish(MAPFSolver):
 
 pymapf.solve(problem, "selfish").first_conflict()   # spoiler: there is one
 ```
+
+### Swarms: flocking and coverage 🐦
+
+```python
+from pymapf.decentralized.flocking import simulate, FlockParams
+
+history, metrics = simulate("acceleration", n_agents=20, steps=300,
+                            params=FlockParams(migration_point=(60, 60)))
+print(metrics.summary())
+# {'order': 1.0, 'cohesion': 2.98, 'min_distance': 1.48, 'mean_speed': 3.11, ...}
+```
+
+```python
+from pymapf.decentralized.coverage import simulate_coverage, CoverageParams
+
+history, costs = simulate_coverage(n_agents=8, steps=40,
+                                   params=CoverageParams(sensing_range=5.0))
+print(costs[0], "->", costs[-1])
+```
+
+Controllers: `boids`, `vicsek`, `olfati_saber`, `acceleration` (bird-inspired,
+acceleration-based). Coverage: planar Lloyd/Voronoi, limited-range, and
+hemispherical surfaces.
 
 ### Reactive planners 🔎
 

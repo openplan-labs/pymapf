@@ -1,7 +1,8 @@
 """Core, algorithm-agnostic building blocks of the PyMAPF framework."""
 
+from .graph import ExplicitGraph, Node, roadmap
 from .grid import Cell, GridMap
-from .heuristics import HEURISTICS, get_heuristic
+from .heuristics import HEURISTICS, get_heuristic, true_distance
 from .trace import Observer, SearchEvent, SearchTrace
 from .solver import (
     Agent,
@@ -19,6 +20,10 @@ from .solver import (
 __all__ = [
     "Cell",
     "GridMap",
+    "ExplicitGraph",
+    "Node",
+    "roadmap",
+    "true_distance",
     "HEURISTICS",
     "get_heuristic",
     "Agent",

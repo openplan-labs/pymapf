@@ -26,8 +26,15 @@ const fmtMs = (seconds) => (seconds >= 1 ? `${seconds.toFixed(2)} s` : `${(secon
 const ALGORITHM_BLURBS = {
   cbs: 'Provably optimal. Exponential in the number of conflicts — give it a budget.',
   wcbs: 'Focal search: cost stays within w × optimal, usually far faster.',
+  lacam: 'Searches configurations with lazy constraints. Complete, and milliseconds fast.',
+  pibt: 'Plans one timestep at a time by priority inheritance. Scales, but incomplete.',
+  lns: 'Anytime: repeatedly re-plans small groups of agents and keeps improvements.',
   prioritized: 'One agent at a time. Fastest, but can fail on solvable instances.',
 };
+
+// The JS preview engine implements CBS, weighted CBS and prioritized planning.
+// Anything else needs the real library, so selecting it forces the Python engine.
+const PYTHON_ONLY = new Set(['lacam', 'pibt', 'lns']);
 
 /* --------------------------------------------------------------- state --- */
 
@@ -429,8 +436,12 @@ function finishSolve(solution, runtime) {
 
 /** In-page engine: pump the generator with a frame budget so the UI stays live. */
 function runJs() {
+  if (PYTHON_ONLY.has(state.algorithm)) {
+    log(`${state.algorithm} is only implemented in the Python engine; falling back to weighted CBS`, 'conflict');
+  }
+  const algorithm = PYTHON_ONLY.has(state.algorithm) ? 'wcbs' : state.algorithm;
   const generator = solveGenerator(problemFromState({ matrix: state.matrix, agents: state.agentList }),
-    state.algorithm, {
+    algorithm, {
       heuristic: state.heuristic,
       weight: state.weight,
       timeLimit: 8,
@@ -953,6 +964,11 @@ function wire() {
     state.algorithm = event.target.value;
     $('algorithm-blurb').textContent = ALGORITHM_BLURBS[state.algorithm];
     $('weight-group').style.display = state.algorithm === 'wcbs' ? '' : 'none';
+    if (PYTHON_ONLY.has(state.algorithm)) {
+      if (engine.ready) selectEngine('python');
+      else $('algorithm-blurb').textContent =
+        `${ALGORITHM_BLURBS[state.algorithm]} — needs the Python runtime, which is not available here.`;
+    }
     updateSnippet();
   });
   $('weight').addEventListener('input', (event) => {

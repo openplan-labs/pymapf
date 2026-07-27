@@ -22,6 +22,7 @@ under :mod:`pymapf.decentralized`.
 from .core import (
     Agent,
     Cell,
+    ExplicitGraph,
     Conflict,
     Constraints,
     GridMap,
@@ -42,13 +43,19 @@ from . import algorithms  # noqa: F401  (side-effect: populates the registry)
 from . import scenarios  # noqa: F401
 from .algorithms import (
     ConflictBasedSearch,
+    LaCAM,
+    LargeNeighborhoodSearch,
+    PIBT,
     PrioritizedPlanning,
     WeightedCBS,
+    astar,
+    dijkstra,
+    sipp,
     space_time_astar,
 )
 from .scenarios import Scenario, available_scenarios, build_scenario
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 
 def solve(
@@ -84,6 +91,13 @@ __all__ = [
     "ConflictBasedSearch",
     "PrioritizedPlanning",
     "WeightedCBS",
+    "PIBT",
+    "LaCAM",
+    "LargeNeighborhoodSearch",
+    "ExplicitGraph",
+    "astar",
+    "dijkstra",
+    "sipp",
     "space_time_astar",
     "available_solvers",
     "find_first_conflict",

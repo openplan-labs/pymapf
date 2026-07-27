@@ -4,6 +4,77 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0]
+
+Modern MAPF algorithms, general graphs, decentralized swarm control, a
+referenced bibliography, an extended survey, and an experimental section.
+
+### Added
+
+- **Modern solvers**, each with its citation in `REFERENCES.md`:
+  - `PIBT` (`"pibt"`) -- priority inheritance with backtracking (Okumura et al.,
+    AIJ 2022). One timestep at a time, O(agents x degree) per step.
+  - `LaCAM` (`"lacam"`) -- lazy constraints addition search (Okumura, AAAI
+    2023). Complete; solved 6 of 7 instances where PIBT livelocked and CBS
+    proved a solution existed.
+  - `LargeNeighborhoodSearch` (`"lns"`) -- anytime destroy/repair with adaptive
+    operator weights (Li et al., IJCAI 2021). Takes PIBT's warehouse plan from
+    cost 175 to 113 in two seconds.
+  - `sipp` -- safe interval path planning (Phillips and Likhachev, ICRA 2011).
+    Verified against space-time A* on 400 randomised constraint sets (identical
+    costs) and 115x faster on a long-horizon instance.
+- **General graphs** (`pymapf.core.graph.ExplicitGraph`): every solver now runs
+  on arbitrary graphs -- roadmaps, warehouse topologies, PRMs -- not just grids.
+  Duck-type compatible with `GridMap`, so nothing else changed.
+- **Single-agent search primitives** (`pymapf.algorithms.search`): Dijkstra, A*,
+  weighted A*, focal search, and `distance_table`/`true_distance` (an exact,
+  admissible heuristic, and the only one available on a graph without
+  coordinates).
+- **Decentralized swarm control**:
+  - `decentralized.flocking` -- boids (Reynolds 1987), Vicsek (1995),
+    Olfati-Saber (2006) with the paper's action and bump functions, and
+    acceleration-based bird-inspired flocking (Iacone, Lejeune, Manoni,
+    Manfredi and Albani, 2024), plus a simulator with order/cohesion/safety
+    metrics.
+  - `decentralized.coverage` -- Voronoi/Lloyd coverage (Cortes et al. 2004),
+    limited-range coverage (Bertoncelli, Belal et al., DARS 2022) and
+    hemispherical surface coverage (Belal et al., ANTS 2026).
+- **`pymapf.experimental`** -- three measured variants registered under `x-*`
+  names: congestion-aware PIBT, delay-targeted LNS, and restart-based LaCAM,
+  with `python -m pymapf.experimental.study` to reproduce every number.
+- **`REFERENCES.md`** -- every algorithm mapped to its source, including what
+  is surveyed but not implemented, and an implementation-notes section stating
+  every deviation from the cited work.
+- **`docs/survey.md`** -- an extension of *Survey of the Multi-Agent Pathfinding
+  Solutions* (Lejeune and Sarkar, 2021) covering 2021-2026, the decentralized
+  swarm line, and an experiments section reporting measured results including
+  the negative ones.
+
+### Changed
+
+- `LaCAM(anytime=True)` spends its leftover budget on randomised restarts rather
+  than continuing the search in place. The in-place continuation was measured
+  over 28 paired instances and won **zero** of them; restarts won 26.
+- `LargeNeighborhoodSearch` exposes `operators()` / `_pick_neighborhood()` so
+  destroy operators can be added by subclassing instead of copying the loop.
+
+### Fixed
+
+- **PIBT could return an invalid plan.** Two bugs: an agent could swap with a
+  peer that had already committed to its vertex (an edge conflict priority
+  inheritance does not rule out on its own), and a failed inheritance chain
+  leaked the assignments made deeper in the recursion. Assignments are now
+  journalled and rolled back as a unit, and every step is verified before it is
+  returned. A 306-run sweep across all scenarios is now clean.
+- **Flocking: an unbounded waypoint term starved collision avoidance.** A
+  distant migration point consumed the whole acceleration budget, so the final
+  clamp scaled separation to nothing. Navigational authority is now capped at a
+  share of the budget.
+- **Olfati-Saber flocking collapsed.** Its alpha-lattice assumes an interaction
+  range of ~1.2x the reference distance; at this library's default sensing range
+  (2x) summed attraction beats local repulsion and the flock merges into a
+  point. The ratio is now part of the controller.
+
 ## [0.3.0]
 
 ### Added

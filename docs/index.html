@@ -29,6 +29,7 @@
       <a href="#playground">Playground</a>
       <a href="#benchmarks">Benchmarks</a>
       <a href="#gallery">Gallery</a>
+      <a href="survey.md">Survey</a>
       <a href="https://github.com/apla-toolbox/pymapf">GitHub</a>
       <button class="icon-button" id="theme-toggle" type="button" aria-label="Toggle colour theme">◐</button>
     </nav>
@@ -51,9 +52,10 @@
     <a class="button ghost" href="https://github.com/apla-toolbox/pymapf">View the source</a>
   </div>
   <div class="pill-row">
-    <span class="pill"><strong>3</strong> solvers: optimal, bounded-suboptimal, greedy</span>
+    <span class="pill"><strong>6</strong> solvers: CBS, weighted CBS, LaCAM, PIBT, LNS, prioritized</span>
     <span class="pill"><strong>6</strong> reproducible scenario families</span>
     <span class="pill"><strong>0</strong> runtime dependencies in the core</span>
+    <span class="pill">every algorithm <strong>referenced</strong></span>
   </div>
   <video class="promo" id="promo" controls muted playsinline preload="metadata"
          poster="assets/promo-poster.png">
@@ -109,6 +111,9 @@
             <select id="algorithm">
               <option value="cbs">CBS — optimal</option>
               <option value="wcbs" selected>Weighted CBS — bounded</option>
+              <option value="lacam">LaCAM — complete, fast (Python only)</option>
+              <option value="pibt">PIBT — one step at a time (Python only)</option>
+              <option value="lns">MAPF-LNS — anytime (Python only)</option>
               <option value="prioritized">Prioritized — greedy</option>
             </select>
             <span class="hint" id="algorithm-blurb"></span>
@@ -273,6 +278,30 @@
           Plans agents one at a time against the reservations of the ones before them.
           Milliseconds even for large fleets, but incomplete: a bad priority order can
           fail on a solvable instance.
+        </p>
+      </div>
+      <div class="chart-card">
+        <h3 style="color:var(--s4)">LaCAM — complete</h3>
+        <p style="color:var(--ink-2)">
+          Searches whole configurations, generating successors lazily with PIBT. Complete,
+          and fast enough for thousands of agents. Measured here: it solved 6 of 7
+          instances where PIBT livelocked and a solution provably existed.
+        </p>
+      </div>
+      <div class="chart-card">
+        <h3 style="color:var(--s5)">PIBT — one step at a time</h3>
+        <p style="color:var(--ink-2)">
+          Every agent proposes its best next vertex; conflicts are settled by priority
+          inheritance, recursively. O(agents x degree) per timestep, and incomplete —
+          it livelocks on about a quarter of our warehouse instances.
+        </p>
+      </div>
+      <div class="chart-card">
+        <h3 style="color:var(--s7)">MAPF-LNS — anytime</h3>
+        <p style="color:var(--ink-2)">
+          Destroy a small group of agents, re-plan them against the rest, keep the result
+          if it is cheaper. Never returns worse than its initial plan, and takes PIBT's
+          warehouse plan from cost 175 to 113 in two seconds.
         </p>
       </div>
     </div>

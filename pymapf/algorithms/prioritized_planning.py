@@ -5,6 +5,16 @@ already-planned agents as moving obstacles (space-time reservations). This is
 fast and simple but *incomplete*: a bad priority order can fail on solvable
 instances. It is the clean, framework-native replacement for the legacy
 ``CooperativeAStar``.
+
+References
+----------
+* Erdmann, M.; and Lozano-Perez, T. 1987. *On multiple moving objects.*
+  Algorithmica 2: 477-521.  (prioritized planning)
+* Silver, D. 2005. *Cooperative pathfinding.* AIIDE 2005: 117-122.
+  (cooperative A* and the space-time reservation table)
+* Ma, H.; Harabor, D.; Stuckey, P. J.; Li, J.; and Koenig, S. 2019.
+  *Searching with consistent prioritization for multi-agent path finding.* AAAI
+  2019: 7643-7650.  (priority orderings and their effect on completeness)
 """
 
 from __future__ import annotations
