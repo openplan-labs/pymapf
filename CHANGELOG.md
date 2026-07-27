@@ -4,7 +4,61 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0]
+
+### Added
+
+- **Interactive playground** (`docs/`, published to GitHub Pages): edit a map,
+  pick a solver and watch the search resolve conflicts in the browser. It runs
+  the library's own source under Pyodide in a web worker, with a JavaScript port
+  of the solvers (`docs/mapf.js`) as an instant-response fallback. The Python
+  tab runs arbitrary user code against the real package; the benchmark tab runs
+  a sweep and charts it live.
+- **Weighted CBS** (`pymapf.algorithms.WeightedCBS`, registered as `"wcbs"`):
+  bounded-suboptimal focal search. Returns a solution costing at most
+  `weight x optimal`, typically orders of magnitude faster than optimal CBS.
+- **Search instrumentation** (`pymapf.core.trace`): solvers accept an
+  `observer` and stream `SearchEvent`s (`root`, `expand`, `conflict`, `branch`,
+  `agent_planned`, `solved`, `failed`). `SearchTrace` records them with
+  aggregates (`summary()`, `cost_curve()`); observing is opt-in and costs one
+  branch per event when unused.
+- **Scenario library** (`pymapf.scenarios`): six deterministic instance
+  families -- `empty_room`, `random_obstacles`, `warehouse`, `maze`,
+  `bottleneck`, `corner_swap` -- plus `from_ascii`/`to_ascii` for hand-written
+  maps and a name-based registry (`build_scenario`, `available_scenarios`).
+- **Benchmark harness** (`pymapf.benchmark`): `run_once`, `compare_algorithms`,
+  `scaling_study` and `aggregate`, returning a `BenchmarkReport` with a text
+  table, CSV and JSON export. Median-of-repeats timing; solver options that an
+  algorithm does not accept are dropped rather than raising.
+- **Visualisation** (`pymapf.viz`, optional `[viz]` extra): `plot_solution`,
+  `plot_scenario`, `plot_congestion`, `plot_spacetime` (3D space-time cube),
+  `plot_timeline` (moving vs waiting), `compare_solutions`, benchmark charts
+  (`plot_scaling`, `plot_cost_comparison`, `plot_success_rate`,
+  `plot_cost_curve`, `dashboard`), animations (`animate_solution`,
+  `animate_search`, GIF/MP4 export) and live views (`LiveSolveView` for a
+  window, `LiveConsoleView` for a terminal). One shared, colorblind-safe theme
+  in light and dark.
+- `Solution.position_at`, `Solution.congestion`, `Solution.as_dict` and
+  `Solution.runtime`; `count_conflicts` in `pymapf.core.solver`.
+- `time_limit` on CBS and weighted CBS: a hard instance now reports a failure
+  with a reason instead of running unbounded.
+- Scripts: `generate_gallery.py` (every figure in the docs),
+  `make_promo.py` (the promo film -- every number in it is measured at render
+  time), `build_web_bundle.py` (the playground's copy of the library).
+
+### Changed
+
+- **CBS expands best-first on `(cost, conflicts)`** instead of cost alone. Among
+  equal-cost nodes it now prefers the one closest to conflict-free, which stops
+  it breadth-first-ing through equal-cost plateaus on corridor-heavy maps.
+- **Packaging**: `install_requires` is now empty -- the solver framework has no
+  third-party dependencies. matplotlib, numpy and scipy moved to the `viz`,
+  `decentralized`, `legacy` and `all` extras. Existing users of the
+  decentralized planners should install `pymapf[all]`.
+- `MAPFSolver.solve` takes an optional `observer` argument. Custom solvers that
+  define `solve(self, problem)` keep working unless an observer is passed.
+
+## [0.2.0]
 
 ### Added
 

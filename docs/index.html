@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PyMAPF — multi-agent path finding you can watch</title>
+<meta name="description" content="An interactive playground for PyMAPF: run conflict-based search, weighted CBS and prioritized planning in your browser, watch the search live, and benchmark them against each other.">
+<meta property="og:title" content="PyMAPF — multi-agent path finding you can watch">
+<meta property="og:description" content="Run the real Python solvers in your browser. Watch CBS find and resolve conflicts, live.">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <span class="logo">
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect x="1" y="1" width="30" height="30" rx="7" fill="#1a1a19" stroke="#383835"/>
+        <path d="M7 24 L7 12 L16 12" stroke="#3987e5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M25 8 L25 20 L16 20" stroke="#d95926" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="7" cy="24" r="3" fill="#3987e5"/>
+        <circle cx="25" cy="8" r="3" fill="#d95926"/>
+      </svg>
+      PyMAPF
+    </span>
+    <nav>
+      <a href="#playground">Playground</a>
+      <a href="#benchmarks">Benchmarks</a>
+      <a href="#gallery">Gallery</a>
+      <a href="https://github.com/apla-toolbox/pymapf">GitHub</a>
+      <button class="icon-button" id="theme-toggle" type="button" aria-label="Toggle colour theme">◐</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ------------------------------------------------------------- hero -->
+<div class="wrap hero">
+  <h1>Multi-agent path finding<br>you can <em>watch</em>.</h1>
+  <p class="lede">
+    PyMAPF plans conflict-free routes for fleets of agents on a grid. This page runs
+    the library itself — compiled to WebAssembly — so you can edit a map, launch a
+    solver, and watch conflict-based search discover and resolve every collision in
+    real time.
+  </p>
+  <div class="hero-actions">
+    <a class="button primary" href="#playground">Open the playground</a>
+    <a class="button ghost" href="https://github.com/apla-toolbox/pymapf">View the source</a>
+  </div>
+  <div class="pill-row">
+    <span class="pill"><strong>3</strong> solvers: optimal, bounded-suboptimal, greedy</span>
+    <span class="pill"><strong>6</strong> reproducible scenario families</span>
+    <span class="pill"><strong>0</strong> runtime dependencies in the core</span>
+  </div>
+  <video class="promo" id="promo" controls muted playsinline preload="metadata"
+         poster="assets/promo-poster.png">
+    <source src="assets/pymapf-promo.mp4" type="video/mp4">
+    Your browser cannot play the promo video; the gallery below shows the same figures.
+  </video>
+</div>
+
+<!-- ------------------------------------------------------- playground -->
+<section id="playground">
+  <div class="wrap">
+    <h2>Playground</h2>
+    <p class="sub">
+      Pick a scenario or paint your own walls, choose a solver, and hit run. The
+      search animates as it happens: every ✕ is a collision the planner found and
+      had to design around.
+    </p>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-visual" aria-controls="panel-visual" aria-selected="true">Visual</button>
+      <button role="tab" id="tab-code" aria-controls="panel-code" aria-selected="false">Python</button>
+      <button role="tab" id="tab-bench" aria-controls="panel-bench" aria-selected="false">Benchmark</button>
+    </div>
+
+    <!-- ------------------------------------------------ visual panel -->
+    <div class="tab-panel" id="panel-visual" role="tabpanel" aria-labelledby="tab-visual">
+      <div class="playground">
+        <div class="controls card">
+          <div class="control-group">
+            <label for="scenario">Scenario</label>
+            <select id="scenario"></select>
+            <span class="hint" id="scenario-blurb"></span>
+          </div>
+
+          <div class="control-group">
+            <label for="agents">Agents</label>
+            <div class="range-row">
+              <input type="range" id="agents" min="2" max="12" value="6">
+              <output id="agents-out">6</output>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="seed">Seed</label>
+            <div class="range-row">
+              <input type="range" id="seed" min="0" max="40" value="0">
+              <output id="seed-out">0</output>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="algorithm">Algorithm</label>
+            <select id="algorithm">
+              <option value="cbs">CBS — optimal</option>
+              <option value="wcbs" selected>Weighted CBS — bounded</option>
+              <option value="prioritized">Prioritized — greedy</option>
+            </select>
+            <span class="hint" id="algorithm-blurb"></span>
+          </div>
+
+          <div class="control-group" id="weight-group">
+            <label for="weight">Suboptimality bound (w)</label>
+            <div class="range-row">
+              <input type="range" id="weight" min="1" max="3" step="0.1" value="1.5">
+              <output id="weight-out">1.5</output>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="heuristic">Heuristic</label>
+            <select id="heuristic">
+              <option value="manhattan">Manhattan</option>
+              <option value="euclidean">Euclidean</option>
+              <option value="chebyshev">Chebyshev</option>
+              <option value="octile">Octile</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="engine">Engine</label>
+            <div class="segmented" id="engine" role="group">
+              <button type="button" data-engine="python" aria-pressed="true">Python (WASM)</button>
+              <button type="button" data-engine="js" aria-pressed="false">JS preview</button>
+            </div>
+            <span class="hint">
+              Python runs the actual <code>pymapf</code> source in a worker. JS is an
+              exact port used while Pyodide downloads.
+            </span>
+          </div>
+
+          <div class="control-group">
+            <label>Edit the map</label>
+            <span class="hint">Click or drag on the grid to add and remove walls.</span>
+            <button class="button ghost" id="clear-walls" type="button">Clear walls</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <div class="stage-head">
+            <button class="button primary" id="run" type="button">▶ Run solver</button>
+            <button class="button ghost" id="regenerate" type="button">⟳ New instance</button>
+            <span class="engine-badge"><span class="dot loading" id="engine-dot"></span><span id="engine-label">loading Python runtime…</span></span>
+          </div>
+
+          <div class="canvas-wrap">
+            <canvas id="board" width="760" height="560" aria-label="Map with agent paths"></canvas>
+            <span class="overlay-note" id="canvas-note">click cells to toggle walls</span>
+          </div>
+
+          <div class="transport">
+            <button class="button ghost" id="play" type="button" disabled>⏵ Play</button>
+            <input type="range" id="timeline" min="0" max="0" value="0" disabled aria-label="Timestep">
+            <span class="hint" id="clock">t = 0</span>
+          </div>
+
+          <div class="metrics">
+            <div class="metric"><div class="label">Sum of costs</div><div class="value" id="m-cost">—</div></div>
+            <div class="metric"><div class="label">Makespan</div><div class="value" id="m-makespan">—</div></div>
+            <div class="metric"><div class="label">Nodes expanded</div><div class="value" id="m-expansions">—</div></div>
+            <div class="metric"><div class="label">Conflicts resolved</div><div class="value" id="m-conflicts">—</div></div>
+            <div class="metric"><div class="label">Solve time</div><div class="value" id="m-runtime">—</div></div>
+            <div class="metric"><div class="label">Valid plan</div><div class="value" id="m-valid">—</div></div>
+          </div>
+
+          <div class="log" id="log" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <h3 style="margin:26px 0 8px;font-size:15px;">The code this just ran</h3>
+      <pre class="snippet" id="equivalent-code"></pre>
+    </div>
+
+    <!-- -------------------------------------------------- code panel -->
+    <div class="tab-panel" id="panel-code" role="tabpanel" aria-labelledby="tab-code" hidden>
+      <p class="sub">
+        This is a real Python interpreter with PyMAPF importable. Edit anything and
+        run it — <code>print()</code> goes to the output pane, and if your script
+        leaves a <code>solution</code> behind, it is drawn on the Visual tab.
+      </p>
+      <div class="code-layout">
+        <div>
+          <textarea class="editor" id="editor" spellcheck="false"></textarea>
+          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+            <button class="button primary" id="run-code" type="button">▶ Run Python</button>
+            <select id="examples" style="width:auto;flex:1;min-width:180px;"></select>
+          </div>
+        </div>
+        <pre class="output" id="code-output">Waiting for the Python runtime…</pre>
+      </div>
+    </div>
+
+    <!-- --------------------------------------------- benchmark panel -->
+    <div class="tab-panel" id="panel-bench" role="tabpanel" aria-labelledby="tab-bench" hidden>
+      <p class="sub">
+        Runs every solver over a sweep of instances, right here, and charts what
+        each one trades away. Nothing is pre-computed.
+      </p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;">
+        <button class="button primary" id="run-bench" type="button">▶ Run benchmark</button>
+        <select id="bench-scenario" style="width:auto;"></select>
+        <span class="hint" id="bench-status">agent counts 2 → 12, three seeds each</span>
+      </div>
+      <div class="bench-grid">
+        <div class="chart-card">
+          <h3>Runtime vs. agents</h3>
+          <p>Log scale — optimal search grows exponentially with conflicts.</p>
+          <svg id="chart-runtime" viewBox="0 0 420 260" role="img" aria-label="Runtime versus agent count"></svg>
+        </div>
+        <div class="chart-card">
+          <h3>Solution cost vs. agents</h3>
+          <p>What the faster solvers give up, measured against optimal.</p>
+          <svg id="chart-cost" viewBox="0 0 420 260" role="img" aria-label="Solution cost versus agent count"></svg>
+        </div>
+        <div class="chart-card">
+          <h3>Instances solved</h3>
+          <p>Completeness within the time budget.</p>
+          <svg id="chart-success" viewBox="0 0 420 200" role="img" aria-label="Share of instances solved"></svg>
+        </div>
+        <div class="chart-card">
+          <h3>Results</h3>
+          <p>Every run in the sweep.</p>
+          <div class="table-scroll"><table class="results" id="bench-table"></table></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- --------------------------------------------------------- benchmarks -->
+<section id="benchmarks">
+  <div class="wrap">
+    <h2>Three solvers, three trade-offs</h2>
+    <p class="sub">
+      Every solver in PyMAPF implements the same <code>MAPFSolver</code> interface and
+      registers itself by name, so swapping one for another is a string change.
+    </p>
+    <div class="bench-grid">
+      <div class="chart-card">
+        <h3 style="color:var(--s1)">CBS — optimal</h3>
+        <p style="color:var(--ink-2)">
+          Searches a binary constraint tree, best-first on sum-of-costs, and returns a
+          provably optimal plan. Exponential in the number of conflicts: on corridor-heavy
+          maps it needs a time budget.
+        </p>
+      </div>
+      <div class="chart-card">
+        <h3 style="color:var(--s2)">Weighted CBS — bounded</h3>
+        <p style="color:var(--ink-2)">
+          Keeps a focal list of nodes within <code>w ×</code> the best known bound and
+          expands the one with fewest conflicts. Cost is guaranteed within a factor of
+          optimal, typically an order of magnitude faster.
+        </p>
+      </div>
+      <div class="chart-card">
+        <h3 style="color:var(--s3)">Prioritized — greedy</h3>
+        <p style="color:var(--ink-2)">
+          Plans agents one at a time against the reservations of the ones before them.
+          Milliseconds even for large fleets, but incomplete: a bad priority order can
+          fail on a solvable instance.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------ gallery -->
+<section id="gallery">
+  <div class="wrap">
+    <h2>Gallery</h2>
+    <p class="sub">
+      Every figure below is produced by <code>pymapf.viz</code> from the same theme the
+      playground uses — regenerate them with <code>python scripts/generate_gallery.py</code>.
+    </p>
+    <div class="gallery">
+      <figure>
+        <img src="assets/animated-plan.gif" alt="Agents executing a plan in a warehouse map" loading="lazy">
+        <figcaption><strong>animate_solution()</strong>Agents executing a plan, with fading trails.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/animated-search.gif" alt="Conflict-based search resolving conflicts step by step" loading="lazy">
+        <figcaption><strong>animate_search()</strong>CBS finding and resolving conflicts, node by node.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/spacetime.png" alt="3D space-time plot of agent paths" loading="lazy">
+        <figcaption><strong>plot_spacetime()</strong>The cube a MAPF solver actually searches.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/congestion.png" alt="Heatmap of cell occupancy" loading="lazy">
+        <figcaption><strong>plot_congestion()</strong>Where a plan queues up.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/timeline.png" alt="Timeline of moving and waiting per agent" loading="lazy">
+        <figcaption><strong>plot_timeline()</strong>Who moves, who waits — the hidden cost.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/comparison.png" alt="Side-by-side comparison of solvers" loading="lazy">
+        <figcaption><strong>compare_solutions()</strong>The same instance, three solvers.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/dashboard.png" alt="Benchmark dashboard with four panels" loading="lazy">
+        <figcaption><strong>dashboard()</strong>Runtime, effort, quality and success rate.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/scenarios.png" alt="The six built-in scenario families" loading="lazy">
+        <figcaption><strong>scenarios</strong>Six reproducible instance families.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------ install -->
+<section id="install">
+  <div class="wrap">
+    <h2>Get it</h2>
+    <div class="code-layout">
+      <pre class="snippet"><span class="c"># the solvers need nothing but the standard library</span>
+pip install pymapf
+
+<span class="c"># plots, animations and live views</span>
+pip install <span class="s">"pymapf[viz]"</span></pre>
+      <pre class="snippet"><span class="kw">import</span> pymapf
+<span class="kw">from</span> pymapf <span class="kw">import</span> viz
+
+scenario = pymapf.build_scenario(<span class="s">"warehouse"</span>, n_agents=<span class="s">8</span>)
+trace = pymapf.SearchTrace()
+solution = pymapf.solve(scenario.to_problem(), <span class="s">"cbs"</span>, observer=trace)
+
+<span class="kw">print</span>(solution.sum_of_costs, solution.makespan)
+viz.save(viz.plot_solution(solution, scenario), <span class="s">"plan.png"</span>)
+viz.save_animation(viz.animate_solution(solution, scenario), <span class="s">"plan.gif"</span>)</pre>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>PyMAPF — Apache 2.0 — started as a university project, rebuilt as a framework.</span>
+    <nav>
+      <a href="https://github.com/apla-toolbox/pymapf">GitHub</a>
+      <a href="https://pypi.org/project/pymapf/">PyPI</a>
+    </nav>
+  </div>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

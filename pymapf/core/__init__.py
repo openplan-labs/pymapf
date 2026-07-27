@@ -2,6 +2,7 @@
 
 from .grid import Cell, GridMap
 from .heuristics import HEURISTICS, get_heuristic
+from .trace import Observer, SearchEvent, SearchTrace
 from .solver import (
     Agent,
     Conflict,
@@ -30,4 +31,7 @@ __all__ = [
     "find_first_conflict",
     "get_solver",
     "register_solver",
+    "Observer",
+    "SearchEvent",
+    "SearchTrace",
 ]

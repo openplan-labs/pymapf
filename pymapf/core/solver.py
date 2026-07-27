@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Type
 
 from .grid import Cell, GridMap
+from .trace import Observer, SearchEvent, SearchTrace  # noqa: F401  (re-exported)
 
 
 @dataclass(frozen=True)
@@ -114,6 +115,7 @@ class Solution:
     paths: Dict[str, List[Cell]]
     algorithm: str = ""
     expansions: int = 0
+    runtime: float = 0.0  # wall-clock seconds spent in ``solve``
 
     @property
     def makespan(self) -> int:
@@ -130,6 +132,31 @@ class Solution:
 
     def is_valid(self) -> bool:
         return self.first_conflict() is None
+
+    def position_at(self, agent: str, t: int) -> Cell:
+        """Where ``agent`` is at time ``t`` (it parks on its goal afterwards)."""
+        return _cell_at(self.paths[agent], t)
+
+    def congestion(self) -> Dict[Cell, int]:
+        """How many agent-timesteps each cell absorbs -- the traffic hot spots."""
+        counts: Dict[Cell, int] = {}
+        for path in self.paths.values():
+            for cell in path:
+                counts[cell] = counts.get(cell, 0) + 1
+        return counts
+
+    def as_dict(self) -> Dict:
+        """JSON-serialisable view (paths as lists), used by the web playground."""
+        return {
+            "algorithm": self.algorithm,
+            "expansions": self.expansions,
+            "runtime": self.runtime,
+            "makespan": self.makespan,
+            "sum_of_costs": self.sum_of_costs,
+            "paths": {
+                name: [list(cell) for cell in path] for name, path in self.paths.items()
+            },
+        }
 
 
 def _cell_at(path: List[Cell], t: int) -> Cell:
@@ -161,6 +188,29 @@ def find_first_conflict(paths: Dict[str, List[Cell]]) -> Optional[Conflict]:
     return None
 
 
+def count_conflicts(paths: Dict[str, List[Cell]]) -> int:
+    """Total number of pairwise conflicts in a joint plan.
+
+    Where :func:`find_first_conflict` answers "is this plan valid?",
+    this answers "how far from valid is it?" -- the quantity CBS uses to
+    tie-break between nodes of equal cost.
+    """
+    names = list(paths)
+    horizon = max((len(p) for p in paths.values()), default=0)
+    total = 0
+    for t in range(horizon):
+        for i in range(len(names)):
+            for j in range(i + 1, len(names)):
+                pa, pb = paths[names[i]], paths[names[j]]
+                a_now, b_now = _cell_at(pa, t), _cell_at(pb, t)
+                if a_now == b_now:
+                    total += 1
+                    continue
+                if a_now == _cell_at(pb, t + 1) and b_now == _cell_at(pa, t + 1):
+                    total += 1
+    return total
+
+
 class MAPFSolver(ABC):
     """Abstract base class for centralized MAPF algorithms.
 
@@ -172,8 +222,15 @@ class MAPFSolver(ABC):
     name = "abstract"
 
     @abstractmethod
-    def solve(self, problem: MAPFProblem) -> Optional[Solution]:
-        """Return a :class:`Solution` or ``None`` if the instance is unsolved."""
+    def solve(
+        self, problem: MAPFProblem, observer: Optional[Observer] = None
+    ) -> Optional[Solution]:
+        """Return a :class:`Solution` or ``None`` if the instance is unsolved.
+
+        ``observer`` is an optional callable receiving
+        :class:`~pymapf.core.trace.SearchEvent` objects as the search runs; it
+        is what the live views in :mod:`pymapf.viz` subscribe to.
+        """
         raise NotImplementedError
 
 

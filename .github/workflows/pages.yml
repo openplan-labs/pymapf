@@ -1,0 +1,64 @@
+name: playground
+
+# Publishes docs/ (the interactive playground) to GitHub Pages.
+#
+# The site loads the library's own source at runtime, so the bundle is rebuilt
+# here rather than trusted from the commit: a merge that changes a solver and
+# forgets to run scripts/build_web_bundle.py still ships a correct playground.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'pymapf/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Rebuild the browser bundle
+        run: python scripts/build_web_bundle.py
+
+      - name: Check the bundle imports cleanly
+        run: |
+          python - <<'PY'
+          import json, sys
+          bundle = json.load(open("docs/pymapf-bundle.json"))
+          missing = [p for p in bundle["files"] if not p.endswith(".py")]
+          assert not missing, missing
+          print("bundle: %d modules, pymapf %s" % (len(bundle["files"]), bundle["version"]))
+          PY
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -9,6 +9,7 @@ instances. It is the clean, framework-native replacement for the legacy
 
 from __future__ import annotations
 
+import time
 from typing import Dict, List, Optional
 
 from ..core.grid import Cell
@@ -16,9 +17,11 @@ from ..core.solver import (
     Constraints,
     MAPFProblem,
     MAPFSolver,
+    Observer,
     Solution,
     register_solver,
 )
+from ..core.trace import _Emitter
 from .space_time_astar import space_time_astar
 
 
@@ -36,12 +39,17 @@ class PrioritizedPlanning(MAPFSolver):
         self.heuristic = heuristic
         self.priority = priority
 
-    def solve(self, problem: MAPFProblem) -> Optional[Solution]:
+    def solve(
+        self, problem: MAPFProblem, observer: Optional[Observer] = None
+    ) -> Optional[Solution]:
+        emit = _Emitter(observer)
+        started = time.perf_counter()
         agents = {a.name: a for a in problem.agents}
         order = self.priority or [a.name for a in problem.agents]
         if set(order) != set(agents):
             raise ValueError("priority must list exactly the problem's agent names")
 
+        emit("root", agents=list(order), cost=0)
         reservations: Dict[str, List[Cell]] = {}
         expansions = 0
         for name in order:
@@ -67,11 +75,36 @@ class PrioritizedPlanning(MAPFSolver):
                 max_timestep=horizon,
             )
             if path is None:
+                emit(
+                    "failed",
+                    reason="agent %r has no path under the reservations of the "
+                    "%d higher-priority agents" % (name, len(reservations)),
+                )
                 return None
             reservations[name] = path
             expansions += 1
+            emit("agent_planned", agent=name, path=list(path), cost=len(path) - 1)
+            emit(
+                "expand",
+                node=expansions,
+                cost=sum(len(p) - 1 for p in reservations.values()),
+                open=len(order) - expansions,
+            )
 
-        return Solution(paths=reservations, algorithm=self.name, expansions=expansions)
+        solution = Solution(
+            paths=reservations,
+            algorithm=self.name,
+            expansions=expansions,
+            runtime=time.perf_counter() - started,
+        )
+        emit(
+            "solved",
+            cost=solution.sum_of_costs,
+            makespan=solution.makespan,
+            expansions=expansions,
+            paths={n: list(p) for n, p in solution.paths.items()},
+        )
+        return solution
 
 
 def _reservations_to_constraints(
