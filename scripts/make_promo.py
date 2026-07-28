@@ -260,6 +260,35 @@ class Content:
             )
         )
 
+        print("  running swarm controllers...")
+        from pymapf.swarm import SwarmSimulator, SwarmParams
+
+        # The 2024 minimalistic model: relative range and bearing only.
+        self.flock = SwarmSimulator(
+            "minimalistic", n_agents=22, dimension=2, params=SwarmParams(seed=2)
+        ).run(steps=420)
+        self.flock_order = self.flock.metrics.summary()["order"]
+
+        # A formation forming up, with its error curve recorded as it goes.
+        formation = SwarmSimulator(
+            "displacement_formation", n_agents=9, dimension=2,
+            shape="v", spacing=3.0, params=SwarmParams(seed=1),
+        )
+        self.formation_error = []
+        self.formation = formation.run(
+            steps=260,
+            observer=lambda step, state: self.formation_error.append(
+                formation.behavior.error(state)
+            ),
+        )
+        self.formation_shape = formation.behavior.shape
+        # Which agent holds which slot. Struts drawn without this connect
+        # agents by *slot* index, which is only right if nobody was reassigned.
+        self.formation_slots = formation.behavior.assignment(
+            self.formation.final,
+            formation.behavior.shape.centred(self.formation.final.n, 2),
+        ).copy()
+
         print("  measuring benchmark...")
         self.report = scaling_study(
             "random_obstacles",
@@ -496,6 +525,185 @@ def scene_execute(ax, t, content):
          color=THEME.ink_secondary)
 
 
+def _swarm_frame(result, t, duration, tail=26):
+    """Positions and a short velocity tail at time ``t`` through a swarm run."""
+    history = result.history
+    index = min(len(history) - 1, int((t / max(duration, 1e-6)) * (len(history) - 1)))
+    window = [history[max(0, index - k)].positions for k in range(tail, -1, -1)]
+    return history[index].positions, window
+
+
+def _fit_view(points, margin=1.15):
+    """A square window around ``points``, in world units."""
+    import numpy as np
+
+    centre = points.mean(axis=0)
+    span = max(float(np.abs(points - centre).max()) * margin, 1e-6)
+    return centre, span
+
+
+def _projector(box, centre, span):
+    """Map world coordinates into ``box`` without distorting the geometry.
+
+    Axes coordinates are not isotropic on a 16:9 canvas -- one unit across is
+    16/9 times longer than one unit up -- so mapping x and y through the same
+    fraction turns a V formation into a zigzag and a circle into an ellipse.
+    The box is therefore shrunk to whichever axis binds, and the same
+    world-units-per-inch is used for both.
+    """
+    x0, y0, width, height = box
+    if width * WIDTH > height * HEIGHT:      # too wide: height binds
+        used_w, used_h = height * HEIGHT / WIDTH, height
+    else:                                    # too tall: width binds
+        used_w, used_h = width, width * WIDTH / HEIGHT
+    cx, cy = x0 + width / 2, y0 + height / 2
+
+    def place(point):
+        return (
+            cx + used_w * (point[0] - centre[0]) / (2 * span),
+            cy + used_h * (point[1] - centre[1]) / (2 * span),
+        )
+
+    return place
+
+
+def scene_swarm(ax, t, content):
+    """The decentralized half: a flock that needs almost nothing to sense."""
+    import numpy as np
+
+    text(ax, 0.07, 0.90, "The other half: no planner at all.", size=34, weight="bold",
+         alpha=fade(ax, t, 0.0))
+    text(ax, 0.07, 0.835,
+         "Ten flocking laws, one interface, identical initial conditions.",
+         size=16, color=THEME.ink_secondary, alpha=fade(ax, t, 0.2))
+
+    duration = DURATIONS.get("scene_swarm", 8.0)
+    positions, window = _swarm_frame(content.flock, t, duration)
+    centre, span = _fit_view(np.vstack(window))
+
+    # Draw into the right two-thirds of the frame.
+    place = _projector((0.36, 0.14, 0.58, 0.58), centre, span)
+
+    appear = ease_out(t / 0.8)
+    for agent in range(positions.shape[0]):
+        colour = THEME.agent_color(agent)
+        trail = [place(frame[agent]) for frame in window]
+        ax.plot(*zip(*trail), color=colour, linewidth=1.6, alpha=0.42 * appear,
+                solid_capstyle="round", transform=ax.transAxes, zorder=3)
+        x, y = trail[-1]
+        ax.add_patch(disc(ax, x, y, 0.0062, facecolor=colour, edgecolor=THEME.plane,
+                          linewidth=0.9, alpha=appear, zorder=5))
+
+    lines = [
+        ("no GPS", 0.9),
+        ("no compass", 1.25),
+        ("no radio between agents", 1.6),
+        ("no velocity sensing", 1.95),
+    ]
+    for row, (label, start) in enumerate(lines):
+        text(ax, 0.07, 0.66 - row * 0.075, label, size=21, family=MONO,
+             color=THEME.agent_color(1), alpha=fade(ax, t, start))
+    text(ax, 0.07, 0.30,
+         "Only relative range and bearing \u2014\nand the flock still agrees on a heading.",
+         size=17, color=THEME.ink_secondary, alpha=fade(ax, t, 2.5))
+    if t > 3.1:
+        text(ax, 0.07, 0.17, "polarisation  %.2f" % content.flock_order, size=25,
+             weight="bold", family=MONO, color=THEME.agent_color(2),
+             alpha=fade(ax, t, 3.1))
+    text(ax, 0.07, 0.10, "Amorim, Nascimento, Chaudhary, Ferrante, Saska (2024)",
+         size=12.5, color=THEME.muted, alpha=fade(ax, t, 3.4))
+
+
+def scene_formation(ax, t, content):
+    """Formation control: a shape, and what it costs to be able to hold it."""
+    import numpy as np
+
+    text(ax, 0.07, 0.90, "Formation control: hold a shape.", size=34, weight="bold",
+         alpha=fade(ax, t, 0.0))
+    text(ax, 0.07, 0.835,
+         "What each agent can measure decides which symmetry it can fix.",
+         size=16, color=THEME.ink_secondary, alpha=fade(ax, t, 0.2))
+
+    duration = DURATIONS.get("scene_formation", 8.5)
+    # Hold on the finished formation for the last third of the scene.
+    progress = min(1.0, (t / max(duration, 1e-6)) * 1.5)
+    history = content.formation.history
+    index = min(len(history) - 1, int(progress * (len(history) - 1)))
+    positions = history[index].positions
+    target = content.formation_shape.centred(positions.shape[0], 2)
+    centre, span = _fit_view(
+        np.vstack([positions, target + positions.mean(axis=0)]), margin=1.25
+    )
+
+    place = _projector((0.05, 0.14, 0.46, 0.58), centre, span)
+
+    # Ghost the target slots so the convergence is legible. They are offsets
+    # from the formation centre, so they have to be moved to where the swarm
+    # actually is before they mean anything.
+    swarm_centre = positions.mean(axis=0)
+    for slot in target:
+        x, y = place(slot + swarm_centre)
+        ax.add_patch(disc(ax, x, y, 0.0085, facecolor="none", edgecolor=THEME.grid,
+                          linewidth=1.1, alpha=0.55 * fade(ax, t, 0.3), zorder=2))
+    # Struts between the closest pairs *in the target shape*. Nine loose dots
+    # do not read as a chevron; the same nine with their arms drawn do -- and
+    # the struts are the formation's own structure, not decoration.
+    order = np.argsort(
+        np.linalg.norm(target[:, None, :] - target[None, :, :], axis=2)
+        + np.eye(len(target)) * 1e9,
+        axis=1,
+    )
+    holder = np.empty(len(target), dtype=int)      # slot -> agent
+    holder[content.formation_slots] = np.arange(len(target))
+    drawn = set()
+    for i in range(len(target)):
+        for j in order[i, :2]:
+            pair = (min(i, int(j)), max(i, int(j)))
+            if pair in drawn:
+                continue
+            drawn.add(pair)
+            ends = [place(positions[holder[pair[0]]]),
+                    place(positions[holder[pair[1]]])]
+            ax.plot(*zip(*ends), color=THEME.ink_secondary, linewidth=1.3,
+                    alpha=0.30 * ease_out(t / 0.9), transform=ax.transAxes, zorder=3)
+
+    for agent in range(positions.shape[0]):
+        x, y = place(positions[agent])
+        ax.add_patch(disc(ax, x, y, 0.0082, facecolor=THEME.agent_color(agent),
+                          edgecolor=THEME.plane, linewidth=1.0,
+                          alpha=ease_out(t / 0.7), zorder=5))
+
+    errors = content.formation_error
+    if errors:
+        current = errors[min(index, len(errors) - 1)]
+        text(ax, 0.07, 0.09, "formation error  %.3f m" % current, size=19,
+             family=MONO, weight="bold",
+             color=THEME.agent_color(2) if current < 0.05 else THEME.ink_secondary,
+             alpha=fade(ax, t, 0.6))
+
+    rows = [
+        ("displacement", "relative position", "translation", 1.1),
+        ("distance", "range only", "+ rotation, reflection", 1.5),
+        ("bearing", "direction only", "+ scale", 1.9),
+    ]
+    text(ax, 0.56, 0.70, "measures", size=13, color=THEME.muted, alpha=fade(ax, t, 1.0))
+    text(ax, 0.79, 0.70, "free up to", size=13, color=THEME.muted, alpha=fade(ax, t, 1.0))
+    for row, (law, measures, free, start) in enumerate(rows):
+        y = 0.62 - row * 0.085
+        alpha = fade(ax, t, start)
+        text(ax, 0.56, y, law, size=17, weight="bold", family=MONO,
+             color=THEME.agent_color(row), alpha=alpha)
+        text(ax, 0.56, y - 0.038, measures, size=13.5, color=THEME.ink_secondary, alpha=alpha)
+        text(ax, 0.79, y, free, size=14, color=THEME.ink_secondary, alpha=alpha)
+
+    text(ax, 0.56, 0.28,
+         "The less an agent senses, the longer it takes:\n3.6 s, 15.6 s, 41.1 s to converge.",
+         size=15, color=THEME.ink_secondary, alpha=fade(ax, t, 2.4))
+    text(ax, 0.56, 0.13,
+         "A collinear target is not rigid \u2014\nthe library says so before you fly it.",
+         size=14, color=THEME.muted, alpha=fade(ax, t, 3.0))
+
+
 def scene_benchmark(ax, t, content):
     """Three solvers, measured -- the curves draw themselves in."""
     import math
@@ -610,15 +818,65 @@ SCENES = [
     (scene_rebuild, 8.0),
     (scene_search, 9.5),
     (scene_execute, 8.5),
+    (scene_swarm, 8.0),
+    (scene_formation, 8.5),
     (scene_benchmark, 7.5),
     (scene_outro, 5.0),
 ]
 DURATIONS = {}
 
+# One line per scene. Scene lengths are derived from how long these take to
+# say (see scripts/narration.py), so the cut always lands after the sentence.
+NARRATION = {
+    "scene_title": "PyMAPF. Multi agent path finding, rebuilt.",
+    "scene_origin": (
+        "It started as a university project. Three agents, a small room, "
+        "and a planner that mostly worked."
+    ),
+    "scene_rebuild": (
+        "It is now a solver framework. Conflict based search, weighted C B S, "
+        "PIBT, LaCAM, large neighbourhood search. All behind one call."
+    ),
+    "scene_search": (
+        "You can watch it think. Every node the search expands, every conflict "
+        "it finds, streamed live to an observer."
+    ),
+    "scene_execute": (
+        "What comes out is a plan that is conflict free by construction, "
+        "and checked."
+    ),
+    "scene_swarm": (
+        "The other half has no planner at all. Ten flocking laws, one "
+        "interface. The newest needs almost nothing: just the range and "
+        "bearing to its neighbours. And the flock still agrees on a heading "
+        "that nobody sent."
+    ),
+    "scene_formation": (
+        "Formation control asks for a shape. What each agent can measure "
+        "decides which symmetry it can pin down, and the less it senses, the "
+        "longer it takes. The library checks your shape can be held at all, "
+        "before you fly it."
+    ),
+    "scene_benchmark": (
+        "All of it measured, not asserted. Conflict based search is optimal. "
+        "Weighted C B S trades a bounded slice of cost for speed. Prioritized "
+        "planning is fastest, and incomplete."
+    ),
+    "scene_outro": (
+        "PyMAPF. Apache two point oh. A university project, rebuilt."
+    ),
+}
+
 
 # --------------------------------------------------------------------------
 # rendering
 # --------------------------------------------------------------------------
+
+
+def apply_durations(durations):
+    """Replace the scene lengths with ones long enough for the narration."""
+    global SCENES
+    SCENES = [(scene, duration) for (scene, _), duration in zip(SCENES, durations)]
 
 
 def build_animation(content, seconds=None):
@@ -681,10 +939,31 @@ def main() -> int:
     parser.add_argument("--gif", action="store_true", help="also write a looping GIF")
     parser.add_argument("--preview", type=float, default=None, help="render only N seconds")
     parser.add_argument("--dpi", type=int, default=80, help="80 -> 1280x720, 120 -> 1920x1080")
+    parser.add_argument("--no-voice", action="store_true", help="render silent")
     args = parser.parse_args()
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     print("Rendering promo film")
+
+    # The narration is synthesised *first*: scene lengths are derived from how
+    # long each line takes to say, so a sentence can never run past its cut.
+    narrator, clips = None, {}
+    if not args.no_voice:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from narration import Narrator
+
+        narrator = Narrator()
+        if narrator.available:
+            print("  synthesising narration...")
+            clips = narrator.synthesise(NARRATION)
+            spoken = [(scene.__name__, minimum) for scene, minimum in SCENES]
+            apply_durations(narrator.scene_durations(spoken, clips))
+            print("  %d lines, %.1fs of speech"
+                  % (len(clips), sum(seconds for _, seconds in clips.values())))
+        else:
+            print("  no voice-over: %s" % narrator.why_unavailable())
+            narrator = None
+
     content = Content()
     figure, animation, frames = build_animation(content, args.preview)
     print("  %d frames at %d fps (%.1fs)" % (frames, FPS, frames / FPS))
@@ -705,8 +984,28 @@ def main() -> int:
         codec="libx264",
         extra_args=["-pix_fmt", "yuv420p", "-preset", "slow", "-movflags", "+faststart"],
     )
-    animation.save(args.output, writer=writer, dpi=args.dpi)
-    print("  wrote %s in %.0fs" % (args.output, time.perf_counter() - started))
+    silent = args.output
+    if narrator and clips and not args.preview:
+        silent = args.output.rsplit(".", 1)[0] + "-silent.mp4"
+    animation.save(silent, writer=writer, dpi=args.dpi)
+    print("  wrote %s in %.0fs" % (silent, time.perf_counter() - started))
+
+    if narrator and clips and not args.preview:
+        print("  mixing narration...")
+        durations = [duration for _, duration in SCENES]
+        names = [(scene.__name__, duration) for scene, duration in SCENES]
+        try:
+            track = narrator.build_track(names, durations, clips)
+            narrator.mux(silent, track, args.output)
+        except Exception as error:
+            # The frames cost minutes; the audio pass costs seconds. Losing the
+            # render because the mux failed is the one outcome worth ruling out.
+            print("  voice-over failed (%s)" % error)
+            print("  keeping the silent render at %s" % silent)
+            return 1
+        os.remove(silent)
+        narrator.cleanup()
+        print("  wrote %s with voice-over" % args.output)
 
     # A poster frame for the <video> element.
     poster = os.path.join(os.path.dirname(args.output), "promo-poster.png")

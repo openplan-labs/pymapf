@@ -355,3 +355,36 @@ waypoint entirely.
 and Hungarian assignment, restarted from several initial rotations). Solving
 either one first with the other guessed scores an exactly-converged formation as
 a failure, which is a property of the metric and not of the controller.
+
+Four further defects were found by a review pass after the first implementation
+and are worth recording, since each was invisible in the tests that existed at
+the time.
+
+`formation_error` seeded its alternating fit with rotations in the first two
+axes only. That covers SO(2) exactly and misses most of SO(3), so a cube rotated
+about an arbitrary axis scored 1.30 instead of 0. The fit is now seeded from two
+complementary sources — a rotation-invariant radius-rank correspondence, and a
+fixed pseudo-random sample of SO(d) — because neither is sufficient alone and
+they fail on opposite shapes: distinct radii (sphere, V) are solved by
+rank-matching and missed by a sparse SO(3) sample, degenerate radii (cube, grid)
+the reverse. Over 240 random 3D rotations the worst residual is 0 with both,
+against 2.6 and 1.3 with either alone.
+
+`reassign_every` was silently dead for the distance and bearing controllers.
+Their desired distances, bearings and interaction graph are all derived from the
+assignment and cached at reset, so re-solving it changed nothing at all. Those
+controllers now declare `reassigns = False`, which is the correct behaviour
+stated explicitly rather than arrived at by accident — re-solving would move
+their targets discontinuously for no benefit, since distances and bearings fix
+the shape only up to a relabelling anyway.
+
+The slot assignment was re-solved once per *agent* rather than once per step,
+making a reassignment step O(n⁴). It is now memoised per step (25 Hungarian
+solves over a 50-step run with 12 agents, against 3).
+
+`MinimalisticFlocking` accepted a `spring_constant` it had replaced with the
+Lennard-Jones potential and silently ignored it; it now raises. And
+`DistributedThreeDimensional` carried its extra short-range repulsion into 2D,
+where there is no vertical axis to compensate for — so it differed from plain
+proximal control for no reason, contradicting the documentation. The term is now
+conditioned on `dimension >= 3`, and the two are byte-identical in the plane.

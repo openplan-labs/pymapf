@@ -368,7 +368,8 @@ sim.visualize("filename_test_2", 10, 10)
 
 ```bash
 python scripts/generate_gallery.py     # every figure in docs/assets
-python scripts/make_promo.py           # the promo film
+python scripts/make_promo.py           # the promo film, with narration
+python scripts/make_promo.py --no-voice # ...or silent
 python scripts/build_web_bundle.py     # refresh the playground's copy of the library
 python scripts/switch_positions_nmpc.py
 ```

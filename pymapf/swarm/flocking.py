@@ -712,7 +712,14 @@ class MinimalisticFlocking(ActiveElastic):
         cutoff: float = 4.0,
         **kwargs,
     ):
-        kwargs.setdefault("spring_constant", 0.0)  # replaced by the potential
+        # The spring is gone, replaced by the potential below, so accepting a
+        # spring constant here would be accepting a parameter that does nothing.
+        if "spring_constant" in kwargs:
+            raise TypeError(
+                "MinimalisticFlocking has no spring: the coupling is a "
+                "Lennard-Jones potential set by 'epsilon' and 'exponent'"
+            )
+        kwargs["spring_constant"] = 0.0
         kwargs.setdefault("neighborhood", TopologicalNeighborhood(k=8))
         super().__init__(**kwargs)
         self.epsilon = epsilon
@@ -864,7 +871,11 @@ class DistributedThreeDimensional(ProximalControl):
             effective = float(np.linalg.norm(self._weighted(offset)))
             command += self.proximal(effective) * (offset / distance)
 
-            if distance < params.separation_distance:
+            # Only needed where the weighting actually softened repulsion, i.e.
+            # in 3D. Adding it in the plane would make this law differ from
+            # plain proximal control for no reason at all -- there is no
+            # vertical axis to shape, so there is nothing to compensate for.
+            if state.dimension >= 3 and distance < params.separation_distance:
                 command -= (
                     self.repulsion_gain
                     * (params.separation_distance - distance)

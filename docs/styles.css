@@ -450,6 +450,13 @@ video.promo {
   display: block;
 }
 
+p.caption {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-align: center;
+}
+
 /* ------------------------------------------------------------- footer --- */
 
 footer {

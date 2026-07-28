@@ -553,3 +553,187 @@ def test_controllers_expose_the_symmetries_they_cannot_resolve():
     assert BearingFormation().requires_rigidity
 
     assert not LeaderFollower().allow_rotation
+
+
+# --------------------------------------------------------------------------
+# regressions
+# --------------------------------------------------------------------------
+
+
+def test_error_fits_rotations_about_any_axis_in_three_dimensions():
+    """Seeding the fit with planar rotations only misses most of SO(3).
+
+    A cube rotated about an arbitrary axis reported an error of 1.30 when the
+    trial poses were all rotations in the first two axes.
+    """
+    generator = np.random.default_rng(1)
+    shape = get_shape("cube", spacing=3.0)
+    worst = 0.0
+    for _ in range(40):
+        rotation, _ = np.linalg.qr(generator.normal(size=(3, 3)))
+        if np.linalg.det(rotation) < 0:
+            rotation[:, 0] *= -1
+        placed = (shape.centred(8, 3) @ rotation.T)[generator.permutation(8)]
+        worst = max(worst, formation_error(placed, shape, allow_rotation=True))
+    assert worst < 1e-6
+
+
+@pytest.mark.parametrize("name,n", [("sphere", 12), ("cube", 8), ("v", 7), ("grid", 9)])
+def test_error_is_exact_on_every_shape_under_rotation(name, n):
+    """The radius seed and the rotation seeds fail on opposite shapes.
+
+    Distinct radii (sphere, V) are solved by rank-matching and missed by a
+    handful of SO(3) samples; degenerate radii (cube, grid) are the reverse.
+    Only using both is exact everywhere.
+    """
+    generator = np.random.default_rng(2)
+    shape = get_shape(name)
+    base = shape.centred(n, 3)
+    for _ in range(20):
+        rotation, _ = np.linalg.qr(generator.normal(size=(3, 3)))
+        if np.linalg.det(rotation) < 0:
+            rotation[:, 0] *= -1
+        placed = (base @ rotation.T)[generator.permutation(n)]
+        assert formation_error(placed, shape, allow_rotation=True) < 1e-6
+
+
+def test_the_error_metric_is_deterministic():
+    shape = get_shape("sphere")
+    placed = shape.centred(10, 3) @ np.linalg.qr(np.arange(9).reshape(3, 3) + np.eye(3))[0]
+    first = formation_error(placed, shape, allow_rotation=True)
+    assert all(
+        formation_error(placed, shape, allow_rotation=True) == first for _ in range(5)
+    )
+
+
+def test_the_assignment_is_solved_once_per_step_not_once_per_agent():
+    """It is called per agent and cannot change within a step; re-solving makes
+    the step O(n^4)."""
+    import pymapf.swarm.formation as formation_module
+
+    calls = []
+    original = formation_module.assign_slots
+    formation_module.assign_slots = lambda *a, **k: (
+        calls.append(1), original(*a, **k)
+    )[1]
+    try:
+        SwarmSimulator(
+            "displacement_formation", n_agents=12, shape="grid", reassign_every=25
+        ).run(steps=50)
+    finally:
+        formation_module.assign_slots = original
+    assert len(calls) <= 5  # one initial solve plus 50/25 reassignments
+
+
+@pytest.mark.parametrize("controller", ["distance_formation", "bearing_formation"])
+def test_controllers_with_derived_targets_freeze_their_assignment(controller):
+    """The assignment is baked into the desired distances, bearings and the
+    interaction graph at reset. Re-solving it would move those targets under the
+    descent -- and while the derived values are cached it silently does nothing,
+    which is worse. It is now explicit rather than accidental."""
+    assert SwarmSimulator(controller, n_agents=6).behavior.reassigns is False
+
+    finals = [
+        SwarmSimulator(
+            controller, n_agents=9, shape="v", spacing=3.0, reassign_every=every
+        ).run(steps=400).final.positions
+        for every in (5, 10_000)
+    ]
+    assert np.allclose(finals[0], finals[1])
+
+
+def test_displacement_control_reassigns_while_flying():
+    assert SwarmSimulator("displacement_formation", n_agents=6).behavior.reassigns
+
+
+@pytest.mark.parametrize(
+    "controller", ["displacement_formation", "distance_formation", "bearing_formation"]
+)
+def test_the_shape_term_never_drives_the_centroid(controller):
+    """The invariant behind "a waypoint is a translation, not an attraction".
+
+    Each of these laws is translation-invariant, so its shape term must sum to
+    zero over the swarm: it arranges agents *relative to each other* and leaves
+    the group's position to exactly one other term. Placing the slots at the
+    waypoint broke that -- the shape term then drove the group there too, and
+    two terms pulling at one point overshoot it.
+
+    Leader-follower is excluded on purpose: followers chase leaders and leaders
+    do not chase back, so it is asymmetric by construction.
+
+    The acceleration clamp is lifted for the same reason the velocities are
+    zeroed: both are per-agent nonlinearities that legitimately break the sum,
+    and neither is what this test is about.
+    """
+    params = SwarmParams(max_acceleration=1e6, max_speed=1e6)
+    simulator = SwarmSimulator(
+        controller, n_agents=9, params=params, shape="v", spacing=3.0
+    )
+    state = simulator.initial_state()
+    state.velocities = np.zeros_like(state.velocities)  # isolate the shape term
+    simulator.behavior.reset(state)
+    simulator.behavior._steps = 1
+
+    commands = np.array(
+        [simulator.behavior.command(state, i) for i in range(state.n)]
+    )
+    assert np.abs(commands).max() < 1e5  # nothing clamped
+    assert np.allclose(commands.sum(axis=0), 0.0, atol=1e-8)
+
+
+def test_the_formation_reaches_the_waypoint_without_running_past_it():
+    """Displacement and distance control settle on the waypoint monotonically.
+
+    Bearing control is checked separately: it is the slowest law here by a
+    factor of ten, so its shape term is still small while the (saturated)
+    migration term is building speed, and it arrives as an ordinary
+    lightly-damped second-order system -- overshooting and settling back. The
+    others are saturated by their own shape term early on, which incidentally
+    brakes them.
+    """
+    params = SwarmParams(seed=3, migration_point=(60.0, 45.0))
+    for controller in ["displacement_formation", "distance_formation",
+                       "leader_follower"]:
+        simulator = SwarmSimulator(
+            controller, n_agents=9, params=params, shape="v", spacing=3.0
+        )
+        result = simulator.run(steps=900)
+        centroids = np.array([state.positions.mean(axis=0) for state in result.history])
+        start = centroids[0]
+        heading = np.asarray(params.migration_point, dtype=float) - start
+        progress = (centroids - start) @ heading / (heading @ heading)
+        assert progress.max() <= 1.005, controller
+        assert progress[-1] == pytest.approx(1.0, abs=0.01), controller
+
+
+def test_bearing_control_overshoots_the_waypoint_but_settles_on_it():
+    params = SwarmParams(seed=3, migration_point=(60.0, 45.0))
+    simulator = SwarmSimulator(
+        "bearing_formation", n_agents=9, params=params, shape="v", spacing=3.0
+    )
+    result = simulator.run(steps=1200)
+    centroids = np.array([state.positions.mean(axis=0) for state in result.history])
+    start = centroids[0]
+    heading = np.asarray(params.migration_point, dtype=float) - start
+    progress = (centroids - start) @ heading / (heading @ heading)
+
+    assert 1.0 < progress.max() < 1.2          # overshoots, but bounded
+    assert progress[-1] == pytest.approx(1.0, abs=0.01)   # and settles on it
+    # More damping trades the overshoot away, confirming what it is.
+    damped = SwarmSimulator(
+        "bearing_formation", n_agents=9, params=params, shape="v", spacing=3.0,
+        damping=6.0,
+    ).run(steps=1200)
+    damped_centroids = np.array([s.positions.mean(axis=0) for s in damped.history])
+    damped_progress = (damped_centroids - start) @ heading / (heading @ heading)
+    assert damped_progress.max() < progress.max()
+
+
+def test_the_formation_centre_is_the_swarm_not_the_waypoint():
+    simulator = SwarmSimulator(
+        "displacement_formation", n_agents=6,
+        params=SwarmParams(migration_point=(50.0, 50.0)),
+    )
+    state = simulator.initial_state()
+    simulator.behavior.reset(state)
+    assert np.allclose(simulator.behavior.centre(state), state.centroid)

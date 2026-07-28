@@ -209,8 +209,9 @@ Read as statements about what each model is *for*:
   downwash. In 3D it reaches order 0.99 at full cruise speed and settles into a
   lattice with a vertical-to-horizontal spread of 0.44, against 0.71 for the
   isotropic law — flat and wide, which is the shape a rotorcraft swarm should
-  hold. In the plane it is identical to `proximal` by construction, which is why
-  its planar row is.
+  hold. In the plane it reduces exactly to `proximal`, which is why the two
+  share a row above: with no vertical axis there is nothing to shape, and the
+  anisotropic terms are inert by construction.
 
 The neighbourhood rule turns out to matter as much as the control law. Holding
 the acceleration model fixed and changing only who each agent sees:
