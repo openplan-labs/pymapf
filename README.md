@@ -39,7 +39,7 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 - 🎮 **[Interactive playground](https://apla-toolbox.github.io/pymapf/)** — run the solvers in your browser, watch the search resolve conflicts live
 - 🧭 Centralized planners: **CBS**, **Weighted CBS**, Prioritized Planning, **PIBT**, **LaCAM**, **MAPF-LNS** — every one referenced in [REFERENCES.md](REFERENCES.md)
 - 🕸️ Works on **arbitrary graphs**, not just grids (roadmaps, warehouse topologies, PRMs)
-- 🐦 **Decentralized swarm control**: boids, Vicsek, Olfati-Saber and acceleration-based bird-inspired flocking; Voronoi, limited-range and hemispherical coverage
+- 🐦 **Decentralized swarm control**, all object-oriented and registry-based: 8 flocking models (boids, Vicsek, Cucker–Smale, Olfati-Saber, proximal, active-elastic, acceleration-based, Gaussian-kernel), 5 coverage controllers over 6 pluggable domains, and Gaussian-mixture distribution control
 - 🔬 **[Extended survey](docs/survey.md)** of MAPF 2021→2026 plus an experimental section with measured (and negative) results
 - 🧩 Pluggable solver framework with a name-based registry, pluggable heuristics and deterministic maps
 - 🔭 **Observable search**: every solver streams `SearchEvent`s — record them, animate them, or watch them live
@@ -243,28 +243,65 @@ class Selfish(MAPFSolver):
 pymapf.solve(problem, "selfish").first_conflict()   # spoiler: there is one
 ```
 
-### Swarms: flocking and coverage 🐦
+### Swarms: flocking, coverage and distribution 🐦
+
+Same conventions as the planners — an abstract base class per family, a name
+registry, swappable strategy objects.
 
 ```python
-from pymapf.decentralized.flocking import simulate, FlockParams
+from pymapf.swarm import SwarmSimulator, available_behaviors
 
-history, metrics = simulate("acceleration", n_agents=20, steps=300,
-                            params=FlockParams(migration_point=(60, 60)))
-print(metrics.summary())
-# {'order': 1.0, 'cohesion': 2.98, 'min_distance': 1.48, 'mean_speed': 3.11, ...}
+for name in available_behaviors():          # 8 flocking models + 2 distribution
+    result = SwarmSimulator(name, n_agents=20).run(steps=300)
+    print(name, result.metrics.summary())
 ```
+
+**Who each agent sees** is a strategy object, and it changes the collective
+behaviour as much as the control law does:
 
 ```python
-from pymapf.decentralized.coverage import simulate_coverage, CoverageParams
+from pymapf.swarm import SwarmSimulator, TopologicalNeighborhood
 
-history, costs = simulate_coverage(n_agents=8, steps=40,
-                                   params=CoverageParams(sensing_range=5.0))
-print(costs[0], "->", costs[-1])
+SwarmSimulator("acceleration", neighborhood=TopologicalNeighborhood(k=5))
+# better spacing (2.17 m vs 1.60 m) with a third of the connectivity
 ```
 
-Controllers: `boids`, `vicsek`, `olfati_saber`, `acceleration` (bird-inspired,
-acceleration-based). Coverage: planar Lloyd/Voronoi, limited-range, and
-hemispherical surfaces.
+**Composition** rather than new classes:
+
+```python
+from pymapf.swarm import CompositeBehavior, CuckerSmale, AccelerationFlocking
+
+blend = CompositeBehavior([(CuckerSmale(), 0.5), (AccelerationFlocking(), 1.0)])
+```
+
+**Coverage** is written against a domain, so one controller serves every shape:
+
+```python
+from pymapf.swarm import CoverageSimulator
+
+for domain in ("planar", "disk", "sphere", "hemisphere", "annulus"):
+    print(domain, CoverageSimulator("lloyd", domain=domain, n_agents=9).run(steps=40).improvement)
+```
+
+Controllers: `lloyd`, `limited_range`, `adaptive` (learns the density online),
+`gmm` (splits the team across mixture components), `time_varying` (pursues
+moving targets).
+
+**Gaussian mixtures** are the importance model *and* the target distribution:
+
+```python
+from pymapf.swarm import GaussianMixtureDensity, SwarmSimulator
+
+target = GaussianMixtureDensity(means=[(-8, 0), (8, 4), (0, -9)],
+                                covariances=[3., 3., 2.], weights=[.4, .4, .2])
+sim = SwarmSimulator("mixture_assignment", n_agents=30, mixture=target)
+sim.run(steps=400)          # allocation lands on 12 / 12 / 6 — exactly the quota
+
+fitted = GaussianMixtureDensity.fit(observations, k=2)   # EM from measurements
+```
+
+The functional API in `pymapf.decentralized.flocking` / `.coverage` still works;
+it now delegates to this layer.
 
 ### Reactive planners 🔎
 

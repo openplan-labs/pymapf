@@ -20,6 +20,7 @@ at the end.
 - [Variants and extensions](#variants-and-extensions) *(surveyed, not implemented)*
 - [Decentralized flocking](#decentralized-flocking)
 - [Decentralized coverage](#decentralized-coverage)
+- [Swarm distribution control](#swarm-distribution-control)
 - [Reactive collision avoidance](#reactive-collision-avoidance)
 - [Implementation notes](#implementation-notes)
 
@@ -119,29 +120,51 @@ Surveyed in `docs/survey.md`; not implemented.
 
 ## Decentralized flocking
 
-Implemented in `pymapf/decentralized/flocking.py`.
+Implemented in `pymapf/swarm/flocking.py` as `Behavior` subclasses
+(`pymapf/decentralized/flocking.py` is a functional façade over the same code).
 
-| Model | Function | Reference |
+| Model | Class | Reference |
 |---|---|---|
-| Boids | `flocking.boids` | Reynolds, C. W. 1987. *Flocks, herds and schools: A distributed behavioral model.* SIGGRAPH 1987: 25–34. |
-| Vicsek model | `flocking.vicsek` | Vicsek, T.; Czirók, A.; Ben-Jacob, E.; Cohen, I.; and Shochet, O. 1995. *Novel type of phase transition in a system of self-driven particles.* Physical Review Letters 75(6): 1226–1229. |
-| Cucker–Smale | *surveyed* | Cucker, F.; and Smale, S. 2007. *Emergent behavior in flocks.* IEEE Transactions on Automatic Control 52(5): 852–862. |
-| Gradient flocking (α-lattice) | `flocking.olfati_saber` | Olfati-Saber, R. 2006. *Flocking for multi-agent dynamic systems: Algorithms and theory.* IEEE Transactions on Automatic Control 51(3): 401–420. |
-| Topological neighbourhoods | `flocking` (`topological_k`) | Ballerini, M.; et al. 2008. *Interaction ruling animal collective behavior depends on topological rather than metric distance.* PNAS 105(4): 1232–1237. |
-| Optimised drone flocking | *surveyed* | Vásárhelyi, G.; Virágh, C.; Somorjai, G.; Nepusz, T.; Eiben, A. E.; and Vicsek, T. 2018. *Optimized flocking of autonomous drones in confined environments.* Science Robotics 3(20): eaat3536. |
-| **Acceleration-based bird-inspired flocking** | `flocking.acceleration` | Iacone, L.; Lejeune, E.; Manoni, T.; Manfredi, S.; and Albani, D. 2024. *Decentralized acceleration-based bird-inspired flocking.* IEEE, 2024. Autonomous Robotics Research Centre, Technology Innovation Institute. |
+| Boids | `Boids` | Reynolds, C. W. 1987. *Flocks, herds and schools: A distributed behavioral model.* SIGGRAPH 1987: 25–34. |
+| Vicsek model | `Vicsek` | Vicsek, T.; Czirók, A.; Ben-Jacob, E.; Cohen, I.; and Shochet, O. 1995. *Novel type of phase transition in a system of self-driven particles.* Physical Review Letters 75(6): 1226–1229. |
+| Cucker–Smale consensus | `CuckerSmale` | Cucker, F.; and Smale, S. 2007. *Emergent behavior in flocks.* IEEE Transactions on Automatic Control 52(5): 852–862. |
+| Gradient flocking (α-lattice) | `OlfatiSaber` | Olfati-Saber, R. 2006. *Flocking for multi-agent dynamic systems: Algorithms and theory.* IEEE Transactions on Automatic Control 51(3): 401–420. |
+| Proximal control | `ProximalControl` | Vásárhelyi, G.; Virágh, C.; Somorjai, G.; Nepusz, T.; Eiben, A. E.; and Vicsek, T. 2018. *Optimized flocking of autonomous drones in confined environments.* Science Robotics 3(20): eaat3536. |
+| Self-organized flocking with a robot swarm | `ActiveElastic` | Ferrante, E.; Turgut, A. E.; Huepe, C.; Stranieri, A.; Pinciroli, C.; and Dorigo, M. 2012. *Self-organized flocking with a mobile robot swarm: a novel motion control method.* Adaptive Behavior 20(6): 460–477. |
+| **Active elastic sheet** | `ActiveElastic` | Ferrante, E.; Turgut, A. E.; Dorigo, M.; and Huepe, C. 2013. *Elasticity-based mechanism for the collective motion of self-propelled particles with spring-like interactions.* Physical Review Letters 111(26): 268302. |
+| Active solids and crystals | *surveyed* | Ferrante, E.; Turgut, A. E.; Dorigo, M.; and Huepe, C. 2013. *Collective motion dynamics of active solids and active crystals.* New Journal of Physics 15: 095011. |
+| Self-organized flocking in 3D | *surveyed* | Ferrante, E.; et al. 2024. *Self-organized flocking in three dimensions.* ANTS 2024, Springer LNCS. |
+| Topological neighbourhoods | `TopologicalNeighborhood` | Ballerini, M.; et al. 2008. *Interaction ruling animal collective behavior depends on topological rather than metric distance.* PNAS 105(4): 1232–1237. |
+| **Gaussian-kernel arbitration** | `GaussianKernelFlocking`, `GaussianKernelNeighborhood` | Manoni, T.; Albani, D.; et al. 2022. *Adaptive arbitration of aerial swarm interactions through a Gaussian kernel for coherent group motion.* Frontiers in Robotics and AI 9: 1006786. |
+| Distributed 3D drone flocking | *surveyed* | Manoni, T.; et al. 2022. *Distributed three dimensional flocking of autonomous drones.* ICRA 2022. |
+| Self-organized UAV flocking (proximal) | *surveyed* | Manoni, T.; et al. 2021. *Self-organized UAV flocking based on proximal control.* |
+| **Acceleration-based bird-inspired flocking** | `AccelerationFlocking` | Iacone, L.; Lejeune, E.; Manoni, T.; Manfredi, S.; and Albani, D. 2024. *Decentralized acceleration-based bird-inspired flocking.* IROS 2024. Autonomous Robotics Research Centre, Technology Innovation Institute. |
 
 ## Decentralized coverage
 
-Implemented in `pymapf/decentralized/coverage.py`.
+Implemented in `pymapf/swarm/coverage.py` as `CoverageController` subclasses,
+over the pluggable domains in `pymapf/swarm/domain.py`.
 
-| Method | Function | Reference |
+| Method | Class | Reference |
 |---|---|---|
-| Lloyd's algorithm | `coverage.lloyd_step` | Lloyd, S. P. 1982. *Least squares quantization in PCM.* IEEE Transactions on Information Theory 28(2): 129–137. |
-| Voronoi coverage control | `coverage.lloyd_step` | Cortés, J.; Martínez, S.; Karataş, T.; and Bullo, F. 2004. *Coverage control for mobile sensing networks.* IEEE Transactions on Robotics and Automation 20(2): 243–255. |
-| Adaptive coverage | *surveyed* | Schwager, M.; Rus, D.; and Slotine, J.-J. 2009. *Decentralized, adaptive coverage control for networked robots.* IJRR 28(3): 357–375. |
-| **Limited-range coverage for aerial teams** | `coverage` (`sensing_range`) | Bertoncelli, F.; Belal, M.; Albani, D.; Pratissoli, F.; and Sabattini, L. 2024. *On limited-range coverage control for large-scale teams of aerial drones: Deployment and study.* DARS 2022, Springer Proceedings in Advanced Robotics. |
-| **Hemispherical surface coverage** | `coverage.spherical_lloyd_step` | Belal, M.; Manoni, T.; Albani, D.; and Sabattini, L. 2026. *Decentralized multi-robot coverage of hemispherical surfaces via fortune-based partitioning.* ANTS 2026. |
+| Lloyd's algorithm | `LloydCoverage` | Lloyd, S. P. 1982. *Least squares quantization in PCM.* IEEE Transactions on Information Theory 28(2): 129–137. |
+| Voronoi coverage control | `LloydCoverage` | Cortés, J.; Martínez, S.; Karataş, T.; and Bullo, F. 2004. *Coverage control for mobile sensing networks.* IEEE Transactions on Robotics and Automation 20(2): 243–255. |
+| **Adaptive coverage (learns the density)** | `AdaptiveCoverage` | Schwager, M.; Rus, D.; and Slotine, J.-J. 2009. *Decentralized, adaptive coverage control for networked robots.* IJRR 28(3): 357–375. |
+| **Limited-range coverage for aerial teams** | `LimitedRangeCoverage` | Bertoncelli, F.; Belal, M.; Albani, D.; Pratissoli, F.; and Sabattini, L. 2024. *On limited-range coverage control for large-scale teams of aerial drones: Deployment and study.* DARS 2022, Springer Proceedings in Advanced Robotics. |
+| **Hemispherical surface coverage** | `HemisphereDomain` + any controller | Belal, M.; Manoni, T.; Albani, D.; and Sabattini, L. 2026. *Decentralized multi-robot coverage of hemispherical surfaces via fortune-based partitioning.* ANTS 2026. |
+| **Time-varying targets** | `TimeVaryingCoverage`, `TimeVaryingDensity` | Manoni, T.; et al. 2024. *Understanding the role of time-varying targets in adaptive distributed area coverage control.* DARS 2024, Springer. |
+| Mixture-based team splitting | `MixtureCoverage` | Bishop, C. M. 2006. *Pattern Recognition and Machine Learning*, ch. 9. (responsibilities and EM) |
+
+## Swarm distribution control
+
+Implemented in `pymapf/swarm/distribution.py`.
+
+| Method | Class | Reference |
+|---|---|---|
+| Probabilistic swarm guidance | `MixtureAssignment` | Bandyopadhyay, S.; Chung, S.-J.; and Hadaegh, F. Y. 2017. *Probabilistic and distributed control of a large-scale swarm of autonomous agents.* IEEE Transactions on Robotics 33(5): 1103–1123. |
+| Density-field swarm control | `DensityMatching` | Eren, U.; and Açıkmeşe, B. 2017. *Velocity field generation for density control of swarms using heat equation and smoothing kernels.* IFAC-PapersOnLine 50(1): 9405–9410. |
+| Optimal transport for swarm deployment | *surveyed* | Krishnan, V.; and Martínez, S. 2018. *Distributed optimal transport for the deployment of swarms.* CDC 2018: 4583–4588. |
+| Gaussian mixtures, EM, responsibilities | `GaussianMixtureDensity` | Bishop, C. M. 2006. *Pattern Recognition and Machine Learning*, ch. 9. |
 
 ## Reactive collision avoidance
 
@@ -201,8 +224,39 @@ paper's α-lattice construction. Left at this library's default sensing range
 (2 × reference distance) the lattice collapses — measured, and documented in
 `docs/survey.md` § Experiments.
 
+**Active elastic flocking** implements the first-order formulation of Ferrante
+et al. (2013): forward speed ``v + alpha (F . n)``, heading rate
+``beta (F . n_perp)``, with `F` the sum of linear spring forces. It is a
+*velocity*-level controller (``output = "velocity"``), unlike everything else in
+that module. The default neighbourhood is topological (k = 3) rather than
+metric, because bounded springs plus a wide metric radius let summed attraction
+from many neighbours crush the lattice — measured, and documented in
+`docs/survey.md` § Experiments. The published gains were not used; the defaults
+here were tuned on this simulator.
+
+**Gaussian-kernel flocking** applies the kernel as a *normalised* weighting
+(mean 1 over the neighbourhood). An unnormalised kernel silently scales the
+whole interaction down, so self-propulsion outruns cohesion and the flock
+disperses — the version in this repository before that fix reached a cohesion of
+48 m against 3 m for the metric variant.
+
+**Distribution control** is not the exact scheme of any single paper.
+`MixtureAssignment` follows the probabilistic-guidance idea of Bandyopadhyay et
+al. (2017) — agents as samples of a target distribution, allocation by mixing
+weight — but uses a greedy capacity-constrained assignment rather than their
+inhomogeneous Markov chain. `DensityMatching` is a kernel-density gradient flow
+in the spirit of Eren and Açıkmeşe (2017), not an implementation of their
+heat-equation formulation.
+
 **Coverage** uses grid quadrature rather than an exact Voronoi construction, so
 cell boundaries are resolution-limited. Fixed points agree with the exact
-algorithm as the sampling gets finer; the hemispherical variant is the
-discrete counterpart of the fortune-based partitioning of Belal et al. (2026),
-not an implementation of it.
+algorithm as the sampling gets finer; the hemispherical domain is the discrete
+counterpart of the fortune-based partitioning of Belal et al. (2026), not an
+implementation of it.
+
+**Adaptive coverage** accumulates measurements in a bounded memory and takes
+several projected-gradient steps per iteration. Fitting only the current agent
+positions — the naive reading of the algorithm — is under-determined and
+self-confirming, and measurably made the estimate *worse* over time. The memory
+is the cheapest stand-in for the persistence-of-excitation condition the
+original analysis assumes.

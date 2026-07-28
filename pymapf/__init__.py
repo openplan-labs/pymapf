@@ -55,7 +55,7 @@ from .algorithms import (
 )
 from .scenarios import Scenario, available_scenarios, build_scenario
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 
 def solve(

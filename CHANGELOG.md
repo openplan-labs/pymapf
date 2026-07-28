@@ -4,6 +4,78 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0]
+
+An object-oriented swarm layer, more flocking and coverage algorithms, and
+Gaussian-mixture distribution control.
+
+### Added
+
+- **`pymapf.swarm`** -- the decentralized side rebuilt on the same conventions as
+  the planners: an abstract base class per family, a name registry, and swappable
+  strategy objects.
+  - `Behavior` + `register_behavior`/`get_behavior`/`available_behaviors`, so a
+    controller is chosen with a string and compared with a loop.
+  - `CompositeBehavior`: new controllers by weighted composition rather than by
+    writing a new class.
+  - `Neighborhood` strategies -- metric, topological (Ballerini et al. 2008),
+    forward-cone, and Gaussian-kernel (Manoni et al. 2022) -- usable by any
+    behavior. Measured: topological k=5 gives better spacing than a metric radius
+    (2.17 m vs 1.60 m) with a third of the connectivity.
+  - `SwarmSimulator` with reflecting bounds, obstacles, observers and metrics.
+- **Four more flocking models** (eight total):
+  - `CuckerSmale` -- power-law velocity consensus (Cucker and Smale 2007).
+  - `ProximalControl` -- Lennard-Jones proximal potential plus distance-dependent
+    alignment allowance, in the Vasarhelyi et al. (2018) style.
+  - `ActiveElastic` -- Ferrante et al. (2012, 2013). The swarm as an active
+    elastic solid: alignment *emerges* from the elastic modes, with no agent ever
+    sensing a neighbour's velocity or heading. Measured at order 0.95 with zero
+    separation violations.
+  - `GaussianKernelFlocking` -- Manoni, Albani et al. (2022) kernel arbitration,
+    with an adaptive kernel width.
+- **Coverage over pluggable domains** (`pymapf.swarm.domain`): planar, disk,
+  sphere, hemisphere, annulus and arbitrary mesh. One Lloyd implementation now
+  deploys a team on any of them (84-96% cost reduction across the six).
+- **Five coverage controllers** (`pymapf.swarm.coverage`): `lloyd`,
+  `limited_range`, `adaptive` (estimates the density online, Schwager et al.
+  2009), `gmm` (splits the team across mixture components) and `time_varying`
+  (pursues moving targets, Manoni et al. 2024).
+- **Density fields** (`pymapf.swarm.density`): `GaussianMixtureDensity` with
+  responsibilities, sampling and **EM fitting**, plus time-varying and sampled
+  fields. EM recovers generating means to within 0.15 on 500 samples, and
+  covering the *fitted* density is as good as covering the true one.
+- **Swarm distribution control** (`pymapf.swarm.distribution`): `DensityMatching`
+  (kernel-density gradient flow) and `MixtureAssignment` (probabilistic guidance
+  in the spirit of Bandyopadhyay et al. 2017). The latter hits the mixing weights
+  exactly -- 12/12/6 agents for a 0.4/0.4/0.2 mixture.
+
+### Changed
+
+- `pymapf.decentralized.flocking` and `.coverage` are now thin functional
+  façades over `pymapf.swarm`; there is one implementation of every model. The
+  old API is unchanged and still tested.
+
+### Fixed
+
+- **Mixture-based team assignment never split a team.** Assigning each agent to
+  its most-responsible component leaves a clustered fleet entirely on one
+  component, and quota-pressure scaling cannot fix it because responsibilities
+  are near-degenerate (1e-30 vs 1). Replaced with a capacity-constrained greedy
+  allocation, which produces the requested split exactly.
+- **Adaptive coverage made its own estimate worse over time.** Fitting only the
+  current agent positions is under-determined and self-confirming. It now
+  accumulates measurements in a bounded memory -- the cheapest stand-in for the
+  persistence-of-excitation condition the original analysis assumes.
+- **Unnormalised Gaussian-kernel weights dispersed the flock** (cohesion 48 m
+  against 3 m for the metric neighbourhood): the kernel silently scaled the whole
+  interaction down, letting self-propulsion outrun cohesion. Weights are now
+  normalised to mean 1, so the kernel arbitrates rather than weakens.
+- **Active elastic flocking collapsed under a metric neighbourhood**: bounded
+  springs plus ~10 neighbours means summed attraction beats local repulsion --
+  the same failure mode as Olfati-Saber at r/d = 2. The default is now
+  topological, and the model is implemented at velocity level as the papers
+  formulate it.
+
 ## [0.4.0]
 
 Modern MAPF algorithms, general graphs, decentralized swarm control, a

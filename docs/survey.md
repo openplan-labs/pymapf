@@ -139,51 +139,124 @@ has none of those. This is the part the 2021 survey did not cover.
 
 ### 6.1 Flocking
 
-The lineage runs from **boids** **[impl]** (Reynolds 1987: separation,
-alignment, cohesion) through **Vicsek** **[impl]** (1995: heading alignment with
-noise — the minimal model of the order/disorder transition) and
-**Cucker–Smale** (2007: provable asymptotic flocking) to **Olfati-Saber**
-**[impl]** (2006), which gave the first framework with stability proofs: a
-smooth potential over the σ-norm, velocity consensus, and navigational feedback,
-converging to an **α-lattice**.
+Forty years of models, all implemented here as interchangeable objects and run
+on identical initial conditions (20 agents, lattice spawn, 300 steps, no
+waypoint):
 
-Two later developments moved this toward real vehicles. **Vásárhelyi et al.**
-(2018) tuned a flocking controller for confined spaces with an evolutionary
-optimiser and flew 30 drones outdoors. And **acceleration-based bird-inspired
-flocking** **[impl]** (Iacone, Lejeune, Manoni, Manfredi and Albani, 2024)
-changes the *control variable*: rather than commanding a velocity or a position
-reference, each agent commands **acceleration**, with self-propulsion and drag
-setting a cruise speed and pairwise potentials shaping the group. The practical
-consequence is that commands stay inside what a multirotor's inner loop can
-execute, and the flock carries momentum through turns instead of snapping to a
-new reference.
+| Model | order | cohesion | min sep | speed | neighbours | violations |
+|---|---|---|---|---|---|---|
+| boids (Reynolds 1987) | 0.81 | 2.33 | 1.28 | 0.52 | 18.5 | 149 |
+| vicsek (1995) | 1.00 | 5.74 | 1.97 | 4.00 | 6.9 | 0 |
+| cucker_smale (2007) | 1.00 | 5.12 | 1.84 | 0.13 | 6.8 | 0 |
+| olfati_saber (2006) | 0.01 | 5.41 | 3.00 | 0.00 | 7.0 | 0 |
+| proximal (Vásárhelyi 2018) | 0.04 | 90.67 | 3.94 | 4.00 | 0.8 | 0 |
+| **active_elastic** (Ferrante 2012/13) | 0.95 | 7.34 | 2.28 | 2.02 | 3.0 | 0 |
+| **acceleration** (Iacone et al. 2024) | 1.00 | 3.21 | 1.60 | 3.20 | 14.1 | 0 |
+| **gaussian_kernel** (Manoni et al. 2022) | 0.99 | 12.02 | 2.40 | 3.20 | 6.9 | 0 |
 
-Measured on identical initial conditions (§7.5), the four models separate
-cleanly, and the separation is not subtle: the acceleration model is the only
-one that maintains **both** collective motion and spacing without a waypoint to
-chase.
+Read as statements about what each model is *for*:
+
+* **Vicsek** aligns perfectly and never collides because it has no attraction at
+  all — and disperses for the same reason.
+* **Cucker–Smale** reaches velocity consensus (order 1.00) but at the *average*
+  initial velocity, which is near zero: it is a consensus law, not a complete
+  flocking controller. Compose it with a spacing behavior — which the object
+  model makes a one-liner — and it becomes one.
+* **Olfati-Saber** converges to an exact α-lattice at the reference spacing
+  (3.00 m) and then stops. An α-lattice is a *static* formation; collective
+  motion needs the navigational feedback term.
+* **Proximal control** is designed for confined environments, and it shows: in
+  open space it disperses (cohesion 90). Give it walls and it flocks — a
+  property of the model, not a defect of the implementation.
+* **Active elastic** (Ferrante et al.) reaches order 0.95 with zero violations
+  *without ever measuring a neighbour's velocity or heading*. Alignment is not
+  computed; it emerges from the elastic modes. That is the result that matters
+  for cheap hardware: heading sensing is the expensive part of a flocking robot.
+* **Acceleration-based** (Iacone, Lejeune, Manoni, Manfredi, Albani) is the only
+  model here that holds full polarisation *and* legal spacing *and* keeps flying
+  at 3.2 m/s with nothing to chase. Self-propulsion and drag are what buy that.
+* **Gaussian-kernel arbitration** (Manoni, Albani et al.) matches it on order and
+  safety with half the effective neighbours, because the kernel decides who
+  matters rather than a hard radius.
+
+The neighbourhood rule turns out to matter as much as the control law. Holding
+the acceleration model fixed and changing only who each agent sees:
+
+| Neighbourhood | order | cohesion | min sep | neighbours |
+|---|---|---|---|---|
+| metric, r = 6 m | 1.000 | 3.21 | 1.60 | 14.1 |
+| topological, k = 5 | 0.998 | 4.72 | 2.17 | 5.0 |
+| cone, 135° | 0.835 | 22.86 | 1.87 | 5.5 |
+| Gaussian kernel | 0.993 | 12.02 | 2.40 | 6.9 |
+
+Topological sensing gives *better* spacing (2.17 m vs 1.60 m) with a third of
+the connectivity — the same finding that motivated the topological hypothesis
+for real starlings.
 
 ### 6.2 Coverage
 
-Where flocking asks how to move together, coverage asks where to *sit*.
-**Lloyd's algorithm** on a Voronoi partition, formalised for robots by
-**Cortés et al.** (2004) **[impl]**, is the canonical answer: own the region
-you are closest to, move to its weighted centroid, repeat. It descends the
-locational cost and needs only Voronoi neighbours, so it is genuinely
-decentralized.
+**Lloyd's algorithm** on a Voronoi partition (Lloyd 1982; Cortés et al. 2004) is
+the canonical deployment law: own what you are nearest to, move to its weighted
+centroid, repeat. Written against a *domain* rather than the plane, one
+implementation deploys a team on any surface — 9 agents, 40 iterations:
 
-Two extensions matter for aerial teams, both from the TII/UNIMORE line of work:
+| Domain | cost reduction |
+|---|---|
+| rectangle | 84% |
+| disk | 91% |
+| sphere | 88% |
+| **hemisphere** | 92% |
+| annulus (a perimeter) | 96% |
 
-* **Limited-range coverage** **[impl]** (Bertoncelli, Belal, Albani, Pratissoli
-  and Sabattini, DARS 2022): a real sensor sees `R` metres, so an agent owns its
-  Voronoi cell *intersected with a disc*. Agents that start clustered then have
-  **no gradient** to spread along — measured here as a 60% cost reduction versus
-  95% for the unlimited case, which is not a worse algorithm but a harder and
-  more honest problem.
-* **Hemispherical surface coverage** **[impl]** (Belal, Manoni, Albani and
-  Sabattini, ANTS 2026): coverage on a curved domain, where cells are geodesic
-  and centroids are spherical. Implemented here by quadrature on a Fibonacci
-  lattice; 87% cost reduction deploying 10 agents from a clustered start.
+Four variants matter in practice, all from the TII/UNIMORE line of work:
+
+* **Limited range** (Bertoncelli, Belal, Albani, Pratissoli, Sabattini): an
+  agent owns its Voronoi cell *intersected with a disc*. Measured at 61% against
+  84% unlimited — not a worse algorithm, a harder problem, because a team that
+  starts clustered has no gradient to spread along at all.
+* **Adaptive** (Schwager et al.): the density is *estimated online* from what
+  agents measure. 28% reduction, and the gap to the informed case is the honest
+  price of not being handed the map.
+* **Hemispherical surfaces** (Belal, Manoni, Albani, Sabattini, ANTS 2026):
+  geodesic cells and spherical centroids on a dome.
+* **Time-varying targets** (Manoni et al.): the centroid has moved by the time
+  you arrive, so the controller pursues with a feed-forward term rather than
+  converging.
+
+### 6.2b Distribution control and Gaussian mixtures
+
+Assigning a goal per agent does not scale. Distribution control replaces "agent
+47 goes here" with "the swarm should look like *this density*", and a Gaussian
+mixture is the natural way to write that density down: it is multi-modal, it can
+be **fitted** to observations by EM, **sampled** from, and evaluated anywhere.
+
+Steering 30 agents to a three-component target (mean distance from a target
+sample to the nearest agent — lower is better):
+
+| Controller | error before | after | min separation | allocation |
+|---|---|---|---|---|
+| `density_matching` | 2.29 | 1.41 | 1.33 | — |
+| `mixture_assignment` | 2.29 | **0.90** | 2.09 | **12 / 12 / 6** (quota 12 / 12 / 6) |
+
+`mixture_assignment` hits the mixing weights *exactly*, because allocation is a
+capacity-constrained assignment rather than an argmax over responsibilities.
+That distinction is the whole finding: the obvious implementation — assign each
+agent to its most-responsible component — never splits a team at all, since
+agents that launch together are all nearest the same component and hysteresis
+locks it in. Scaling the scores by a quota pressure does not fix it either;
+responsibilities are near-degenerate (1e-30 vs 1) and scaling zero is still
+zero. Only an explicit capacity constraint produces the split.
+
+`density_matching`'s residual separation of 1.33 m against a 1.5 m requirement is
+not a tuning failure: matching a density and enforcing a minimum separation are
+**conflicting objectives** when the target's peak density is higher than the
+separation distance permits. The controller trades them, and the trade is
+visible in the number.
+
+End to end: sample 500 observations from an unknown field, fit a two-component
+mixture by EM (recovered means (3.93, 3.90) and (15.15, 14.04) against a truth
+of (4, 4) and (15, 14)), and hand the *fitted* density to a coverage controller
+— 83% cost reduction, the same as covering the true density.
 
 ### 6.3 Reactive avoidance
 
