@@ -39,7 +39,8 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 - 🎮 **[Interactive playground](https://apla-toolbox.github.io/pymapf/)** — run the solvers in your browser, watch the search resolve conflicts live
 - 🧭 Centralized planners: **CBS**, **Weighted CBS**, Prioritized Planning, **PIBT**, **LaCAM**, **MAPF-LNS** — every one referenced in [REFERENCES.md](REFERENCES.md)
 - 🕸️ Works on **arbitrary graphs**, not just grids (roadmaps, warehouse topologies, PRMs)
-- 🐦 **Decentralized swarm control**, all object-oriented and registry-based: 8 flocking models (boids, Vicsek, Cucker–Smale, Olfati-Saber, proximal, active-elastic, acceleration-based, Gaussian-kernel), 5 coverage controllers over 6 pluggable domains, and Gaussian-mixture distribution control
+- 🐦 **Decentralized swarm control**, all object-oriented and registry-based: 10 flocking models (boids, Vicsek, Cucker–Smale, Olfati-Saber, proximal, active-elastic, acceleration-based, Gaussian-kernel, minimalistic, distributed-3D), 5 coverage controllers over 6 pluggable domains, and Gaussian-mixture distribution control
+- 📐 **Formation control** on the displacement / distance / bearing taxonomy, with exact Hungarian slot assignment and a rigidity test that tells you when a target shape is holdable at all
 - 🔬 **[Extended survey](docs/survey.md)** of MAPF 2021→2026 plus an experimental section with measured (and negative) results
 - 🧩 Pluggable solver framework with a name-based registry, pluggable heuristics and deterministic maps
 - 🔭 **Observable search**: every solver streams `SearchEvent`s — record them, animate them, or watch them live
@@ -251,7 +252,7 @@ registry, swappable strategy objects.
 ```python
 from pymapf.swarm import SwarmSimulator, available_behaviors
 
-for name in available_behaviors():          # 8 flocking models + 2 distribution
+for name in available_behaviors():          # 10 flocking + 4 formation + 2 distribution
     result = SwarmSimulator(name, n_agents=20).run(steps=300)
     print(name, result.metrics.summary())
 ```
@@ -298,6 +299,38 @@ sim = SwarmSimulator("mixture_assignment", n_agents=30, mixture=target)
 sim.run(steps=400)          # allocation lands on 12 / 12 / 6 — exactly the quota
 
 fitted = GaussianMixtureDensity.fit(observations, k=2)   # EM from measurements
+```
+
+**Formation control** is organised by *what each agent can measure* — the
+displacement / distance / bearing taxonomy — because that is what decides which
+symmetry you can fix:
+
+```python
+from pymapf.swarm import SwarmSimulator, is_infinitesimally_rigid, get_shape
+
+for law in ["displacement_formation", "distance_formation",
+            "bearing_formation", "leader_follower"]:
+    sim = SwarmSimulator(law, n_agents=9, shape="v", spacing=3.0)
+    result = sim.run(steps=800)
+    print(law, sim.behavior.error(result.final))     # graded under the
+                                                     # symmetries it can't see
+```
+
+| Law | Agent measures | Formation fixed up to | Converges in |
+|---|---|---|---|
+| `displacement_formation` | relative position, shared frame | translation | 3.6 s |
+| `distance_formation` | range only | translation, rotation, reflection | 15.6 s |
+| `bearing_formation` | direction only (cameras) | translation, **scale** | 41.1 s |
+| `leader_follower` | offset from a leader | translation | 4.7 s |
+
+The less each agent senses, the longer it takes — that is the taxonomy restated
+as a cost. Distance and bearing control also need the constraint graph to be
+**rigid**, and the library says so before you fly it:
+
+```python
+line = get_shape("line", spacing=3.0).centred(6, 2)
+is_infinitesimally_rigid(line, [(i, j) for i in range(6) for j in range(i + 1, 6)])
+# False — a collinear target has flex modes no first-order controller can see
 ```
 
 The functional API in `pymapf.decentralized.flocking` / `.coverage` still works;

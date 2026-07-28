@@ -1,4 +1,4 @@
-"""Decentralized swarm control: flocking, coverage and distribution shaping.
+"""Decentralized swarm control: flocking, formation, coverage and distribution.
 
 The centralized planners in :mod:`pymapf.algorithms` assume a graph, a central
 solver and full information. This package is the other half: continuous space,
@@ -13,12 +13,19 @@ loop::
         result = SwarmSimulator(name, n_agents=20).run(steps=300)
         print(name, result.metrics.summary())
 
-Three families:
+Four families:
 
-**Flocking** (:mod:`~pymapf.swarm.flocking`) -- move as a group. Eight control
-laws from Reynolds' boids to acceleration-based bird-inspired flocking, all
-composable via :class:`~pymapf.swarm.base.CompositeBehavior` and all able to use
-any :class:`~pymapf.swarm.neighborhood.Neighborhood` strategy.
+**Flocking** (:mod:`~pymapf.swarm.flocking`) -- move as a group. Ten control
+laws from Reynolds' boids to the 2024 minimalistic model that flocks on relative
+range and bearing alone, all composable via
+:class:`~pymapf.swarm.base.CompositeBehavior` and all able to use any
+:class:`~pymapf.swarm.neighborhood.Neighborhood` strategy.
+
+**Formation** (:mod:`~pymapf.swarm.formation`) -- hold a *shape*, not just a
+heading. Organised by what each agent is allowed to measure -- relative
+position, range, or bearing -- because that is what decides which symmetry the
+controller can fix. Includes the rigidity test that says whether a target shape
+is holdable at all.
 
 **Coverage** (:mod:`~pymapf.swarm.coverage`) -- spread out to watch an area.
 Lloyd descent and its variants, over a pluggable
@@ -55,7 +62,9 @@ from .flocking import (  # noqa: F401
     ActiveElastic,
     Boids,
     CuckerSmale,
+    DistributedThreeDimensional,
     GaussianKernelFlocking,
+    MinimalisticFlocking,
     OlfatiSaber,
     ProximalControl,
     Vicsek,
@@ -83,6 +92,26 @@ from .density import (
     get_density,
 )
 from .distribution import DensityMatching, MixtureAssignment  # noqa: F401
+from .formation import (  # noqa: F401
+    BearingFormation,
+    CircleFormation,
+    CubeFormation,
+    CustomFormation,
+    DisplacementFormation,
+    DistanceFormation,
+    FormationShape,
+    GridFormation,
+    LeaderFollower,
+    LineFormation,
+    SphereFormation,
+    VFormation,
+    assign_slots,
+    available_shapes,
+    formation_error,
+    get_shape,
+    is_infinitesimally_rigid,
+    register_shape,
+)
 from .domain import (
     AnnulusDomain,
     DiskDomain,
@@ -121,8 +150,29 @@ __all__ = [
     "ActiveElastic",
     "AccelerationFlocking",
     "GaussianKernelFlocking",
+    "MinimalisticFlocking",
+    "DistributedThreeDimensional",
     "DensityMatching",
     "MixtureAssignment",
+    # formation control
+    "DisplacementFormation",
+    "DistanceFormation",
+    "BearingFormation",
+    "LeaderFollower",
+    "FormationShape",
+    "LineFormation",
+    "VFormation",
+    "CircleFormation",
+    "GridFormation",
+    "CubeFormation",
+    "SphereFormation",
+    "CustomFormation",
+    "get_shape",
+    "register_shape",
+    "available_shapes",
+    "assign_slots",
+    "formation_error",
+    "is_infinitesimally_rigid",
     # domains
     "Domain",
     "PlanarDomain",

@@ -28,7 +28,7 @@ EXTRAS["all"] = sorted(
 
 setuptools.setup(
     name="pymapf",
-    version="0.3.0",
+    version="0.6.0",
     author="Erwin Lejeune",
     author_email="erwinlejeune.pro@gmail.com",
     description=(

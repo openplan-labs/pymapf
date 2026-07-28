@@ -4,6 +4,90 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0]
+
+Formation control, and the post-2020 flocking models from the Albani / Ferrante
+/ Manoni / Saska group.
+
+### Added
+
+- **`pymapf.swarm.formation`** -- formation control on the displacement /
+  distance / bearing taxonomy of Oh, Park and Ahn (2015). Four controllers,
+  seven shapes, and the rigidity theory that says when each one can work.
+  - `DisplacementFormation` (alias `formation`) -- relative positions in a
+    shared frame; fixes the formation up to translation. Converges in 3.6 s.
+  - `DistanceFormation` -- range only, no shared frame; fixes it up to
+    translation, rotation and reflection (Krick et al. 2009). Reaches every
+    desired distance to 1e-13.
+  - `BearingFormation` -- direction only, what a camera measures; fixes it up to
+    translation and *scale* (Zhao and Zelazo 2016), with an optional
+    `scale_gain` to pin the size.
+  - `LeaderFollower` -- leaders track the mission, followers hold offsets
+    (Balch and Arkin 1998).
+  - `FormationShape` objects -- line, V (with sweep and dihedral), circle, grid,
+    cube, sphere, custom -- with `register_shape`/`get_shape`/`available_shapes`,
+    the same registry pattern as behaviors and coverage controllers.
+  - `assign_slots` -- exact Hungarian assignment of agents to slots, O(n^3) and
+    dependency-free. Assigning by index makes agents cross the formation to
+    reach a slot someone else is standing next to.
+  - `is_infinitesimally_rigid` -- rank test on the rigidity matrix. Predicts the
+    only two configurations in the whole sweep where distance and bearing
+    control fail: a collinear target in 2D and a planar target in 3D. Those
+    controllers now warn before running rather than converging quietly to the
+    wrong shape.
+  - `formation_error` -- fits the shape under exactly the symmetry group the
+    controller's *sensing* leaves free (rotation, scale, reflection each
+    optional), solving pose and correspondence jointly.
+- **Two post-2020 flocking models** (ten total):
+  - `MinimalisticFlocking` -- Amorim, Nascimento, Chaudhary, Ferrante and Saska
+    (2024). Relative range and bearing only: no GPS, no compass, no
+    communication, no velocity sensing, and a cohesive flock still emerges and
+    agrees on a direction nobody transmitted. Order 0.99 with zero separation
+    violations.
+  - `DistributedThreeDimensional` -- Albani, Manoni, Saska and Ferrante (2022).
+    Proximal control made anisotropic, because a multirotor is: climbing is
+    expensive and a drone below another sits in its downwash. Settles into a
+    lattice with vertical-to-horizontal spread 0.44 against 0.71 for the
+    isotropic law.
+- `docs/survey.md` gains section 6.2c on formation control, with measured
+  convergence times for all four controllers and the three findings below.
+
+### Fixed
+
+- **The Lennard-Jones well was centred at the wrong distance** in every proximal
+  controller. A potential written with length parameter `sigma` has its force
+  zero at `2^(1/m) sigma`, not at `sigma` -- so passing `reference_distance`
+  straight in built a controller whose rest spacing was 41% wider than its own
+  configuration. In open space the gap compounds until the outer agents leave
+  interaction range. `equilibrium_sigma()` solves for the minimum instead.
+- **A range-limited interaction graph is the wrong constraint set for distance
+  and bearing control.** It is not rigid in general, and it *changes* as the
+  swarm moves, so the constraints being descended shift underneath the descent:
+  pairs pushed apart to their desired distance, left sensing range, and the
+  pairs that should have pulled them back were never in it. Formation error grew
+  from 3.6 to 26.8. The graph is now built once from the target shape and
+  augmented until rigid.
+- **A waypoint was applied as a per-agent attraction**, which is a contraction,
+  which is a deformation. It squashed every formation and collapsed the
+  bearing-based one onto the waypoint entirely -- scale being exactly the
+  freedom bearings do not constrain. It is now a common translation computed
+  from the formation centroid, which lies in the null space of all four laws.
+- **A leader with no mission chased the swarm centroid**, closing a feedback
+  loop through its own followers: they track it, it tracks them, and the
+  formation never settles. Leaders now hold station.
+- **`formation_error` fitted the pose before knowing the correspondence**,
+  scoring exactly-converged formations as failures -- a distance controller
+  satisfying its entire target distance matrix to 1e-13 was reported at error
+  3.58.
+
+### Changed
+
+- `MinimalisticFlocking` defaults to a topological neighbourhood with k = 8
+  rather than the k = 3 of `ActiveElastic`. A bounded attraction needs more
+  incident edges than a spring does: over ten seeds with twenty agents in the
+  plane the flock fragmented in 7 runs at k = 6 against 1 at the default here.
+  In 3D -- what the paper is about -- every seed converges either way.
+
 ## [0.5.0]
 
 An object-oriented swarm layer, more flocking and coverage algorithms, and

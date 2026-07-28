@@ -19,6 +19,7 @@ at the end.
 - [Learning-based MAPF](#learning-based-mapf) *(surveyed, not implemented)*
 - [Variants and extensions](#variants-and-extensions) *(surveyed, not implemented)*
 - [Decentralized flocking](#decentralized-flocking)
+- [Formation control](#formation-control)
 - [Decentralized coverage](#decentralized-coverage)
 - [Swarm distribution control](#swarm-distribution-control)
 - [Reactive collision avoidance](#reactive-collision-avoidance)
@@ -133,12 +134,32 @@ Implemented in `pymapf/swarm/flocking.py` as `Behavior` subclasses
 | Self-organized flocking with a robot swarm | `ActiveElastic` | Ferrante, E.; Turgut, A. E.; Huepe, C.; Stranieri, A.; Pinciroli, C.; and Dorigo, M. 2012. *Self-organized flocking with a mobile robot swarm: a novel motion control method.* Adaptive Behavior 20(6): 460–477. |
 | **Active elastic sheet** | `ActiveElastic` | Ferrante, E.; Turgut, A. E.; Dorigo, M.; and Huepe, C. 2013. *Elasticity-based mechanism for the collective motion of self-propelled particles with spring-like interactions.* Physical Review Letters 111(26): 268302. |
 | Active solids and crystals | *surveyed* | Ferrante, E.; Turgut, A. E.; Dorigo, M.; and Huepe, C. 2013. *Collective motion dynamics of active solids and active crystals.* New Journal of Physics 15: 095011. |
-| Self-organized flocking in 3D | *surveyed* | Ferrante, E.; et al. 2024. *Self-organized flocking in three dimensions.* ANTS 2024, Springer LNCS. |
+| Self-organized flocking in 3D | *surveyed* | Karagüzel, T. A.; van Diggelen, F.; García Rincón, A.; and Ferrante, E. 2024. *Self-organized Flocking in Three Dimensions.* ANTS 2024, Springer LNCS 14987: 137–149. |
+| Active elastic matter in 3D | *surveyed* | *Active Elastic Matter: 3D Collective Motion for Swarms.* ANTS 2026, Springer LNCS. |
+| Energy-efficient flocking | *surveyed* | *Energy-Efficient Flocking in Self-organized Robot Swarms.* ANTS 2026, Springer LNCS. |
 | Topological neighbourhoods | `TopologicalNeighborhood` | Ballerini, M.; et al. 2008. *Interaction ruling animal collective behavior depends on topological rather than metric distance.* PNAS 105(4): 1232–1237. |
 | **Gaussian-kernel arbitration** | `GaussianKernelFlocking`, `GaussianKernelNeighborhood` | Manoni, T.; Albani, D.; et al. 2022. *Adaptive arbitration of aerial swarm interactions through a Gaussian kernel for coherent group motion.* Frontiers in Robotics and AI 9: 1006786. |
-| Distributed 3D drone flocking | *surveyed* | Manoni, T.; et al. 2022. *Distributed three dimensional flocking of autonomous drones.* ICRA 2022. |
+| **Distributed 3D drone flocking** | `DistributedThreeDimensional` | Albani, D.; Manoni, T.; Saska, M.; and Ferrante, E. 2022. *Distributed Three Dimensional Flocking of Autonomous Drones.* ICRA 2022: 6904–6911. |
 | Self-organized UAV flocking (proximal) | *surveyed* | Manoni, T.; et al. 2021. *Self-organized UAV flocking based on proximal control.* |
 | **Acceleration-based bird-inspired flocking** | `AccelerationFlocking` | Iacone, L.; Lejeune, E.; Manoni, T.; Manfredi, S.; and Albani, D. 2024. *Decentralized acceleration-based bird-inspired flocking.* IROS 2024. Autonomous Robotics Research Centre, Technology Innovation Institute. |
+| **Minimalistic 3D self-organized flocking** | `MinimalisticFlocking` | Amorim, T.; Nascimento, T.; Chaudhary, A.; Ferrante, E.; and Saska, M. 2024. *A Minimalistic 3D Self-Organized UAV Flocking Approach for Desert Exploration.* Journal of Intelligent & Robotic Systems 110: 75. DOI 10.1007/s10846-024-02108-0. |
+
+## Formation control
+
+Implemented in `pymapf/swarm/formation.py`. The taxonomy — what each agent is
+allowed to *measure*, and what symmetry that leaves free — is Oh, Park and Ahn's.
+
+| Constraint type | Class | Fixes the formation up to | Reference |
+|---|---|---|---|
+| Survey of the field | — | — | Oh, K.-K.; Park, M.-C.; and Ahn, H.-S. 2015. *A survey of multi-agent formation control.* Automatica 53: 424–440. |
+| **Displacement** (relative position, shared frame) | `DisplacementFormation` | translation | Ren, W.; and Beard, R. W. 2008. *Distributed Consensus in Multi-vehicle Cooperative Control.* Springer. |
+| **Distance** (range only, no shared frame) | `DistanceFormation` | translation, rotation, reflection | Krick, L.; Broucke, M. E.; and Francis, B. A. 2009. *Stabilisation of infinitesimally rigid formations of multi-robot networks.* International Journal of Control 82(3): 423–439. |
+| **Bearing** (direction only, e.g. cameras) | `BearingFormation` | translation, scale | Zhao, S.; and Zelazo, D. 2016. *Bearing rigidity and almost global bearing-only formation stabilization.* IEEE Transactions on Automatic Control 61(5): 1255–1268. |
+| **Leader–follower** | `LeaderFollower` | translation | Balch, T.; and Arkin, R. C. 1998. *Behavior-based formation control for multirobot teams.* IEEE Transactions on Robotics and Automation 14(6): 926–939. |
+| Rigidity theory | `is_infinitesimally_rigid` | — | Asimow, L.; and Roth, B. 1979. *The rigidity of graphs II.* Journal of Mathematical Analysis and Applications 68(1): 171–190. |
+| Graph rigidity in formation control | *surveyed* | — | Anderson, B. D. O.; Yu, C.; Fidan, B.; and Hendrickx, J. M. 2008. *Rigid graph control architectures for autonomous formations.* IEEE Control Systems Magazine 28(6): 48–63. |
+| Slot assignment | `assign_slots` | — | Kuhn, H. W. 1955. *The Hungarian method for the assignment problem.* Naval Research Logistics Quarterly 2(1–2): 83–97. |
+| Shape fitting (Procrustes) | `formation_error` | — | Schönemann, P. H. 1966. *A generalized solution of the orthogonal Procrustes problem.* Psychometrika 31(1): 1–10. |
 
 ## Decentralized coverage
 
@@ -260,3 +281,77 @@ positions — the naive reading of the algorithm — is under-determined and
 self-confirming, and measurably made the estimate *worse* over time. The memory
 is the cheapest stand-in for the persistence-of-excitation condition the
 original analysis assumes.
+
+**Proximal control (all three variants).** A Lennard-Jones potential written
+with length parameter `sigma` has its force zero at `2^(1/m) sigma`, not at
+`sigma` — a factor of 1.41 for the default exponent. Passing the reference
+distance straight in as `sigma`, as the earlier version of this code did, builds
+a controller whose rest spacing is 41% wider than the value it was configured
+with; in open space that gap compounds until the outer agents leave interaction
+range and the flock sheds them. `equilibrium_sigma()` solves for the minimum
+instead, so `reference_distance` means the spacing the swarm actually holds. The
+fix applies to `ProximalControl`, `MinimalisticFlocking` and
+`DistributedThreeDimensional` alike.
+
+Note also that proximal attraction is *bounded and decaying* by construction.
+Twenty agents in an unbounded plane with no waypoint spread past each other's
+interaction range and the group disperses (measured cohesion 86 m). Given either
+a boundary or a migration target — the conditions both source papers assume —
+the same controller is tight (cohesion 4.9 m, order 0.91). This is a property of
+the model, not a defect of the implementation, and it is pinned by a test.
+
+**Distributed 3D flocking** takes the *structure* of Albani et al. (2022) —
+axis-aware handling of the vertical, because a multirotor is not isotropic and a
+drone below another sits in its downwash — and implements it as an anisotropic
+distance inside the proximal potential plus an explicit downwash term. The
+paper's own parameter values were not accessible, so the gains here were tuned
+on this simulator; results are not a reproduction of that paper's results. Two
+choices are ours and are load-bearing. The vertical weighting must apply in the
+*near* regime, since that is where the flattening happens — carving it out "for
+safety" removes the effect entirely — so safety is restored instead by a
+separate short-range repulsion on the true, unweighted distance. And the
+weighting is capped by `effective_vertical_scale()` so that
+`reference_distance / scale` never falls below `safety_margin ×
+separation_distance`: past that point the controller would be holding the swarm
+at a spacing it also calls a collision, which no gain can resolve. Measured
+effect at the defaults: vertical-to-horizontal spread 0.44 against 0.71 for the
+isotropic law, with no steady-state collisions.
+
+**Minimalistic flocking** follows Amorim et al. (2024): active-elastic dynamics
+with a Lennard-Jones proximal coupling, driven by relative range and bearing
+only — no GPS, compass, communication or velocity sensing. Parameters are ours.
+The default neighbourhood is topological with k = 8, chosen by measurement: a
+bounded attraction needs more incident edges than a spring does, and over ten
+seeds with twenty agents in the plane the flock fragmented in 7 runs at k = 6
+against 1 at the defaults here. In three dimensions — the setting the paper is
+actually about — every seed converges regardless (order 0.95–0.98, cohesion 3.2,
+no collisions). The planar fragility is reported rather than tuned away.
+
+**Formation control** implements the displacement / distance / bearing taxonomy
+of Oh, Park and Ahn (2015) with one addition of our own: each controller
+declares the symmetry group its sensing cannot resolve, and `formation_error`
+quotients exactly that group out. Grading a distance-based controller against a
+fixed orientation, or a bearing-based one against a fixed size, measures the
+test's assumptions rather than the controller — both were doing so in the first
+version of this module, and both looked like convergence failures.
+
+Three further deviations are worth stating. The interaction graph for the
+distance and bearing laws is built from the *target* shape and held fixed, not
+taken from whoever is in sensing range: a range-limited proximity graph is not
+rigid in general and changes as the swarm moves, so the constraint set being
+descended shifts underneath the descent. A sparse graph is augmented with the
+shortest missing edges until `is_infinitesimally_rigid` accepts it. Second,
+`DistanceFormation` defaults to the gradient of `Σ(|p_ij| − d_ij)²` rather than
+Krick et al.'s `Σ(|p_ij|² − d_ij²)²`; the equilibria and rigidity theory are the
+same, but the textbook potential is cubic in the error and an agent one
+formation-width off asks for a hundred times the acceleration it can deliver.
+The original is available as `potential="squared"`. Third, the waypoint term is
+applied as a *common translation* computed from the formation centroid rather
+than a per-agent pull: a per-agent pull toward a shared point is a contraction,
+which deforms the shape, and which collapses the scale-free bearing law onto the
+waypoint entirely.
+
+`formation_error` fits pose and correspondence jointly (alternating Procrustes
+and Hungarian assignment, restarted from several initial rotations). Solving
+either one first with the other guessed scores an exactly-converged formation as
+a failure, which is a property of the metric and not of the controller.

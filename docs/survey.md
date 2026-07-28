@@ -145,14 +145,28 @@ waypoint):
 
 | Model | order | cohesion | min sep | speed | neighbours | violations |
 |---|---|---|---|---|---|---|
-| boids (Reynolds 1987) | 0.81 | 2.33 | 1.28 | 0.52 | 18.5 | 149 |
-| vicsek (1995) | 1.00 | 5.74 | 1.97 | 4.00 | 6.9 | 0 |
-| cucker_smale (2007) | 1.00 | 5.12 | 1.84 | 0.13 | 6.8 | 0 |
-| olfati_saber (2006) | 0.01 | 5.41 | 3.00 | 0.00 | 7.0 | 0 |
-| proximal (Vásárhelyi 2018) | 0.04 | 90.67 | 3.94 | 4.00 | 0.8 | 0 |
-| **active_elastic** (Ferrante 2012/13) | 0.95 | 7.34 | 2.28 | 2.02 | 3.0 | 0 |
-| **acceleration** (Iacone et al. 2024) | 1.00 | 3.21 | 1.60 | 3.20 | 14.1 | 0 |
-| **gaussian_kernel** (Manoni et al. 2022) | 0.99 | 12.02 | 2.40 | 3.20 | 6.9 | 0 |
+| boids (Reynolds 1987) | 0.57 | 2.33 | 1.29 | 0.40 | 18.5 | 149 |
+| vicsek (1995) | 1.00 | 7.07 | 2.29 | 4.00 | 4.8 | 0 |
+| cucker_smale (2007) | 1.00 | 5.32 | 1.59 | 0.24 | 6.4 | 0 |
+| olfati_saber (2006) | 0.00 | 5.24 | 2.97 | 0.00 | 7.5 | 0 |
+| proximal (Vásárhelyi 2018) | 0.59 | 64.53 | 2.34 | 4.00 | 2.2 | 0 |
+| **active_elastic** (Ferrante 2012/13) | 0.99 | 6.10 | 2.66 | 1.99 | 3.0 | 0 |
+| **acceleration** (Iacone et al. 2024) | 1.00 | 3.08 | 1.64 | 3.20 | 14.8 | 0 |
+| **gaussian_kernel** (Manoni et al. 2022) | 1.00 | 4.11 | 2.25 | 3.20 | 10.3 | 0 |
+| **minimalistic** (Amorim et al. 2024) | 0.99 | 4.24 | 2.35 | 2.00 | 8.0 | 0 |
+| **distributed_3d** (Albani et al. 2022) | 0.59 | 64.53 | 2.34 | 4.00 | 2.2 | 0 |
+
+The last two are 2022–2024 work from the Albani / Ferrante / Manoni / Saska
+group, and both are *three-dimensional* methods, so the planar table above
+understates them. Repeating it in 3D:
+
+| Model | order | cohesion | min sep | speed | neighbours | violations |
+|---|---|---|---|---|---|---|
+| proximal | 0.98 | 2.94 | 2.27 | 4.00 | 16.6 | 0 |
+| active_elastic | 0.74 | 18.53 | 2.42 | 2.00 | 3.0 | 0 |
+| acceleration | 1.00 | 2.42 | 1.73 | 3.20 | 19.0 | 0 |
+| **minimalistic** | 0.88 | 3.26 | 2.27 | 1.96 | 8.0 | 0 |
+| **distributed_3d** | 0.99 | 2.65 | 1.72 | 4.00 | 17.8 | 0 |
 
 Read as statements about what each model is *for*:
 
@@ -166,8 +180,11 @@ Read as statements about what each model is *for*:
   (3.00 m) and then stops. An α-lattice is a *static* formation; collective
   motion needs the navigational feedback term.
 * **Proximal control** is designed for confined environments, and it shows: in
-  open space it disperses (cohesion 90). Give it walls and it flocks — a
-  property of the model, not a defect of the implementation.
+  the open plane it disperses (cohesion 65). Give it a boundary or a migration
+  target — the conditions the paper assumes — and it is tight (cohesion 4.9,
+  order 0.91), and in 3D it needs neither (cohesion 2.94). This is a property of
+  the bounded, decaying Lennard-Jones attraction, not a defect of the
+  implementation.
 * **Active elastic** (Ferrante et al.) reaches order 0.95 with zero violations
   *without ever measuring a neighbour's velocity or heading*. Alignment is not
   computed; it emerges from the elastic modes. That is the result that matters
@@ -178,6 +195,22 @@ Read as statements about what each model is *for*:
 * **Gaussian-kernel arbitration** (Manoni, Albani et al.) matches it on order and
   safety with half the effective neighbours, because the kernel decides who
   matters rather than a hard radius.
+* **Minimalistic flocking** (Amorim, Nascimento, Chaudhary, Ferrante, Saska
+  2024) is the floor of the field and the most interesting row in the table.
+  Each agent measures relative range and bearing to its neighbours and nothing
+  else — no GPS, no compass, no communication, no velocity sensing — and the
+  group still reaches order 0.99 with zero violations, travelling in a common
+  direction that *nobody transmitted*. With no channel to agree on a heading,
+  agreement can only come out of the dynamics, and it does. Validated in the
+  original work with nine UAVs over a desert.
+* **Distributed 3D flocking** (Albani, Manoni, Saska, Ferrante 2022) is the one
+  model here that treats the vertical axis as a different problem, because for a
+  multirotor it is: climbing is expensive, and a drone below another sits in its
+  downwash. In 3D it reaches order 0.99 at full cruise speed and settles into a
+  lattice with a vertical-to-horizontal spread of 0.44, against 0.71 for the
+  isotropic law — flat and wide, which is the shape a rotorcraft swarm should
+  hold. In the plane it is identical to `proximal` by construction, which is why
+  its planar row is.
 
 The neighbourhood rule turns out to matter as much as the control law. Holding
 the acceleration model fixed and changing only who each agent sees:
@@ -257,6 +290,105 @@ End to end: sample 500 observations from an unknown field, fit a two-component
 mixture by EM (recovered means (3.93, 3.90) and (15.15, 14.04) against a truth
 of (4, 4) and (15, 14)), and hand the *fitted* density to a coverage controller
 — 83% cost reduction, the same as covering the true density.
+
+### 6.2c Formation control
+
+Flocking asks a swarm to move together and coverage asks it to spread out.
+Formation control asks for something stricter — a *specified geometry*, held
+while the group moves — and the interesting question is not how to hold it but
+**what each agent is allowed to measure**. Oh, Park and Ahn's 2015 survey
+organises the field on exactly that axis, and the taxonomy is predictive: what
+you can sense determines which symmetry you can fix, and no gain tuning changes
+it.
+
+| Constraint | Agent measures | Needs | Formation fixed up to | Class |
+|---|---|---|---|---|
+| Displacement | relative position in a shared frame | a compass or common heading | translation | `DisplacementFormation` **[impl]** |
+| Distance | inter-agent range | nothing shared | translation, rotation, **reflection** | `DistanceFormation` **[impl]** |
+| Bearing | direction to neighbours | nothing shared | translation, **scale** | `BearingFormation` **[impl]** |
+| Leader–follower | offset from a designated leader | leader tracking | translation | `LeaderFollower` **[impl]** |
+
+Nine agents, identical lattice spawn, averaged over the V, circle and grid
+targets. `error` is the mean per-agent distance from the best-fitting placement
+of the shape — fitted, crucially, under the symmetry group that controller is
+*entitled* to (see below). Convergence time is to 1% of the initial error.
+
+| Controller | initial error | final error | time to 1% (s) | min sep |
+|---|---|---|---|---|
+| displacement | 1.90 | 0.0000 | 3.6 | 3.00 |
+| distance | 1.81 | 0.0000 | 15.6 | 3.00 |
+| bearing | 2.00 | 0.0005 | 41.1 | 1.31 |
+| leader–follower | 1.90 | 0.0000 | 4.7 | 3.00 |
+
+The ordering is the taxonomy restated as a cost: **the less you sense, the
+longer it takes**. Displacement control converges in 3.6 s because every agent
+already knows its absolute slot. Distance control takes 4× longer for the same
+final error, because the group must first agree on an orientation nobody can
+measure. Bearing control takes 11× longer still, and its closest approach is the
+worst of the four — with scale unconstrained, the formation breathes on its way
+in, and a contracting phase is exactly when agents get close.
+
+Three findings came out of building this, and all three were originally
+mistaken for controller failures.
+
+**1. The error metric must quotient out the symmetry the sensing cannot fix.**
+A distance-based controller that lands on a *mirror image* of the target has
+succeeded — distances cannot see handedness. A bearing-based controller that
+lands on a half-size copy has succeeded — bearings cannot see scale. Graded
+against a fixed pose, both looked stuck: the distance controller reported an
+error of 3.58 on a V formation whose entire desired distance matrix it was
+satisfying **to 10⁻¹³**. Each controller here declares its own group, and
+`formation_error` fits under exactly that group. This is not a testing detail;
+it is the same statement as the taxonomy, made measurable.
+
+A related subtlety: pose and correspondence have to be solved *together*.
+Procrustes needs to know which agent holds which slot; the assignment needs to
+know the pose. Fitting either first with the other guessed scores an
+exactly-converged formation as a failure, and alternating from a single start
+can lock onto a local optimum — a 3×3 grid rotated by 1.1 rad reports an error
+of 1.10 instead of 0. Alternating from several seed rotations fixes it.
+
+**2. A range-limited interaction graph is the wrong constraint set.** Distance
+and bearing control only pin a formation down if the constraint graph is
+*rigid*, and the proximity graph of whoever is in sensing range is not rigid in
+general — worse, it changes as the swarm moves, so the constraint set being
+descended shifts underneath the descent. The observed failure was spectacular
+and entirely explicable: pairs pushed apart to their desired distance, left
+sensing range, and the pairs that should have pulled them back were never in it.
+Error grew from 3.6 to **26.8**. Building the graph once from the target shape,
+and augmenting a sparse one with the shortest missing edges until
+`is_infinitesimally_rigid` accepts it, converges to zero.
+
+The rigidity check earns its place by predicting the residual failures too. A
+*collinear* target in 2D and a *planar* target in 3D are not infinitesimally
+rigid at any edge count — the complete graph on six collinear points has
+rigidity-matrix rank 5 against the 9 required — so a first-order controller has
+flex modes it cannot see, and stalls. Those are the only two cases in the whole
+sweep where the distance and bearing controllers fail to converge, and the
+library now warns before running rather than converging quietly to the wrong
+thing.
+
+**3. A waypoint is a translation, not an attraction.** The obvious way to fly a
+formation somewhere — pull every agent toward the target point — is a
+*contraction*, and a contraction is a deformation. It fights the shape term for
+every controller, and it destroys the bearing controller outright: scale is
+precisely the degree of freedom bearings do not constrain, so with nothing
+resisting, all nine agents collapsed onto the waypoint and the formation
+reported convergence at zero size. Computing the command once from the
+*centroid* error and issuing it identically to everybody puts it in the null
+space of all four laws, which are translation-invariant by construction. The
+formation then slides to the waypoint without deforming at all.
+
+Two smaller notes. The textbook distance potential, Krick et al.'s
+`Σ(|p_ij|² − d_ij²)²`, is cubic in the error: an agent one formation-width off
+requests roughly a hundred times the acceleration it can deliver, and what the
+vehicle executes is saturated bang-bang. `Σ(|p_ij| − d_ij)²` has the same
+equilibria and the same rigidity theory with a proportional demand, and is the
+default here; the original is a constructor argument. And slot assignment is
+solved exactly (Hungarian, O(n³), dependency-free) rather than by index —
+assigning by index makes agents cross the formation to reach a slot someone else
+is standing next to, which is both slower and the main source of collisions
+while forming up.
 
 ### 6.3 Reactive avoidance
 

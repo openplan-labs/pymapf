@@ -48,6 +48,8 @@ FLOCKING = [
     "active_elastic",
     "acceleration",
     "gaussian_kernel",
+    "minimalistic",
+    "distributed_3d",
 ]
 
 
@@ -482,3 +484,144 @@ def test_density_matching_works_in_three_dimensions():
     assert _match_error(result.final.positions, target) < _match_error(
         result.history[0].positions, target
     )
+
+
+# ------------------------------- the post-2020 flocking models -------------
+#
+# Both come from the Albani / Ferrante / Manoni / Saska cluster and both make a
+# specific, testable claim beyond "it flocks". These pin the claims.
+
+
+def test_minimalistic_flocks_on_range_and_bearing_alone():
+    """Amorim et al. (2024): cohesive aligned flight with nothing else sensed.
+
+    No GPS, no compass, no communication, no velocity sensing -- and the group
+    still agrees on a heading nobody transmitted.
+    """
+    for dimension in (2, 3):
+        summary = SwarmSimulator(
+            "minimalistic", n_agents=20, dimension=dimension,
+            params=SwarmParams(seed=1),
+        ).run(steps=400).metrics.summary()
+        assert summary["order"] > 0.7
+        assert summary["mean_speed"] > 0.5
+        assert summary["steady_collisions"] == 0
+
+
+def test_minimalistic_never_reads_a_velocity():
+    state = SwarmState.lattice(10, 3)
+    behavior = get_behavior("minimalistic")
+    behavior.reset(state)
+    force = behavior.elastic_force(state, 0)
+
+    scrambled = state.copy()
+    scrambled.velocities = np.random.default_rng(5).normal(size=state.velocities.shape)
+    assert np.allclose(force, behavior.elastic_force(scrambled, 0))
+
+
+def test_minimalistic_attraction_is_bounded_and_repulsion_is_not():
+    """The Lennard-Jones trade: no straggler can drag the flock apart, and the
+    safety margin is enforced by the potential rather than bolted on."""
+    behavior = get_behavior("minimalistic", params=SwarmParams())
+    reference = behavior.params.reference_distance
+
+    assert behavior.proximal(reference * 0.5) < 0        # repels when too close
+    assert behavior.proximal(reference * 1.5) > 0        # attracts when too far
+    assert behavior.proximal(reference) == pytest.approx(0.0, abs=1e-9)
+
+    # Attraction decays with distance; repulsion grows without it.
+    assert behavior.proximal(reference * 3) < behavior.proximal(reference * 1.5)
+    assert behavior.proximal(reference * 0.3) < behavior.proximal(reference * 0.6)
+
+
+@pytest.mark.parametrize("name", ["proximal", "minimalistic", "distributed_3d"])
+def test_the_proximal_family_rests_at_the_reference_distance(name):
+    """A Lennard-Jones force is zero at ``2^(1/m) sigma``, not at ``sigma``.
+
+    Passing the reference distance straight in as ``sigma`` builds a controller
+    whose rest spacing is 41% wider than its own configuration -- and in open
+    space that gap compounds until the flock sheds its outer agents.
+    """
+    behavior = get_behavior(name, params=SwarmParams())
+    reference = behavior.params.reference_distance
+    assert behavior.proximal(reference) == pytest.approx(0.0, abs=1e-9)
+    assert behavior.equilibrium_sigma() < reference
+
+
+def test_distributed_3d_settles_into_a_flatter_lattice_than_an_isotropic_law():
+    """Albani et al. (2022): a multirotor swarm should not be a ball."""
+    def aspect(name):
+        params = SwarmParams(seed=1, migration_point=(60.0, 60.0, 10.0))
+        final = SwarmSimulator(
+            name, n_agents=20, dimension=3, params=params
+        ).run(steps=500).final.positions
+        offsets = final - final.mean(axis=0)
+        horizontal = float(np.sqrt(np.mean(np.sum(offsets[:, :2] ** 2, axis=1))))
+        vertical = float(np.sqrt(np.mean(offsets[:, 2] ** 2)))
+        return vertical / max(horizontal, 1e-9)
+
+    assert aspect("distributed_3d") < 0.8 * aspect("proximal")
+
+
+def test_the_vertical_weighting_is_capped_by_the_safety_margin():
+    """Flattening stops where it would hold the swarm at a spacing the same
+    controller calls a collision."""
+    params = SwarmParams()
+    behavior = get_behavior("distributed_3d", params=params, vertical_scale=10.0)
+    scale = behavior.effective_vertical_scale()
+    assert scale < 10.0
+    assert params.reference_distance / scale >= behavior.safety_margin * params.separation_distance
+
+
+def test_the_vertical_weighting_does_nothing_in_the_plane():
+    state = SwarmState.lattice(9, 2)
+    flat = get_behavior("distributed_3d", vertical_scale=4.0)
+    plain = get_behavior("distributed_3d", vertical_scale=1.0)
+    flat.reset(state)
+    plain.reset(state)
+    for index in range(state.n):
+        assert np.allclose(flat.command(state, index), plain.command(state, index))
+
+
+def test_downwash_pushes_a_drone_off_the_one_below_it():
+    state = SwarmState.lattice(2, 3)
+    state.positions = np.array([[0.0, 0.0, 0.0], [0.1, 0.0, -1.0]])
+    state.velocities = np.zeros((2, 3))
+    behavior = get_behavior("distributed_3d", params=SwarmParams())
+    behavior.reset(state)
+
+    # Agent 0 is directly above agent 1, so agent 0 climbs out of the stack.
+    assert behavior.downwash(state, 0)[2] > 0
+    assert behavior.downwash(state, 1)[2] == 0
+
+
+def test_downwash_ignores_neighbours_that_are_merely_nearby():
+    state = SwarmState.lattice(2, 3)
+    state.positions = np.array([[0.0, 0.0, 0.0], [5.0, 0.0, -1.0]])
+    state.velocities = np.zeros((2, 3))
+    behavior = get_behavior("distributed_3d", params=SwarmParams())
+    behavior.reset(state)
+    assert np.allclose(behavior.downwash(state, 0), 0.0)
+
+
+def test_the_proximal_family_is_cohesive_when_it_has_somewhere_to_go():
+    """Documented limitation, pinned so it does not drift into a surprise.
+
+    Proximal control has a *bounded*, decaying attraction. In open space with no
+    goal, twenty agents in the plane spread past each other's interaction range
+    and the group disperses -- the models were designed for confined
+    environments and for missions with a direction. Give them either and they
+    are tight.
+    """
+    open_space = SwarmSimulator(
+        "proximal", n_agents=20, dimension=2, params=SwarmParams(seed=1)
+    ).run(steps=400).metrics.summary()
+
+    with_goal = SwarmSimulator(
+        "proximal", n_agents=20, dimension=2,
+        params=SwarmParams(seed=1, migration_point=(60.0, 60.0)),
+    ).run(steps=400).metrics.summary()
+
+    assert open_space["cohesion"] > 20.0
+    assert with_goal["cohesion"] < 8.0
+    assert with_goal["steady_collisions"] == 0
