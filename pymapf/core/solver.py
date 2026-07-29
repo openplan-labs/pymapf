@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Type
 
 from .grid import Cell, GridMap
-from .trace import Observer, SearchEvent, SearchTrace  # noqa: F401  (re-exported)
+from .trace import Observer
 
 
 @dataclass(frozen=True)
@@ -260,8 +260,8 @@ def get_solver(name: str, **kwargs) -> MAPFSolver:
     key = name.lower()
     try:
         cls = _REGISTRY[key]
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown solver %r. Available: %s" % (name, ", ".join(available_solvers()))
-        )
+        ) from error
     return cls(**kwargs)

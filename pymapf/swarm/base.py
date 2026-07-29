@@ -328,9 +328,9 @@ def get_behavior(name, **kwargs) -> Behavior:
         return name(**kwargs)
     try:
         cls = _BEHAVIORS[str(name).lower()]
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown behavior %r. Available: %s"
             % (name, ", ".join(available_behaviors()))
-        )
+        ) from error
     return cls(**kwargs)

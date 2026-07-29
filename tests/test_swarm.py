@@ -66,7 +66,7 @@ def test_simulation_is_deterministic_for_a_seed():
 def test_spawn_starts_legal():
     """The lattice spawn must not begin already inside the separation distance."""
     params = FlockParams(seed=5)
-    history, metrics = simulate("boids", n_agents=16, steps=1, params=params)
+    history, _ = simulate("boids", n_agents=16, steps=1, params=params)
     positions = history[0].positions
     distances = np.linalg.norm(positions[:, None, :] - positions[None, :, :], axis=2)
     np.fill_diagonal(distances, np.inf)

@@ -334,7 +334,7 @@ def get_domain(name, **kwargs) -> Domain:
         return name
     try:
         return DOMAINS[str(name).lower()](**kwargs)
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown domain %r. Available: %s" % (name, ", ".join(sorted(DOMAINS)))
-        )
+        ) from error

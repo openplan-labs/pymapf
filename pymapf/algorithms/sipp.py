@@ -135,7 +135,7 @@ def sipp(
             continue
         closed.add(state)
 
-        lo, hi = intervals_of(cell)[index]
+        _, hi = intervals_of(cell)[index]
         if cell == goal and t > settle_time and hi == float("inf"):
             return _unroll(parent, earliest, state)
 

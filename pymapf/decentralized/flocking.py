@@ -16,12 +16,12 @@ See :mod:`pymapf.swarm.flocking` for the full model list and citations.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from dataclasses import dataclass
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from ..swarm.base import SwarmParams, SwarmState, get_behavior, limit
+from ..swarm.base import SwarmParams, SwarmState, get_behavior
 from ..swarm.simulator import SwarmMetrics, SwarmSimulator
 
 __all__ = [
@@ -121,11 +121,11 @@ def get_controller(name):
         return name
     try:
         return CONTROLLERS[name]
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown flocking controller %r. Available: %s"
             % (name, ", ".join(sorted(CONTROLLERS)))
-        )
+        ) from error
 
 
 def simulate(

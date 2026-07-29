@@ -14,14 +14,13 @@ New code should prefer::
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Callable, List, Optional, Sequence, Tuple
 
 import numpy as np
 
 from ..swarm.coverage import CoverageSimulator, LimitedRangeCoverage, LloydCoverage
-from ..swarm.density import DensityField, GaussianMixtureDensity, UniformDensity
+from ..swarm.density import GaussianMixtureDensity, UniformDensity
 from ..swarm.domain import HemisphereDomain, PlanarDomain
 
 __all__ = [

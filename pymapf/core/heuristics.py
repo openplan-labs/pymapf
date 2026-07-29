@@ -98,8 +98,8 @@ def get_heuristic(heuristic) -> Heuristic:
         return heuristic
     try:
         return HEURISTICS[heuristic]
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown heuristic %r. Available: %s"
             % (heuristic, ", ".join(sorted(HEURISTICS)))
-        )
+        ) from error

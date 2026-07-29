@@ -797,7 +797,7 @@ def scene_outro(ax, t, content):
     cell = 0.030
     origin = (0.5 - grid.width * cell / 2, 0.5 - grid.height * cell * ASPECT / 2)
     draw_map(ax, grid, origin, cell, alpha=0.12)
-    for index, (name, path) in enumerate(content.hero_solution.paths.items()):
+    for index, path in enumerate(content.hero_solution.paths.values()):
         draw_path(ax, grid, origin, cell, path, THEME.agent_color(index), alpha=0.18, width=2.0)
 
     text(ax, 0.5, 0.66, "pip install pymapf", size=46, weight="bold", ha="center",

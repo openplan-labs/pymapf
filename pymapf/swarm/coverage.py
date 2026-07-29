@@ -49,7 +49,7 @@ References
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod  # noqa: F401  (abstractmethod for subclasses)
+from abc import ABC
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Type
 
@@ -131,7 +131,7 @@ class CoverageController(ABC):
         by the sample count and scaled by the domain measure, so costs are
         comparable across domains and resolutions.
         """
-        owner, distances = self.ownership(positions, time)
+        _, distances = self.ownership(positions, time)
         nearest = distances[np.arange(len(self._points)), np.argmin(distances, axis=1)]
         nearest = self._clip_range(nearest)
         weights = self.weights(time)
@@ -198,11 +198,11 @@ def get_coverage(name, **kwargs) -> CoverageController:
         return name
     try:
         cls = _CONTROLLERS[str(name).lower()]
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown coverage controller %r. Available: %s"
             % (name, ", ".join(available_coverage()))
-        )
+        ) from error
     return cls(**kwargs)
 
 

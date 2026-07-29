@@ -214,8 +214,8 @@ def get_neighborhood(name, **kwargs) -> Neighborhood:
         return name
     try:
         return NEIGHBORHOODS[str(name).lower()](**kwargs)
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown neighborhood %r. Available: %s"
             % (name, ", ".join(sorted(NEIGHBORHOODS)))
-        )
+        ) from error

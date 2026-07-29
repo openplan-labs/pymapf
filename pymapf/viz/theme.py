@@ -118,10 +118,10 @@ def get_theme(theme="dark") -> Theme:
         return theme
     try:
         return THEMES[theme]
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown theme %r. Available: %s" % (theme, ", ".join(sorted(THEMES)))
-        )
+        ) from error
 
 
 def apply(theme="dark") -> Theme:

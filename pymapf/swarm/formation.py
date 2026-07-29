@@ -358,11 +358,11 @@ def get_shape(name, **kwargs) -> FormationShape:
         return CustomFormation(name)
     try:
         factory = SHAPES[str(name).lower()]
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown formation shape %r. Available: %s"
             % (name, ", ".join(available_shapes()))
-        )
+        ) from error
     return factory(**kwargs)
 
 

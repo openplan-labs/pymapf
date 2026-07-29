@@ -27,7 +27,8 @@ import time
 from typing import Dict, List, Optional, Sequence
 
 import pymapf
-from pymapf import experimental  # noqa: F401  (registers the x-* solvers)
+from pymapf import experimental  # noqa: F401  # pylint: disable=unused-import
+# ^ imported for its side effect: importing the package registers the x-* solvers.
 from pymapf.core.heuristics import true_distance
 
 SCENARIOS = ("warehouse", "random_obstacles", "maze", "bottleneck", "corner_swap")

@@ -375,7 +375,7 @@ def get_density(name, **kwargs) -> DensityField:
         return _Wrapped()
     try:
         return DENSITIES[str(name).lower()](**kwargs)
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown density %r. Available: %s" % (name, ", ".join(sorted(DENSITIES)))
-        )
+        ) from error

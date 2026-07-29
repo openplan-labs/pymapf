@@ -476,9 +476,9 @@ def build_scenario(name: str, **kwargs) -> Scenario:
     """Build a registered scenario by name, forwarding keyword arguments."""
     try:
         builder = SCENARIO_BUILDERS[name]
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown scenario %r. Available: %s"
             % (name, ", ".join(available_scenarios()))
-        )
+        ) from error
     return builder(**kwargs)
