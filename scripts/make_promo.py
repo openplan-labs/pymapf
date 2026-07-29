@@ -818,65 +818,17 @@ SCENES = [
     (scene_rebuild, 8.0),
     (scene_search, 9.5),
     (scene_execute, 8.5),
-    (scene_swarm, 8.0),
-    (scene_formation, 8.5),
+    (scene_swarm, 9.0),
+    (scene_formation, 9.5),
     (scene_benchmark, 7.5),
     (scene_outro, 5.0),
 ]
 DURATIONS = {}
 
-# One line per scene. Scene lengths are derived from how long these take to
-# say (see scripts/narration.py), so the cut always lands after the sentence.
-NARRATION = {
-    "scene_title": "PyMAPF. Multi agent path finding, rebuilt.",
-    "scene_origin": (
-        "It started as a university project. Three agents, a small room, "
-        "and a planner that mostly worked."
-    ),
-    "scene_rebuild": (
-        "It is now a solver framework. Conflict based search, weighted C B S, "
-        "PIBT, LaCAM, large neighbourhood search. All behind one call."
-    ),
-    "scene_search": (
-        "You can watch it think. Every node the search expands, every conflict "
-        "it finds, streamed live to an observer."
-    ),
-    "scene_execute": (
-        "What comes out is a plan that is conflict free by construction, "
-        "and checked."
-    ),
-    "scene_swarm": (
-        "The other half has no planner at all. Ten flocking laws, one "
-        "interface. The newest needs almost nothing: just the range and "
-        "bearing to its neighbours. And the flock still agrees on a heading "
-        "that nobody sent."
-    ),
-    "scene_formation": (
-        "Formation control asks for a shape. What each agent can measure "
-        "decides which symmetry it can pin down, and the less it senses, the "
-        "longer it takes. The library checks your shape can be held at all, "
-        "before you fly it."
-    ),
-    "scene_benchmark": (
-        "All of it measured, not asserted. Conflict based search is optimal. "
-        "Weighted C B S trades a bounded slice of cost for speed. Prioritized "
-        "planning is fastest, and incomplete."
-    ),
-    "scene_outro": (
-        "PyMAPF. Apache two point oh. A university project, rebuilt."
-    ),
-}
-
 
 # --------------------------------------------------------------------------
 # rendering
 # --------------------------------------------------------------------------
-
-
-def apply_durations(durations):
-    """Replace the scene lengths with ones long enough for the narration."""
-    global SCENES
-    SCENES = [(scene, duration) for (scene, _), duration in zip(SCENES, durations)]
 
 
 def build_animation(content, seconds=None):
@@ -939,31 +891,10 @@ def main() -> int:
     parser.add_argument("--gif", action="store_true", help="also write a looping GIF")
     parser.add_argument("--preview", type=float, default=None, help="render only N seconds")
     parser.add_argument("--dpi", type=int, default=80, help="80 -> 1280x720, 120 -> 1920x1080")
-    parser.add_argument("--no-voice", action="store_true", help="render silent")
     args = parser.parse_args()
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     print("Rendering promo film")
-
-    # The narration is synthesised *first*: scene lengths are derived from how
-    # long each line takes to say, so a sentence can never run past its cut.
-    narrator, clips = None, {}
-    if not args.no_voice:
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        from narration import Narrator
-
-        narrator = Narrator()
-        if narrator.available:
-            print("  synthesising narration...")
-            clips = narrator.synthesise(NARRATION)
-            spoken = [(scene.__name__, minimum) for scene, minimum in SCENES]
-            apply_durations(narrator.scene_durations(spoken, clips))
-            print("  %d lines, %.1fs of speech"
-                  % (len(clips), sum(seconds for _, seconds in clips.values())))
-        else:
-            print("  no voice-over: %s" % narrator.why_unavailable())
-            narrator = None
-
     content = Content()
     figure, animation, frames = build_animation(content, args.preview)
     print("  %d frames at %d fps (%.1fs)" % (frames, FPS, frames / FPS))
@@ -984,28 +915,8 @@ def main() -> int:
         codec="libx264",
         extra_args=["-pix_fmt", "yuv420p", "-preset", "slow", "-movflags", "+faststart"],
     )
-    silent = args.output
-    if narrator and clips and not args.preview:
-        silent = args.output.rsplit(".", 1)[0] + "-silent.mp4"
-    animation.save(silent, writer=writer, dpi=args.dpi)
-    print("  wrote %s in %.0fs" % (silent, time.perf_counter() - started))
-
-    if narrator and clips and not args.preview:
-        print("  mixing narration...")
-        durations = [duration for _, duration in SCENES]
-        names = [(scene.__name__, duration) for scene, duration in SCENES]
-        try:
-            track = narrator.build_track(names, durations, clips)
-            narrator.mux(silent, track, args.output)
-        except Exception as error:
-            # The frames cost minutes; the audio pass costs seconds. Losing the
-            # render because the mux failed is the one outcome worth ruling out.
-            print("  voice-over failed (%s)" % error)
-            print("  keeping the silent render at %s" % silent)
-            return 1
-        os.remove(silent)
-        narrator.cleanup()
-        print("  wrote %s with voice-over" % args.output)
+    animation.save(args.output, writer=writer, dpi=args.dpi)
+    print("  wrote %s in %.0fs" % (args.output, time.perf_counter() - started))
 
     # A poster frame for the <video> element.
     poster = os.path.join(os.path.dirname(args.output), "promo-poster.png")

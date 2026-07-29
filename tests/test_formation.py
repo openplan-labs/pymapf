@@ -737,3 +737,49 @@ def test_the_formation_centre_is_the_swarm_not_the_waypoint():
     state = simulator.initial_state()
     simulator.behavior.reset(state)
     assert np.allclose(simulator.behavior.centre(state), state.centroid)
+
+
+def test_every_shape_accepts_spacing():
+    """`get_shape(name, spacing=...)` has to work for all of them.
+
+    SphereFormation took only `radius`, which made it the one shape the generic
+    constructor could not build, and pushed a special case into every caller.
+    """
+    for name in available_shapes():
+        shape = get_shape(name, spacing=2.0)
+        offsets = shape.centred(9, 3)
+        assert offsets.shape == (9, 3)
+        assert np.all(np.isfinite(offsets))
+
+
+def test_spacing_scales_every_shape():
+    for name in available_shapes():
+        small = np.abs(get_shape(name, spacing=1.0).centred(9, 3)).max()
+        large = np.abs(get_shape(name, spacing=4.0).centred(9, 3)).max()
+        assert large > small * 2, name
+
+
+def test_sphere_radius_follows_from_spacing_but_can_be_given():
+    derived = SphereFormation(spacing=3.0)
+    assert np.linalg.norm(derived.offsets(20, 3), axis=1) == pytest.approx(
+        derived._radius(20)
+    )
+    explicit = SphereFormation(radius=5.0)
+    assert np.linalg.norm(explicit.offsets(20, 3), axis=1) == pytest.approx(5.0)
+    # More agents on the same spacing means a bigger shell.
+    assert derived._radius(40) > derived._radius(10)
+
+
+@pytest.mark.parametrize("name", ["v", "circle", "grid", "cube", "sphere"])
+def test_planar_shapes_reject_one_dimension_with_a_useful_message(name):
+    """The bare IndexError these used to raise said nothing about the cause."""
+    with pytest.raises(ValueError, match="at least 2 dimensions"):
+        get_shape(name).offsets(4, 1)
+    with pytest.raises(ValueError, match="at least 2 dimensions"):
+        get_shape(name).centred(4, 1)
+
+
+def test_a_line_is_defined_on_a_single_axis():
+    offsets = LineFormation(spacing=2.0).centred(4, 1)
+    assert offsets.shape == (4, 1)
+    assert np.all(np.isfinite(offsets))

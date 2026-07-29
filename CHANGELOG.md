@@ -51,12 +51,9 @@ Formation control, and the post-2020 flocking models from the Albani / Ferrante
     isotropic law.
 - `docs/survey.md` gains section 6.2c on formation control, with measured
   convergence times for all four controllers and the three findings below.
-- **A narrated promo film.** `scripts/narration.py` synthesises the voice-over
-  offline with espeak-ng and derives the *scene lengths from the spoken lines*,
-  so a sentence can never run past its cut. Two new scenes cover the swarm side:
-  the minimalistic flocking model, and formation control with the taxonomy
-  table. The film renders silent, with a note, when espeak-ng or ffmpeg is
-  absent.
+- **Two new promo scenes** covering the swarm side: the minimalistic flocking
+  model, and formation control with its taxonomy table. Both draw live
+  simulation output, so the film cannot drift from the library's behaviour.
 
 ### Fixed
 

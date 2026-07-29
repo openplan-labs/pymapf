@@ -104,6 +104,23 @@ class FormationShape(ABC):
 
     name = "abstract"
 
+    #: Fewest spatial dimensions this geometry is defined in. A line exists on
+    #: an axis; a V, a circle or a grid needs a plane to be a shape at all.
+    minimum_dimension = 2
+
+    def _check(self, dimension: int) -> None:
+        """Reject a dimension the geometry is not defined in.
+
+        Without this the shapes that write to a second column raise
+        ``IndexError: index 1 is out of bounds``, which says nothing about what
+        the caller did wrong.
+        """
+        if dimension < self.minimum_dimension:
+            raise ValueError(
+                "%s needs at least %d dimensions, got %d"
+                % (type(self).__name__, self.minimum_dimension, dimension)
+            )
+
     @abstractmethod
     def offsets(self, n: int, dimension: int = 2) -> np.ndarray:
         """``(n, dimension)`` desired positions relative to the centroid."""
@@ -132,12 +149,14 @@ class LineFormation(FormationShape):
     """Agents abreast along one axis -- a sweep line for inspection or search."""
 
     name = "line"
+    minimum_dimension = 1
 
     def __init__(self, spacing: float = 3.0, axis: int = 0):
         self.spacing = spacing
         self.axis = axis
 
     def offsets(self, n: int, dimension: int = 2) -> np.ndarray:
+        self._check(dimension)
         offsets = np.zeros((n, dimension))
         offsets[:, self.axis] = (np.arange(n) - (n - 1) / 2) * self.spacing
         return offsets
@@ -160,6 +179,7 @@ class VFormation(FormationShape):
         self.dihedral = dihedral
 
     def offsets(self, n: int, dimension: int = 2) -> np.ndarray:
+        self._check(dimension)
         offsets = np.zeros((n, dimension))
         for index in range(n):
             rank = (index + 1) // 2          # 0 for the leader, then 1, 1, 2, 2...
@@ -185,6 +205,7 @@ class CircleFormation(FormationShape):
         self.spacing = spacing
 
     def offsets(self, n: int, dimension: int = 2) -> np.ndarray:
+        self._check(dimension)
         # Radius from spacing if not given: chord = 2 r sin(pi/n).
         radius = self.radius
         if radius is None:
@@ -206,6 +227,7 @@ class GridFormation(FormationShape):
         self.columns = columns
 
     def offsets(self, n: int, dimension: int = 2) -> np.ndarray:
+        self._check(dimension)
         columns = self.columns or int(math.ceil(math.sqrt(n)))
         offsets = np.zeros((n, dimension))
         for index in range(n):
@@ -224,6 +246,7 @@ class CubeFormation(FormationShape):
         self.spacing = spacing
 
     def offsets(self, n: int, dimension: int = 2) -> np.ndarray:
+        self._check(dimension)
         if dimension < 3:
             return GridFormation(self.spacing).offsets(n, dimension)
         side = int(math.ceil(n ** (1 / 3)))
@@ -233,22 +256,41 @@ class CubeFormation(FormationShape):
 
 
 class SphereFormation(FormationShape):
-    """Agents on a sphere (Fibonacci lattice) -- a shell around a target."""
+    """Agents on a sphere (Fibonacci lattice) -- a shell around a target.
+
+    Takes ``spacing`` like every other shape, and derives the radius from it
+    when one is not given: ``n`` points spread over ``4 pi r^2`` occupy about
+    ``sqrt(3)/2 s^2`` each under hexagonal packing, so ``r = s sqrt(sqrt(3) n /
+    (8 pi))``. Accepting only ``radius`` here made this the one shape that
+    ``get_shape(name, spacing=...)`` could not construct, and forced every
+    caller into a special case.
+    """
 
     name = "sphere"
 
-    def __init__(self, radius: float = 6.0):
+    def __init__(self, radius: Optional[float] = None, spacing: float = 3.0):
         self.radius = radius
+        self.spacing = spacing
+
+    def _radius(self, n: int) -> float:
+        if self.radius is not None:
+            return self.radius
+        if n < 2:
+            return 0.0
+        return self.spacing * math.sqrt(math.sqrt(3.0) * n / (8 * math.pi))
 
     def offsets(self, n: int, dimension: int = 2) -> np.ndarray:
+        self._check(dimension)
         if dimension < 3:
-            return CircleFormation(radius=self.radius).offsets(n, dimension)
+            return CircleFormation(radius=self._radius(n)).offsets(n, dimension)
         indices = np.arange(n, dtype=float) + 0.5
         z = 1.0 - 2.0 * indices / max(n, 1)
         r = np.sqrt(np.maximum(0.0, 1.0 - z ** 2))
         golden = math.pi * (3.0 - math.sqrt(5.0))
         theta = golden * indices
-        return self.radius * np.stack([r * np.cos(theta), r * np.sin(theta), z], axis=1)
+        return self._radius(n) * np.stack(
+            [r * np.cos(theta), r * np.sin(theta), z], axis=1
+        )
 
 
 class CustomFormation(FormationShape):
@@ -260,6 +302,7 @@ class CustomFormation(FormationShape):
         self._offsets = np.atleast_2d(np.asarray(offsets, dtype=float))
 
     def offsets(self, n: int, dimension: int = 2) -> np.ndarray:
+        self._check(dimension)
         if n > len(self._offsets):
             raise ValueError(
                 "custom formation has %d slots, %d agents asked for one"
@@ -631,7 +674,7 @@ class _FormationBase(Behavior):
         super().__init__(**kwargs)
         shape_kwargs = {}
         if spacing is not None and isinstance(shape, str) and shape in SHAPES:
-            shape_kwargs["spacing" if shape != "sphere" else "radius"] = spacing
+            shape_kwargs["spacing"] = spacing
         self.shape = get_shape(shape, **shape_kwargs)
         self.reassign_every = reassign_every
         self.gain = gain
