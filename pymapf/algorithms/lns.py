@@ -99,7 +99,9 @@ class LargeNeighborhoodSearch(MAPFSolver):
             return self._congestion_neighborhood(paths, rng)
         return self._interaction_neighborhood(paths, rng)
 
-    def _random_neighborhood(self, names: Sequence[str], rng: random.Random) -> List[str]:
+    def _random_neighborhood(
+        self, names: Sequence[str], rng: random.Random
+    ) -> List[str]:
         size = min(self.neighborhood_size, len(names))
         return rng.sample(list(names), size)
 

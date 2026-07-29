@@ -44,7 +44,12 @@ from typing import Optional
 import numpy as np
 
 from .base import Behavior, SwarmState, register_behavior
-from .density import DensityField, GaussianMixtureDensity, balanced_assignment, get_density
+from .density import (
+    DensityField,
+    GaussianMixtureDensity,
+    balanced_assignment,
+    get_density,
+)
 
 __all__ = ["DensityMatching", "MixtureAssignment"]
 
@@ -88,17 +93,25 @@ class DensityMatching(Behavior):
         self.epsilon = epsilon
 
     def _bandwidth(self) -> float:
-        return self.bandwidth if self.bandwidth is not None else self.params.reference_distance
+        return (
+            self.bandwidth
+            if self.bandwidth is not None
+            else self.params.reference_distance
+        )
 
-    def swarm_density(self, state: SwarmState, points: np.ndarray, index: int) -> np.ndarray:
+    def swarm_density(
+        self, state: SwarmState, points: np.ndarray, index: int
+    ) -> np.ndarray:
         """Kernel estimate of the swarm's density at ``points``, from neighbours."""
         neighbours = self.neighbors(state, index)
         sources = state.positions[np.append(neighbours, index).astype(int)]
         h = self._bandwidth()
         offsets = points[:, None, :] - sources[None, :, :]
-        squared = np.sum(offsets ** 2, axis=2)
-        kernel = np.exp(-squared / (2 * h ** 2))
-        return kernel.sum(axis=1) / (len(sources) * (2 * np.pi * h ** 2) ** (state.dimension / 2))
+        squared = np.sum(offsets**2, axis=2)
+        kernel = np.exp(-squared / (2 * h**2))
+        return kernel.sum(axis=1) / (
+            len(sources) * (2 * np.pi * h**2) ** (state.dimension / 2)
+        )
 
     def command(self, state: SwarmState, index: int) -> np.ndarray:
         position = state.positions[index]
@@ -112,12 +125,16 @@ class DensityMatching(Behavior):
             probes[2 * axis + 1, axis] -= delta
 
         target_values = np.maximum(self.target(probes, state.time), self.epsilon)
-        swarm_values = np.maximum(self.swarm_density(state, probes, index), self.epsilon)
+        swarm_values = np.maximum(
+            self.swarm_density(state, probes, index), self.epsilon
+        )
         potential = np.log(target_values) - np.log(swarm_values)
 
         gradient = np.empty(dimension)
         for axis in range(dimension):
-            gradient[axis] = (potential[2 * axis] - potential[2 * axis + 1]) / (2 * delta)
+            gradient[axis] = (potential[2 * axis] - potential[2 * axis + 1]) / (
+                2 * delta
+            )
 
         command = self.gain * gradient
         command -= self.damping * state.velocities[index]
@@ -201,7 +218,9 @@ class MixtureAssignment(Behavior):
         distance = float(np.linalg.norm(offset))
         # Attraction saturates inside one sigma: fill the component, do not
         # collapse onto its mean.
-        strength = self.attraction * np.tanh(max(0.0, distance - sigma) / max(sigma, 1e-6))
+        strength = self.attraction * np.tanh(
+            max(0.0, distance - sigma) / max(sigma, 1e-6)
+        )
         command = strength * offset / max(distance, 1e-9)
         command -= self.damping * state.velocities[index]
 

@@ -24,10 +24,14 @@ FAST_KWARGS = {
 
 
 @pytest.mark.parametrize("algorithm", MODERN)
-@pytest.mark.parametrize("scenario_name", ["random_obstacles", "corner_swap", "empty_room"])
+@pytest.mark.parametrize(
+    "scenario_name", ["random_obstacles", "corner_swap", "empty_room"]
+)
 def test_solutions_are_valid_and_reach_the_goals(algorithm, scenario_name):
     scenario = pymapf.build_scenario(scenario_name, n_agents=6, seed=2)
-    solution = pymapf.solve(scenario.to_problem(), algorithm, **FAST_KWARGS.get(algorithm, {}))
+    solution = pymapf.solve(
+        scenario.to_problem(), algorithm, **FAST_KWARGS.get(algorithm, {})
+    )
     assert solution is not None
     assert solution.is_valid()
     for agent in scenario.agents:
@@ -47,7 +51,9 @@ def test_a_returned_plan_is_always_valid_even_when_solving_is_not_guaranteed(
     What must never happen is a *returned* plan that is invalid.
     """
     scenario = pymapf.build_scenario(scenario_name, n_agents=6, seed=2)
-    solution = pymapf.solve(scenario.to_problem(), algorithm, **FAST_KWARGS.get(algorithm, {}))
+    solution = pymapf.solve(
+        scenario.to_problem(), algorithm, **FAST_KWARGS.get(algorithm, {})
+    )
     if solution is None:
         pytest.skip("%s did not solve this instance, which is allowed" % algorithm)
     assert solution.is_valid()
@@ -90,14 +96,22 @@ def test_pibt_step_never_returns_a_collision():
     names = ["a", "b", "c"]
     positions = {"a": (0, 0), "b": (0, 1), "c": (1, 0)}
     goals = {"a": (0, 1), "b": (0, 0), "c": (3, 3)}  # a and b want to swap
-    distance = lambda name, cell: abs(cell[0] - goals[name][0]) + abs(cell[1] - goals[name][1])
-    result = pibt_step(grid, names, positions, goals, {"a": 3, "b": 2, "c": 1}, distance)
+    distance = lambda name, cell: abs(cell[0] - goals[name][0]) + abs(
+        cell[1] - goals[name][1]
+    )
+    result = pibt_step(
+        grid, names, positions, goals, {"a": 3, "b": 2, "c": 1}, distance
+    )
     assert result is not None
     assert len(set(result.values())) == len(names)  # distinct vertices
     # and no pair traded places
     for name, cell in result.items():
         for other, other_cell in result.items():
-            if name != other and cell == positions[other] and other_cell == positions[name]:
+            if (
+                name != other
+                and cell == positions[other]
+                and other_cell == positions[name]
+            ):
                 pytest.fail("PIBT produced a swap: %s <-> %s" % (name, other))
 
 
@@ -106,7 +120,9 @@ def test_pibt_honours_a_forced_assignment():
     names = ["a", "b"]
     positions = {"a": (0, 0), "b": (2, 2)}
     goals = {"a": (0, 3), "b": (2, 0)}
-    distance = lambda name, cell: abs(cell[0] - goals[name][0]) + abs(cell[1] - goals[name][1])
+    distance = lambda name, cell: abs(cell[0] - goals[name][0]) + abs(
+        cell[1] - goals[name][1]
+    )
     result = pibt_step(
         grid, names, positions, goals, {"a": 2, "b": 1}, distance, forced={"a": (1, 0)}
     )
@@ -117,7 +133,13 @@ def test_pibt_rejects_an_impossible_forced_assignment():
     grid = GridMap([[0] * 4 for _ in range(4)])
     distance = lambda name, cell: 0
     result = pibt_step(
-        grid, ["a"], {"a": (0, 0)}, {"a": (3, 3)}, {"a": 1}, distance, forced={"a": (3, 3)}
+        grid,
+        ["a"],
+        {"a": (0, 0)},
+        {"a": (3, 3)},
+        {"a": 1},
+        distance,
+        forced={"a": (3, 3)},
     )
     assert result is None  # (3,3) is not adjacent to (0,0)
 

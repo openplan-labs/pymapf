@@ -127,7 +127,9 @@ class ConeNeighborhood(Neighborhood):
 
     name = "cone"
 
-    def __init__(self, half_angle: float = np.pi * 0.75, radius: Optional[float] = None):
+    def __init__(
+        self, half_angle: float = np.pi * 0.75, radius: Optional[float] = None
+    ):
         self.half_angle = float(half_angle)
         self.radius = radius
 
@@ -190,7 +192,7 @@ class GaussianKernelNeighborhood(Neighborhood):
             return np.empty(0)
         sigma = self._sigma(params)
         distances = state.distances_from(index)[neighbours]
-        weights = np.exp(-(distances ** 2) / (2 * sigma ** 2))
+        weights = np.exp(-(distances**2) / (2 * sigma**2))
         # Normalised to mean 1: the kernel decides *who matters more*, it does
         # not quietly scale the whole interaction down (which would let
         # self-propulsion outrun cohesion and disperse the flock).

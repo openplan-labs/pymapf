@@ -60,7 +60,11 @@ class DensityField(ABC):
         """Importance summing to 1 over the sample -- a discrete distribution."""
         values = np.asarray(self(points, time), dtype=float)
         total = float(values.sum())
-        return values / total if total > 1e-12 else np.full(len(points), 1.0 / max(1, len(points)))
+        return (
+            values / total
+            if total > 1e-12
+            else np.full(len(points), 1.0 / max(1, len(points)))
+        )
 
     def __repr__(self) -> str:
         return "%s()" % type(self).__name__
@@ -87,7 +91,7 @@ class GaussianDensity(DensityField):
 
     def __call__(self, points: np.ndarray, time: float = 0.0) -> np.ndarray:
         offsets = points - self.mean
-        return self.floor + np.exp(-np.sum(offsets ** 2, axis=1) / (2 * self.sigma ** 2))
+        return self.floor + np.exp(-np.sum(offsets**2, axis=1) / (2 * self.sigma**2))
 
 
 class GaussianMixtureDensity(DensityField):
@@ -128,7 +132,9 @@ class GaussianMixtureDensity(DensityField):
         if len(self.covariances) != self.k:
             raise ValueError("need one covariance per component")
 
-        weights = np.ones(self.k) if weights is None else np.asarray(weights, dtype=float)
+        weights = (
+            np.ones(self.k) if weights is None else np.asarray(weights, dtype=float)
+        )
         if len(weights) != self.k:
             raise ValueError("need one weight per component")
         if np.any(weights < 0):
@@ -137,7 +143,10 @@ class GaussianMixtureDensity(DensityField):
 
         self._inverses = [np.linalg.inv(c) for c in self.covariances]
         self._norms = [
-            1.0 / math.sqrt(((2 * math.pi) ** self.dimension) * max(np.linalg.det(c), 1e-300))
+            1.0
+            / math.sqrt(
+                ((2 * math.pi) ** self.dimension) * max(np.linalg.det(c), 1e-300)
+            )
             for c in self.covariances
         ]
 
@@ -213,7 +222,9 @@ class GaussianMixtureDensity(DensityField):
         rng = np.random.default_rng(seed)
 
         means = points[rng.choice(n, size=k, replace=False)].copy()
-        covariances = [np.cov(points.T) + regularisation * np.eye(dimension) for _ in range(k)]
+        covariances = [
+            np.cov(points.T) + regularisation * np.eye(dimension) for _ in range(k)
+        ]
         weights = np.full(k, 1.0 / k)
 
         for _ in range(iterations):
@@ -271,7 +282,13 @@ class SampledDensity(DensityField):
 
     name = "sampled"
 
-    def __init__(self, points: np.ndarray, values: np.ndarray, power: float = 2.0, floor: float = 0.02):
+    def __init__(
+        self,
+        points: np.ndarray,
+        values: np.ndarray,
+        power: float = 2.0,
+        floor: float = 0.02,
+    ):
         self.points = np.atleast_2d(np.asarray(points, dtype=float))
         self.values = np.asarray(values, dtype=float)
         if len(self.points) != len(self.values):

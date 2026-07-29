@@ -35,7 +35,9 @@ def _as_grid(source) -> GridMap:
         return source
     if isinstance(source, (Scenario, MAPFProblem)):
         return source.grid
-    raise TypeError("expected a GridMap, Scenario or MAPFProblem, got %r" % type(source))
+    raise TypeError(
+        "expected a GridMap, Scenario or MAPFProblem, got %r" % type(source)
+    )
 
 
 def _agents_of(source):
@@ -101,7 +103,9 @@ def plot_grid(source, ax=None, theme="dark", title: str = "", figsize=None):
     return ax
 
 
-def plot_scenario(scenario: Scenario, ax=None, theme="dark", title: Optional[str] = None):
+def plot_scenario(
+    scenario: Scenario, ax=None, theme="dark", title: Optional[str] = None
+):
     """Draw a map with each agent's start (filled) and goal (ring)."""
     resolved = theme_module.apply(theme)
     ax = plot_grid(scenario.grid, ax=ax, theme=resolved)
@@ -182,7 +186,14 @@ def plot_solution(
         ys = [cell[0] + offset for cell in path]
 
         # A wide surface-colored underlay separates crossing rails cleanly.
-        ax.plot(xs, ys, color=resolved.surface, linewidth=4.5, solid_capstyle="round", zorder=2)
+        ax.plot(
+            xs,
+            ys,
+            color=resolved.surface,
+            linewidth=4.5,
+            solid_capstyle="round",
+            zorder=2,
+        )
         ax.plot(
             xs,
             ys,
@@ -311,8 +322,18 @@ def plot_spacetime(
         pane._axinfo["grid"]["linewidth"] = 0.5
 
     # Obstacles as a footprint on the floor of the cube.
-    obstacle_x = [c for r in range(grid.height) for c in range(grid.width) if not grid.is_free((r, c))]
-    obstacle_y = [r for r in range(grid.height) for c in range(grid.width) if not grid.is_free((r, c))]
+    obstacle_x = [
+        c
+        for r in range(grid.height)
+        for c in range(grid.width)
+        if not grid.is_free((r, c))
+    ]
+    obstacle_y = [
+        r
+        for r in range(grid.height)
+        for c in range(grid.width)
+        if not grid.is_free((r, c))
+    ]
     if obstacle_x:
         ax.scatter(
             obstacle_x,
@@ -393,7 +414,9 @@ def plot_timeline(
     horizon = solution.makespan
 
     if ax is None:
-        _, ax = plt.subplots(figsize=(max(5.5, 0.32 * horizon + 2), 0.5 * len(names) + 1.6))
+        _, ax = plt.subplots(
+            figsize=(max(5.5, 0.32 * horizon + 2), 0.5 * len(names) + 1.6)
+        )
     ax.set_facecolor(resolved.surface)
     colors = resolved.color_map(names)
 
@@ -475,7 +498,10 @@ def compare_solutions(
     figure, axes = plt.subplots(
         nrows,
         ncols,
-        figsize=(ncols * max(3.4, grid.width * scale), nrows * max(3.6, grid.height * scale + 0.7)),
+        figsize=(
+            ncols * max(3.4, grid.width * scale),
+            nrows * max(3.6, grid.height * scale + 0.7),
+        ),
         squeeze=False,
     )
 

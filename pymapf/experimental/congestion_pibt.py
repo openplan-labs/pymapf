@@ -159,11 +159,16 @@ class CongestionPIBT(PIBT):
             for name in names:
                 paths[name].append(positions[name])
                 priorities[name] = (
-                    base[name] if positions[name] == goals[name] else priorities[name] + 1
+                    base[name]
+                    if positions[name] == goals[name]
+                    else priorities[name] + 1
                 )
 
         if positions != goals:
-            emit("failed", reason="livelock: %d timesteps without reaching the goals" % horizon)
+            emit(
+                "failed",
+                reason="livelock: %d timesteps without reaching the goals" % horizon,
+            )
             return None
 
         trimmed = {name: _trim(path, goals[name]) for name, path in paths.items()}

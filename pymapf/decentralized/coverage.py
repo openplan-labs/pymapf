@@ -52,7 +52,8 @@ class CoverageParams:
         """The :mod:`pymapf.swarm.coverage` controller these params describe."""
         x0, y0, x1, y1 = self.bounds
         samples = max(
-            64, int(((x1 - x0) / self.resolution + 1) * ((y1 - y0) / self.resolution + 1))
+            64,
+            int(((x1 - x0) / self.resolution + 1) * ((y1 - y0) / self.resolution + 1)),
         )
         common = dict(
             domain=PlanarDomain(self.bounds),
@@ -81,7 +82,7 @@ def gaussian_density(
     EM fitting.
     """
     mixture = GaussianMixtureDensity(
-        means=centres, covariances=[sigma ** 2] * len(centres), floor=0.0
+        means=centres, covariances=[sigma**2] * len(centres), floor=0.0
     )
 
     def density(points: np.ndarray) -> np.ndarray:
@@ -93,13 +94,17 @@ def gaussian_density(
     return density
 
 
-def coverage_cost(positions: np.ndarray, params: Optional[CoverageParams] = None) -> float:
+def coverage_cost(
+    positions: np.ndarray, params: Optional[CoverageParams] = None
+) -> float:
     """Locational cost of a configuration."""
     params = params or CoverageParams()
     return params.controller().cost(np.atleast_2d(np.asarray(positions, dtype=float)))
 
 
-def lloyd_step(positions: np.ndarray, params: Optional[CoverageParams] = None) -> np.ndarray:
+def lloyd_step(
+    positions: np.ndarray, params: Optional[CoverageParams] = None
+) -> np.ndarray:
     """One decentralized Lloyd iteration."""
     params = params or CoverageParams()
     return params.controller().step(np.atleast_2d(np.asarray(positions, dtype=float)))
@@ -120,7 +125,9 @@ def simulate_coverage(
         rng = np.random.default_rng(params.seed)
         x0, y0, x1, y1 = params.bounds
         if spawn == "corner":
-            initial = rng.uniform(0, 0.15, size=(n_agents, 2)) * np.array([x1 - x0, y1 - y0])
+            initial = rng.uniform(0, 0.15, size=(n_agents, 2)) * np.array(
+                [x1 - x0, y1 - y0]
+            )
             initial += np.array([x0, y0]) + 0.5
         else:
             initial = rng.uniform([x0, y0], [x1, y1], size=(n_agents, 2))
@@ -144,7 +151,9 @@ def spherical_lloyd_step(
 ) -> np.ndarray:
     """One Lloyd iteration on a sphere, with geodesic cells and centroids."""
     domain = HemisphereDomain(radius)
-    controller = LloydCoverage(domain=domain, samples=len(samples), gain=gain, max_step=radius)
+    controller = LloydCoverage(
+        domain=domain, samples=len(samples), gain=gain, max_step=radius
+    )
     controller._points = np.asarray(samples, dtype=float)
     if sensing_angle is not None:
         controller = LimitedRangeCoverage(
@@ -183,10 +192,15 @@ def simulate_spherical_coverage(
     result = simulator.run(steps=steps, initial=initial)
     # The historical cost scale was the mean squared arc length times r^2.
     costs = [
-        float(np.mean(np.minimum(
-            domain.distance(controller.points, positions).min(axis=1),
-            sensing_angle * radius if sensing_angle else np.inf,
-        ) ** 2))
+        float(
+            np.mean(
+                np.minimum(
+                    domain.distance(controller.points, positions).min(axis=1),
+                    sensing_angle * radius if sensing_angle else np.inf,
+                )
+                ** 2
+            )
+        )
         for positions in result.history
     ]
     return result.history, costs

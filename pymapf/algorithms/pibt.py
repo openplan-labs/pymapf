@@ -181,7 +181,11 @@ def pibt_step(
         return None
     for name, cell in decided.items():
         other = occupied_now.get(cell)
-        if other is not None and other != name and decided.get(other) == positions[name]:
+        if (
+            other is not None
+            and other != name
+            and decided.get(other) == positions[name]
+        ):
             return None
 
     return dict(decided)
@@ -268,7 +272,9 @@ class PIBT(MAPFSolver):
             for name in names:
                 paths[name].append(positions[name])
                 priorities[name] = (
-                    base[name] if positions[name] == goals[name] else priorities[name] + 1
+                    base[name]
+                    if positions[name] == goals[name]
+                    else priorities[name] + 1
                 )
 
             emit(
@@ -280,7 +286,10 @@ class PIBT(MAPFSolver):
             )
 
         if positions != goals:
-            emit("failed", reason="livelock: %d timesteps without reaching the goals" % horizon)
+            emit(
+                "failed",
+                reason="livelock: %d timesteps without reaching the goals" % horizon,
+            )
             return None
 
         trimmed = {name: _trim(path, goals[name]) for name, path in paths.items()}

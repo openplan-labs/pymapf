@@ -75,7 +75,11 @@ def test_every_solver_runs_on_a_general_graph(algorithm):
         [("a", "b"), ("b", "c"), ("c", "d"), ("d", "a"), ("b", "e")]
     )
     problem = MAPFProblem(graph, [Agent("r1", "a", "c"), Agent("r2", "c", "a")])
-    kwargs = {"heuristic": lambda node, goal: 0.0} if algorithm in ("cbs", "prioritized") else {}
+    kwargs = (
+        {"heuristic": lambda node, goal: 0.0}
+        if algorithm in ("cbs", "prioritized")
+        else {}
+    )
     solution = pymapf.solve(problem, algorithm, **kwargs)
     assert solution is not None
     assert solution.is_valid()
@@ -137,7 +141,9 @@ def test_true_distance_is_exact_and_beats_manhattan_on_a_maze():
     optimal = astar(scenario.grid, agent.start, agent.goal)
     assert heuristic(agent.start, agent.goal) == len(optimal) - 1
     # The maze forces detours, so the exact value must exceed the L1 estimate.
-    manhattan = abs(agent.start[0] - agent.goal[0]) + abs(agent.start[1] - agent.goal[1])
+    manhattan = abs(agent.start[0] - agent.goal[0]) + abs(
+        agent.start[1] - agent.goal[1]
+    )
     assert heuristic(agent.start, agent.goal) >= manhattan
 
 

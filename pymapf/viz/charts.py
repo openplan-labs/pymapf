@@ -230,7 +230,9 @@ def plot_success_rate(report: BenchmarkReport, ax=None, theme="dark", title=None
     ax.set_yticklabels(algorithms, color=resolved.ink_secondary, fontsize=9)
     ax.set_xlim(0, 112)
     ax.set_xticks([0, 25, 50, 75, 100])
-    _style_axes(ax, resolved, xlabel="instances solved (%)", title=title or "Success rate")
+    _style_axes(
+        ax, resolved, xlabel="instances solved (%)", title=title or "Success rate"
+    )
     ax.grid(axis="x", color=resolved.grid, linewidth=0.6)
     ax.grid(axis="y", visible=False)
     return ax

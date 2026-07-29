@@ -207,10 +207,12 @@ class CuckerSmale(Behavior):
         command = np.zeros(state.dimension)
         if len(neighbours):
             offsets = state.positions[neighbours] - state.positions[index]
-            squared = np.sum(offsets ** 2, axis=1)
+            squared = np.sum(offsets**2, axis=1)
             influence = self.strength / np.power(1.0 + squared, self.beta)
             differences = state.velocities[neighbours] - state.velocities[index]
-            command = (influence[:, None] * differences).sum(axis=0) / max(1, len(neighbours))
+            command = (influence[:, None] * differences).sum(axis=0) / max(
+                1, len(neighbours)
+            )
         return self.finalise(command, state, index)
 
 
@@ -276,7 +278,9 @@ class OlfatiSaber(Behavior):
             params.sensing_range, self.range_ratio * params.reference_distance
         )
         zeros = [0.0] * (state.dimension - 1)
-        d_alpha = _sigma_norm(np.array([params.reference_distance] + zeros), self.epsilon)
+        d_alpha = _sigma_norm(
+            np.array([params.reference_distance] + zeros), self.epsilon
+        )
         r_alpha = _sigma_norm(np.array([interaction_range] + zeros), self.epsilon)
 
         for j in neighbours:
@@ -284,9 +288,16 @@ class OlfatiSaber(Behavior):
             sigma_distance = _sigma_norm(offset, self.epsilon)
             direction = offset / math.sqrt(1 + self.epsilon * float(offset @ offset))
             weight = _bump(sigma_distance / r_alpha) if r_alpha > 0 else 0.0
-            command += self.gradient_gain * weight * _action(sigma_distance, d_alpha) * direction
-            command += self.alignment_gain * weight * (
-                state.velocities[j] - state.velocities[index]
+            command += (
+                self.gradient_gain
+                * weight
+                * _action(sigma_distance, d_alpha)
+                * direction
+            )
+            command += (
+                self.alignment_gain
+                * weight
+                * (state.velocities[j] - state.velocities[index])
             )
 
         # Navigational feedback, both terms: position (c1) and velocity (c2).
@@ -356,8 +367,16 @@ class ProximalControl(Behavior):
         command.
         """
         ratio = (self.equilibrium_sigma() / max(distance, 1e-6)) ** self.exponent
-        magnitude = -4 * self.repulsion_gain / max(distance, 1e-6) * (2 * ratio ** 2 - ratio)
-        return float(np.clip(magnitude, -4 * self.params.max_acceleration, self.params.max_acceleration))
+        magnitude = (
+            -4 * self.repulsion_gain / max(distance, 1e-6) * (2 * ratio**2 - ratio)
+        )
+        return float(
+            np.clip(
+                magnitude,
+                -4 * self.params.max_acceleration,
+                self.params.max_acceleration,
+            )
+        )
 
     def _allowance(self, distance: float) -> float:
         """Velocity difference tolerated at this separation (smooth ramp)."""
@@ -385,15 +404,20 @@ class ProximalControl(Behavior):
             difference = state.velocities[j] - state.velocities[index]
             excess = float(np.linalg.norm(difference)) - self._allowance(distance)
             if excess > 0:
-                command += self.alignment_gain * excess * difference / max(
-                    float(np.linalg.norm(difference)), 1e-9
+                command += (
+                    self.alignment_gain
+                    * excess
+                    * difference
+                    / max(float(np.linalg.norm(difference)), 1e-9)
                 )
 
         # Speed regulation toward the cruise speed along the current heading.
         velocity = state.velocities[index]
         speed = float(np.linalg.norm(velocity))
         if speed > 1e-6:
-            command += self.speed_gain * (params.cruise_speed - speed) * (velocity / speed)
+            command += (
+                self.speed_gain * (params.cruise_speed - speed) * (velocity / speed)
+            )
 
         return self.finalise(command, state, index)
 
@@ -456,7 +480,9 @@ class ActiveElastic(Behavior):
 
     def reset(self, state: SwarmState) -> None:
         speeds = np.linalg.norm(state.velocities, axis=1, keepdims=True)
-        headings = np.where(speeds > 1e-6, state.velocities / np.maximum(speeds, 1e-9), 0.0)
+        headings = np.where(
+            speeds > 1e-6, state.velocities / np.maximum(speeds, 1e-9), 0.0
+        )
         # Agents that start at rest need *some* heading; a deterministic fan
         # keeps runs reproducible without pointing them all the same way.
         for i in range(state.n):
@@ -494,7 +520,9 @@ class ActiveElastic(Behavior):
     def command(self, state: SwarmState, index: int) -> np.ndarray:
         heading = self._heading(state, index)
         force = self.elastic_force(state, index)
-        force = force + self.migration(state, index) + self.obstacle_avoidance(state, index)
+        force = (
+            force + self.migration(state, index) + self.obstacle_avoidance(state, index)
+        )
 
         along = float(force @ heading)
         perpendicular = force - along * heading
@@ -581,8 +609,10 @@ class AccelerationFlocking(Behavior):
             weight = float(weights[offset_index]) if len(weights) else 1.0
 
             gap = distance - params.reference_distance
-            softened = self.potential_softening + max(distance - params.separation_distance, 0.0)
-            magnitude = self.potential_gain * gap / (softened ** 2 + 1.0)
+            softened = self.potential_softening + max(
+                distance - params.separation_distance, 0.0
+            )
+            magnitude = self.potential_gain * gap / (softened**2 + 1.0)
             if distance < params.separation_distance:
                 magnitude -= self.separation_gain / max(distance, 0.2) ** 2
             command += weight * magnitude * direction
@@ -734,9 +764,7 @@ class MinimalisticFlocking(ActiveElastic):
         """Signed magnitude of the proximal force: <0 repels, >0 attracts."""
         sigma = max(self.equilibrium_sigma(), 1e-6)
         ratio = (sigma / max(distance, 1e-6)) ** self.exponent
-        magnitude = (
-            -4.0 * self.epsilon / max(distance, 1e-6) * (2.0 * ratio ** 2 - ratio)
-        )
+        magnitude = -4.0 * self.epsilon / max(distance, 1e-6) * (2.0 * ratio**2 - ratio)
         # Finite even at contact: an unbounded command is not executable, and a
         # NaN propagates through the whole swarm.
         bound = 4.0 * self.params.max_acceleration
@@ -886,14 +914,19 @@ class DistributedThreeDimensional(ProximalControl):
             difference = state.velocities[j] - state.velocities[index]
             excess = float(np.linalg.norm(difference)) - self._allowance(distance)
             if excess > 0:
-                command += self.alignment_gain * excess * difference / max(
-                    float(np.linalg.norm(difference)), 1e-9
+                command += (
+                    self.alignment_gain
+                    * excess
+                    * difference
+                    / max(float(np.linalg.norm(difference)), 1e-9)
                 )
 
         velocity = state.velocities[index]
         speed = float(np.linalg.norm(velocity))
         if speed > 1e-6:
-            command += self.speed_gain * (params.cruise_speed - speed) * (velocity / speed)
+            command += (
+                self.speed_gain * (params.cruise_speed - speed) * (velocity / speed)
+            )
 
         # Throttle the vertical axis first, then add downwash: climbing is
         # expensive and worth rationing, but escaping another drone's rotor wake

@@ -86,7 +86,16 @@ class _Constraint:
 class _Node:
     """A search node: one configuration plus its lazily-expanded constraints."""
 
-    __slots__ = ("config", "parent", "g", "h", "order", "tree", "neighbours", "priorities")
+    __slots__ = (
+        "config",
+        "parent",
+        "g",
+        "h",
+        "order",
+        "tree",
+        "neighbours",
+        "priorities",
+    )
 
     def __init__(
         self,
@@ -142,7 +151,9 @@ class LaCAM(MAPFSolver):
 
     # -- helpers ------------------------------------------------------------
     @staticmethod
-    def _transition_cost(a: Configuration, b: Configuration, goals: Configuration) -> int:
+    def _transition_cost(
+        a: Configuration, b: Configuration, goals: Configuration
+    ) -> int:
         """Sum-of-costs increment: an agent parked on its goal is free."""
         cost = 0
         for u, v, g in zip(a, b, goals):
@@ -154,7 +165,9 @@ class LaCAM(MAPFSolver):
         self, problem: MAPFProblem, observer: Optional[Observer] = None
     ) -> Optional[Solution]:
         if not self.anytime:
-            return self._search(problem, observer, seed=self.seed, budget=self.time_limit)
+            return self._search(
+                problem, observer, seed=self.seed, budget=self.time_limit
+            )
 
         # Anytime: repeat the randomised search until the budget is spent and
         # keep the cheapest plan. Restarts beat continuing in place here; see
@@ -164,9 +177,7 @@ class LaCAM(MAPFSolver):
         attempt = 0
         while attempt < 1000:
             elapsed = time.perf_counter() - started
-            remaining = (
-                None if self.time_limit is None else self.time_limit - elapsed
-            )
+            remaining = None if self.time_limit is None else self.time_limit - elapsed
             if remaining is not None and remaining <= 0:
                 break
             per_run = (
@@ -343,7 +354,8 @@ class LaCAM(MAPFSolver):
                 reason=(
                     "time limit (%.3gs) reached" % time_limit
                     if time_limit is not None and runtime > time_limit
-                    else "configuration space exhausted after %d expansions" % expansions
+                    else "configuration space exhausted after %d expansions"
+                    % expansions
                 ),
             )
             return None
@@ -359,7 +371,9 @@ class LaCAM(MAPFSolver):
         )
 
 
-def _priority_order(config: Configuration, goals: Configuration, previous: List[int]) -> List[int]:
+def _priority_order(
+    config: Configuration, goals: Configuration, previous: List[int]
+) -> List[int]:
     """Agents away from their goal come first, keeping the previous order stable.
 
     This mirrors LaCAM's insight that the *order* in which the constraint tree

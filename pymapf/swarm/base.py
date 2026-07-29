@@ -233,12 +233,20 @@ class Behavior(ABC):
             distance = float(np.linalg.norm(offset))
             margin = distance - radius
             if margin < params.sensing_range and distance > 1e-9:
-                push += params.obstacle_gain * offset / (distance * max(margin, 0.2) ** 2)
+                push += (
+                    params.obstacle_gain * offset / (distance * max(margin, 0.2) ** 2)
+                )
         return push
 
-    def finalise(self, command: np.ndarray, state: SwarmState, index: int) -> np.ndarray:
+    def finalise(
+        self, command: np.ndarray, state: SwarmState, index: int
+    ) -> np.ndarray:
         """Add the shared terms and clamp. Every behavior ends with this."""
-        command = command + self.migration(state, index) + self.obstacle_avoidance(state, index)
+        command = (
+            command
+            + self.migration(state, index)
+            + self.obstacle_avoidance(state, index)
+        )
         return limit(command, self.params.max_acceleration)
 
     def __repr__(self) -> str:

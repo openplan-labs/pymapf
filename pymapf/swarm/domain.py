@@ -86,7 +86,9 @@ class Domain(ABC):
             anchor = points[rng.integers(len(points))]
             order = np.argsort(np.linalg.norm(points - anchor, axis=1))
             return self.project(points[order[:n]].copy())
-        return self.project(points[rng.choice(len(points), size=n, replace=False)].copy())
+        return self.project(
+            points[rng.choice(len(points), size=n, replace=False)].copy()
+        )
 
     @property
     def measure(self) -> float:
@@ -102,7 +104,9 @@ class PlanarDomain(Domain):
 
     name = "planar"
 
-    def __init__(self, bounds: Tuple[float, float, float, float] = (0.0, 0.0, 20.0, 20.0)):
+    def __init__(
+        self, bounds: Tuple[float, float, float, float] = (0.0, 0.0, 20.0, 20.0)
+    ):
         self.bounds = tuple(float(b) for b in bounds)
 
     def sample(self, count: int = 2000) -> np.ndarray:
@@ -158,7 +162,7 @@ class DiskDomain(Domain):
 
     @property
     def measure(self) -> float:
-        return math.pi * self.radius ** 2
+        return math.pi * self.radius**2
 
     def __repr__(self) -> str:
         return "DiskDomain(radius=%.3g)" % self.radius
@@ -178,12 +182,10 @@ class SphereDomain(Domain):
         # the poles and biases every centroid computed from them.
         indices = np.arange(count, dtype=float) + 0.5
         z = 1.0 - 2.0 * indices / count
-        r = np.sqrt(np.maximum(0.0, 1.0 - z ** 2))
+        r = np.sqrt(np.maximum(0.0, 1.0 - z**2))
         golden = math.pi * (3.0 - math.sqrt(5.0))
         theta = golden * indices
-        return self.radius * np.stack(
-            [r * np.cos(theta), r * np.sin(theta), z], axis=1
-        )
+        return self.radius * np.stack([r * np.cos(theta), r * np.sin(theta), z], axis=1)
 
     def distance(self, points: np.ndarray, positions: np.ndarray) -> np.ndarray:
         """Great-circle distance -- the only meaningful one on a surface."""
@@ -214,7 +216,7 @@ class SphereDomain(Domain):
 
     @property
     def measure(self) -> float:
-        return 4 * math.pi * self.radius ** 2
+        return 4 * math.pi * self.radius**2
 
     def __repr__(self) -> str:
         return "SphereDomain(radius=%.3g)" % self.radius
@@ -235,12 +237,10 @@ class HemisphereDomain(SphereDomain):
     def sample(self, count: int = 2000) -> np.ndarray:
         indices = np.arange(count, dtype=float) + 0.5
         z = 1.0 - indices / count  # (0, 1] -- upper half only
-        r = np.sqrt(np.maximum(0.0, 1.0 - z ** 2))
+        r = np.sqrt(np.maximum(0.0, 1.0 - z**2))
         golden = math.pi * (3.0 - math.sqrt(5.0))
         theta = golden * indices
-        return self.radius * np.stack(
-            [r * np.cos(theta), r * np.sin(theta), z], axis=1
-        )
+        return self.radius * np.stack([r * np.cos(theta), r * np.sin(theta), z], axis=1)
 
     def project(self, positions: np.ndarray) -> np.ndarray:
         projected = super().project(positions)
@@ -251,7 +251,7 @@ class HemisphereDomain(SphereDomain):
 
     @property
     def measure(self) -> float:
-        return 2 * math.pi * self.radius ** 2
+        return 2 * math.pi * self.radius**2
 
 
 class AnnulusDomain(Domain):
@@ -269,7 +269,7 @@ class AnnulusDomain(Domain):
     def sample(self, count: int = 2000) -> np.ndarray:
         indices = np.arange(count, dtype=float) + 0.5
         fraction = indices / count
-        radii = np.sqrt(self.inner ** 2 + fraction * (self.outer ** 2 - self.inner ** 2))
+        radii = np.sqrt(self.inner**2 + fraction * (self.outer**2 - self.inner**2))
         golden = math.pi * (3.0 - math.sqrt(5.0))
         angles = golden * indices
         return self.centre + np.stack(
@@ -284,7 +284,7 @@ class AnnulusDomain(Domain):
 
     @property
     def measure(self) -> float:
-        return math.pi * (self.outer ** 2 - self.inner ** 2)
+        return math.pi * (self.outer**2 - self.inner**2)
 
 
 class MeshDomain(Domain):

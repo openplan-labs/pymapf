@@ -92,8 +92,10 @@ def sipp(
     """
     constraints = constraints or Constraints()
     h = get_heuristic(heuristic)
-    horizon_bound = max_timestep if max_timestep is not None else _default_horizon(
-        grid, constraints
+    horizon_bound = (
+        max_timestep
+        if max_timestep is not None
+        else _default_horizon(grid, constraints)
     )
 
     interval_cache: Dict[Cell, List[Interval]] = {}
@@ -166,14 +168,22 @@ def sipp(
                     parent[n_state] = state
                     heapq.heappush(
                         heap,
-                        (arrival + h(neighbour, goal), next(tie), arrival, neighbour, n_index),
+                        (
+                            arrival + h(neighbour, goal),
+                            next(tie),
+                            arrival,
+                            neighbour,
+                            n_index,
+                        ),
                     )
     return None
 
 
 def _default_horizon(grid, constraints: Constraints) -> int:
     last_constraint = max(
-        [t for (_, t) in constraints.vertex] + [t for (_, _, t) in constraints.edge] + [0]
+        [t for (_, t) in constraints.vertex]
+        + [t for (_, _, t) in constraints.edge]
+        + [0]
     )
     return grid.free_cells + last_constraint + 1
 

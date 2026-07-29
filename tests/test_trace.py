@@ -58,7 +58,9 @@ def test_prioritized_planning_emits_one_event_per_agent():
 def test_failure_is_reported_with_a_reason():
     # A corridor of length 1 with two agents that must swap has no solution.
     grid = GridMap([[1, 1, 1], [0, 0, 0], [1, 1, 1]])
-    problem = MAPFProblem(grid, [Agent("a", (1, 0), (1, 2)), Agent("b", (1, 2), (1, 0))])
+    problem = MAPFProblem(
+        grid, [Agent("a", (1, 0), (1, 2)), Agent("b", (1, 2), (1, 0))]
+    )
     trace = SearchTrace()
     assert pymapf.solve(problem, "cbs", observer=trace, max_expansions=200) is None
     failures = trace.of_kind("failed")

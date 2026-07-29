@@ -173,7 +173,9 @@ class VFormation(FormationShape):
 
     name = "v"
 
-    def __init__(self, spacing: float = 3.0, sweep: float = math.pi / 4, dihedral: float = 0.0):
+    def __init__(
+        self, spacing: float = 3.0, sweep: float = math.pi / 4, dihedral: float = 0.0
+    ):
         self.spacing = spacing
         self.sweep = sweep
         self.dihedral = dihedral
@@ -182,7 +184,7 @@ class VFormation(FormationShape):
         self._check(dimension)
         offsets = np.zeros((n, dimension))
         for index in range(n):
-            rank = (index + 1) // 2          # 0 for the leader, then 1, 1, 2, 2...
+            rank = (index + 1) // 2  # 0 for the leader, then 1, 1, 2, 2...
             side = 1 if index % 2 else -1
             if index == 0:
                 continue
@@ -209,7 +211,9 @@ class CircleFormation(FormationShape):
         # Radius from spacing if not given: chord = 2 r sin(pi/n).
         radius = self.radius
         if radius is None:
-            radius = self.spacing / (2 * math.sin(math.pi / max(n, 2))) if n > 1 else 0.0
+            radius = (
+                self.spacing / (2 * math.sin(math.pi / max(n, 2))) if n > 1 else 0.0
+            )
         angles = 2 * math.pi * np.arange(n) / max(n, 1)
         offsets = np.zeros((n, dimension))
         offsets[:, 0] = radius * np.cos(angles)
@@ -285,7 +289,7 @@ class SphereFormation(FormationShape):
             return CircleFormation(radius=self._radius(n)).offsets(n, dimension)
         indices = np.arange(n, dtype=float) + 0.5
         z = 1.0 - 2.0 * indices / max(n, 1)
-        r = np.sqrt(np.maximum(0.0, 1.0 - z ** 2))
+        r = np.sqrt(np.maximum(0.0, 1.0 - z**2))
         golden = math.pi * (3.0 - math.sqrt(5.0))
         theta = golden * indices
         return self._radius(n) * np.stack(
@@ -808,7 +812,9 @@ class _FormationBase(Behavior):
         self._graph = [list(map(int, np.flatnonzero(adjacency[i]))) for i in range(n)]
 
         if self.requires_rigidity and not self._warned_rigidity:
-            edges = [(a, b) for a in range(n) for b in range(a + 1, n) if adjacency[a, b]]
+            edges = [
+                (a, b) for a in range(n) for b in range(a + 1, n) if adjacency[a, b]
+            ]
             if not is_infinitesimally_rigid(ordered, edges):
                 self._warned_rigidity = True
                 warnings.warn(
@@ -1003,7 +1009,7 @@ class DistanceFormation(_FormationBase):
             distance = float(np.linalg.norm(offset))
             target = float(desired[index, j])
             if self.potential == "squared":
-                command -= self.gain * (distance ** 2 - target ** 2) * offset
+                command -= self.gain * (distance**2 - target**2) * offset
             elif distance > 1e-6:
                 command -= self.gain * (distance - target) * offset / distance
 
@@ -1069,7 +1075,9 @@ class BearingFormation(_FormationBase):
         for j in neighbors:
             g = bearings[index, j]
             projector = identity - np.outer(g, g)
-            command -= self.gain * projector @ (state.positions[index] - state.positions[j])
+            command -= (
+                self.gain * projector @ (state.positions[index] - state.positions[j])
+            )
         command /= max(1, len(neighbors))
 
         if self.scale_gain:
@@ -1077,7 +1085,9 @@ class BearingFormation(_FormationBase):
             offsets = self.shape.centred(state.n, state.dimension)
             desired_spread = float(np.mean(np.linalg.norm(offsets, axis=1)))
             radial = state.positions[index] - state.centroid
-            spread = float(np.mean(np.linalg.norm(state.positions - state.centroid, axis=1)))
+            spread = float(
+                np.mean(np.linalg.norm(state.positions - state.centroid, axis=1))
+            )
             if spread > 1e-9:
                 command += self.scale_gain * (desired_spread - spread) * radial / spread
 
@@ -1119,9 +1129,7 @@ class LeaderFollower(_FormationBase):
             # leader, and the loop closes on itself and never settles. With no
             # mission a leader simply holds station and lets the team form up
             # around it.
-            return self.finalise(
-                -self.damping * state.velocities[index], state, index
-            )
+            return self.finalise(-self.damping * state.velocities[index], state, index)
 
         # Followers hold their slot relative to the leaders' mean position.
         leader_centre = state.positions[: self.leaders].mean(axis=0)
@@ -1132,8 +1140,10 @@ class LeaderFollower(_FormationBase):
         command -= self.damping * state.velocities[index]
         # Match the leaders' velocity, so the formation travels rather than
         # perpetually catching up.
-        command += self.gain * 0.5 * (
-            state.velocities[: self.leaders].mean(axis=0) - state.velocities[index]
+        command += (
+            self.gain
+            * 0.5
+            * (state.velocities[: self.leaders].mean(axis=0) - state.velocities[index])
         )
 
         for j in self.neighbors(state, index):

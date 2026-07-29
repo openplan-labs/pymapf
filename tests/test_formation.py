@@ -223,9 +223,10 @@ def test_reflection_counts_only_when_the_controller_cannot_see_it():
     grid = get_shape("grid", spacing=2.0)
     skew = grid.centred(6, 2) @ np.array([[1.0, 0.4], [0.0, 1.0]])
     flipped = skew * np.array([1.0, -1.0])
-    assert formation_error(
-        flipped, grid, allow_rotation=True, allow_reflection=True
-    ) <= formation_error(flipped, grid, allow_rotation=True) + 1e-9
+    assert (
+        formation_error(flipped, grid, allow_rotation=True, allow_reflection=True)
+        <= formation_error(flipped, grid, allow_rotation=True) + 1e-9
+    )
 
 
 def test_scale_counts_only_when_the_controller_cannot_see_it():
@@ -306,7 +307,9 @@ def test_the_controllers_are_registered():
     for name in CONTROLLERS + ["formation"]:
         assert name in available_behaviors()
     # "formation" is the alias for the displacement law, not a fifth controller.
-    assert isinstance(SwarmSimulator("formation", n_agents=4).behavior, DisplacementFormation)
+    assert isinstance(
+        SwarmSimulator("formation", n_agents=4).behavior, DisplacementFormation
+    )
 
 
 @pytest.mark.parametrize("controller", CONTROLLERS)
@@ -316,9 +319,10 @@ def test_every_controller_converges_on_a_rigid_planar_shape(controller, shape):
         controller, n_agents=9, dimension=2, shape=shape, spacing=3.0
     )
     errors = []
-    simulator.run(steps=800, observer=lambda step, state: errors.append(
-        simulator.behavior.error(state)
-    ))
+    simulator.run(
+        steps=800,
+        observer=lambda step, state: errors.append(simulator.behavior.error(state)),
+    )
     assert np.all(np.isfinite(errors))
     assert errors[-1] < 0.05 * errors[0]
     assert errors[-1] < 0.1
@@ -331,9 +335,10 @@ def test_every_controller_converges_in_three_dimensions(controller, shape):
         controller, n_agents=8, dimension=3, shape=shape, spacing=3.0
     )
     errors = []
-    simulator.run(steps=800, observer=lambda step, state: errors.append(
-        simulator.behavior.error(state)
-    ))
+    simulator.run(
+        steps=800,
+        observer=lambda step, state: errors.append(simulator.behavior.error(state)),
+    )
     assert errors[-1] < 0.05 * errors[0]
 
 
@@ -354,8 +359,14 @@ def test_the_formation_travels_to_a_waypoint(controller):
         controller, n_agents=9, dimension=2, params=params, shape="v", spacing=3.0
     )
     result = simulator.run(steps=900)
-    start = float(np.linalg.norm(result.history[0].positions.mean(axis=0) - params.migration_point))
-    end = float(np.linalg.norm(result.final.positions.mean(axis=0) - params.migration_point))
+    start = float(
+        np.linalg.norm(
+            result.history[0].positions.mean(axis=0) - params.migration_point
+        )
+    )
+    end = float(
+        np.linalg.norm(result.final.positions.mean(axis=0) - params.migration_point)
+    )
     assert end < 0.25 * start
     assert simulator.behavior.error(result.final) < 0.5
 
@@ -397,9 +408,12 @@ def test_displacement_control_fixes_the_orientation_too():
     result = simulator.run(steps=600)
     # Graded without any rotation freedom at all: a shared frame is exactly
     # what this controller assumes it has.
-    assert formation_error(
-        result.final.positions, simulator.behavior.shape, allow_rotation=False
-    ) < 0.1
+    assert (
+        formation_error(
+            result.final.positions, simulator.behavior.shape, allow_rotation=False
+        )
+        < 0.1
+    )
 
 
 def test_bearing_control_leaves_the_scale_free():
@@ -410,9 +424,13 @@ def test_bearing_control_leaves_the_scale_free():
     shape = simulator.behavior.shape
 
     assert formation_error(result.final.positions, shape, allow_scaling=True) < 0.05
-    achieved = float(np.mean(np.linalg.norm(
-        result.final.positions - result.final.positions.mean(axis=0), axis=1
-    )))
+    achieved = float(
+        np.mean(
+            np.linalg.norm(
+                result.final.positions - result.final.positions.mean(axis=0), axis=1
+            )
+        )
+    )
     desired = float(np.mean(np.linalg.norm(shape.centred(9, 2), axis=1)))
     # Free, not merely unenforced: the size it settles on is its own business.
     assert not np.isclose(achieved, desired, rtol=0.02)
@@ -424,17 +442,19 @@ def test_a_scale_gain_pins_the_size_that_bearings_leave_free():
     )
     result = simulator.run(steps=900)
     shape = simulator.behavior.shape
-    achieved = float(np.mean(np.linalg.norm(
-        result.final.positions - result.final.positions.mean(axis=0), axis=1
-    )))
+    achieved = float(
+        np.mean(
+            np.linalg.norm(
+                result.final.positions - result.final.positions.mean(axis=0), axis=1
+            )
+        )
+    )
     desired = float(np.mean(np.linalg.norm(shape.centred(9, 2), axis=1)))
     assert achieved == pytest.approx(desired, rel=0.15)
 
 
 def test_distance_control_reaches_the_target_distances_exactly():
-    simulator = SwarmSimulator(
-        "distance_formation", n_agents=9, shape="v", spacing=3.0
-    )
+    simulator = SwarmSimulator("distance_formation", n_agents=9, shape="v", spacing=3.0)
     result = simulator.run(steps=1200)
     state = result.final
     desired = simulator.behavior.desired_distances(state)
@@ -450,9 +470,9 @@ def test_distance_control_reaches_the_target_distances_exactly():
 
 def test_distance_control_warns_on_a_target_it_cannot_hold():
     with pytest.warns(RuntimeWarning, match="not infinitesimally rigid"):
-        SwarmSimulator(
-            "distance_formation", n_agents=6, dimension=2, shape="line"
-        ).run(steps=5)
+        SwarmSimulator("distance_formation", n_agents=6, dimension=2, shape="line").run(
+            steps=5
+        )
 
 
 def test_a_rigid_target_raises_no_warning():
@@ -460,9 +480,9 @@ def test_a_rigid_target_raises_no_warning():
 
     with warnings.catch_warnings():
         warnings.simplefilter("error", RuntimeWarning)
-        SwarmSimulator(
-            "distance_formation", n_agents=6, dimension=2, shape="grid"
-        ).run(steps=5)
+        SwarmSimulator("distance_formation", n_agents=6, dimension=2, shape="grid").run(
+            steps=5
+        )
 
 
 def test_the_interaction_graph_is_augmented_until_it_is_rigid():
@@ -492,7 +512,10 @@ def test_the_default_graph_is_complete():
 @pytest.mark.parametrize("potential", ["linear", "squared"])
 def test_both_distance_potentials_share_their_equilibria(potential):
     simulator = SwarmSimulator(
-        "distance_formation", n_agents=9, shape="grid", spacing=3.0,
+        "distance_formation",
+        n_agents=9,
+        shape="grid",
+        spacing=3.0,
         potential=potential,
     )
     result = simulator.run(steps=1200)
@@ -599,7 +622,9 @@ def test_error_is_exact_on_every_shape_under_rotation(name, n):
 
 def test_the_error_metric_is_deterministic():
     shape = get_shape("sphere")
-    placed = shape.centred(10, 3) @ np.linalg.qr(np.arange(9).reshape(3, 3) + np.eye(3))[0]
+    placed = (
+        shape.centred(10, 3) @ np.linalg.qr(np.arange(9).reshape(3, 3) + np.eye(3))[0]
+    )
     first = formation_error(placed, shape, allow_rotation=True)
     assert all(
         formation_error(placed, shape, allow_rotation=True) == first for _ in range(5)
@@ -614,7 +639,8 @@ def test_the_assignment_is_solved_once_per_step_not_once_per_agent():
     calls = []
     original = formation_module.assign_slots
     formation_module.assign_slots = lambda *a, **k: (
-        calls.append(1), original(*a, **k)
+        calls.append(1),
+        original(*a, **k),
     )[1]
     try:
         SwarmSimulator(
@@ -636,7 +662,9 @@ def test_controllers_with_derived_targets_freeze_their_assignment(controller):
     finals = [
         SwarmSimulator(
             controller, n_agents=9, shape="v", spacing=3.0, reassign_every=every
-        ).run(steps=400).final.positions
+        )
+        .run(steps=400)
+        .final.positions
         for every in (5, 10_000)
     ]
     assert np.allclose(finals[0], finals[1])
@@ -674,9 +702,7 @@ def test_the_shape_term_never_drives_the_centroid(controller):
     simulator.behavior.reset(state)
     simulator.behavior._steps = 1
 
-    commands = np.array(
-        [simulator.behavior.command(state, i) for i in range(state.n)]
-    )
+    commands = np.array([simulator.behavior.command(state, i) for i in range(state.n)])
     assert np.abs(commands).max() < 1e5  # nothing clamped
     assert np.allclose(commands.sum(axis=0), 0.0, atol=1e-8)
 
@@ -692,8 +718,11 @@ def test_the_formation_reaches_the_waypoint_without_running_past_it():
     brakes them.
     """
     params = SwarmParams(seed=3, migration_point=(60.0, 45.0))
-    for controller in ["displacement_formation", "distance_formation",
-                       "leader_follower"]:
+    for controller in [
+        "displacement_formation",
+        "distance_formation",
+        "leader_follower",
+    ]:
         simulator = SwarmSimulator(
             controller, n_agents=9, params=params, shape="v", spacing=3.0
         )
@@ -717,11 +746,15 @@ def test_bearing_control_overshoots_the_waypoint_but_settles_on_it():
     heading = np.asarray(params.migration_point, dtype=float) - start
     progress = (centroids - start) @ heading / (heading @ heading)
 
-    assert 1.0 < progress.max() < 1.2          # overshoots, but bounded
-    assert progress[-1] == pytest.approx(1.0, abs=0.01)   # and settles on it
+    assert 1.0 < progress.max() < 1.2  # overshoots, but bounded
+    assert progress[-1] == pytest.approx(1.0, abs=0.01)  # and settles on it
     # More damping trades the overshoot away, confirming what it is.
     damped = SwarmSimulator(
-        "bearing_formation", n_agents=9, params=params, shape="v", spacing=3.0,
+        "bearing_formation",
+        n_agents=9,
+        params=params,
+        shape="v",
+        spacing=3.0,
         damping=6.0,
     ).run(steps=1200)
     damped_centroids = np.array([s.positions.mean(axis=0) for s in damped.history])
@@ -731,7 +764,8 @@ def test_bearing_control_overshoots_the_waypoint_but_settles_on_it():
 
 def test_the_formation_centre_is_the_swarm_not_the_waypoint():
     simulator = SwarmSimulator(
-        "displacement_formation", n_agents=6,
+        "displacement_formation",
+        n_agents=6,
         params=SwarmParams(migration_point=(50.0, 50.0)),
     )
     state = simulator.initial_state()

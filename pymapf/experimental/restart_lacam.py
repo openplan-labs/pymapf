@@ -108,7 +108,10 @@ class RestartLaCAM(MAPFSolver):
                 )
 
         if best is None:
-            emit("failed", reason="no restart found a solution in %.3gs" % (self.time_limit or 0))
+            emit(
+                "failed",
+                reason="no restart found a solution in %.3gs" % (self.time_limit or 0),
+            )
             return None
 
         solution = Solution(

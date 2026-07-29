@@ -26,7 +26,6 @@ from pymapf.decentralized.flocking import (
     simulate,
 )
 
-
 # ------------------------------------------------------------- flocking ---
 
 
@@ -147,7 +146,9 @@ def test_density_pulls_agents_toward_the_hot_spots():
     """
     centre = np.array([3.0, 3.0])
     hot = simulate_coverage(
-        n_agents=4, steps=40, params=CoverageParams(density=gaussian_density([(3.0, 3.0)]), seed=1)
+        n_agents=4,
+        steps=40,
+        params=CoverageParams(density=gaussian_density([(3.0, 3.0)]), seed=1),
     )[0]
     flat = simulate_coverage(n_agents=4, steps=40, params=CoverageParams(seed=1))[0]
     hot_distance = float(np.mean(np.linalg.norm(hot[-1] - centre, axis=1)))
@@ -179,7 +180,13 @@ def test_hemisphere_samples_lie_on_the_upper_half():
 def test_spherical_coverage_spreads_from_a_clustered_start():
     history, costs = simulate_spherical_coverage(n_agents=8, steps=25, seed=1)
     assert costs[-1] < costs[0] * 0.5
-    spread_start = float(np.mean(np.linalg.norm(history[0] - history[0].mean(axis=0), axis=1)))
-    spread_end = float(np.mean(np.linalg.norm(history[-1] - history[-1].mean(axis=0), axis=1)))
+    spread_start = float(
+        np.mean(np.linalg.norm(history[0] - history[0].mean(axis=0), axis=1))
+    )
+    spread_end = float(
+        np.mean(np.linalg.norm(history[-1] - history[-1].mean(axis=0), axis=1))
+    )
     assert spread_end > spread_start
-    assert np.allclose(np.linalg.norm(history[-1], axis=1), 10.0)  # still on the surface
+    assert np.allclose(
+        np.linalg.norm(history[-1], axis=1), 10.0
+    )  # still on the surface

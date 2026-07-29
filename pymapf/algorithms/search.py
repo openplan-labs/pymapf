@@ -95,7 +95,12 @@ def astar(
 ) -> Optional[List]:
     """A* (Hart, Nilsson and Raphael 1968). Optimal for an admissible heuristic."""
     return weighted_astar(
-        graph, start, goal, heuristic=heuristic, weight=1.0, allow_diagonals=allow_diagonals
+        graph,
+        start,
+        goal,
+        heuristic=heuristic,
+        weight=1.0,
+        allow_diagonals=allow_diagonals,
     )
 
 
@@ -133,7 +138,9 @@ def weighted_astar(
             if ng < g.get(neighbour, float("inf")):
                 g[neighbour] = ng
                 parent[neighbour] = node
-                heapq.heappush(heap, (ng + weight * h(neighbour, goal), next(_TIE), neighbour))
+                heapq.heappush(
+                    heap, (ng + weight * h(neighbour, goal), next(_TIE), neighbour)
+                )
     return None
 
 
@@ -199,7 +206,9 @@ def focal_astar(
                 f = ng + h(neighbour, goal)
                 heapq.heappush(open_heap, (f, next(_TIE), neighbour))
                 if f <= bound:
-                    heapq.heappush(focal, (secondary(neighbour, ng), f, next(_TIE), neighbour))
+                    heapq.heappush(
+                        focal, (secondary(neighbour, ng), f, next(_TIE), neighbour)
+                    )
     return None
 
 

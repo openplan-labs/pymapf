@@ -99,14 +99,18 @@ def test_compare_solutions_handles_a_failed_run(scenario, solution):
 
 
 def test_save_writes_a_file(tmp_path, scenario, solution):
-    destination = viz.save(viz.plot_solution(solution, scenario), str(tmp_path / "s.png"))
+    destination = viz.save(
+        viz.plot_solution(solution, scenario), str(tmp_path / "s.png")
+    )
     assert path.getsize(destination) > 0
 
 
 def test_animate_solution_produces_frames(scenario, solution):
     animation = viz.animate_solution(solution, scenario, substeps=2, hold_frames=1)
     # matplotlib renamed save_count -> _save_count; accept either.
-    assert getattr(animation, "_save_count", None) or getattr(animation, "save_count", None)
+    assert getattr(animation, "_save_count", None) or getattr(
+        animation, "save_count", None
+    )
     animation._init_draw()
     artists = animation._func(3)
     assert artists
@@ -114,7 +118,9 @@ def test_animate_solution_produces_frames(scenario, solution):
 
 def test_animation_saves_a_gif(tmp_path, scenario, solution):
     animation = viz.animate_solution(solution, scenario, substeps=1, hold_frames=0)
-    destination = viz.save_animation(animation, str(tmp_path / "plan.gif"), fps=8, dpi=50)
+    destination = viz.save_animation(
+        animation, str(tmp_path / "plan.gif"), fps=8, dpi=50
+    )
     assert path.getsize(destination) > 0
 
 
@@ -188,7 +194,9 @@ def test_live_console_view_reports_failure():
 
     # A one-cell-wide corridor where two agents must swap: no plan exists.
     grid = GridMap([[1, 1, 1], [0, 0, 0], [1, 1, 1]])
-    problem = MAPFProblem(grid, [Agent("a", (1, 0), (1, 2)), Agent("b", (1, 2), (1, 0))])
+    problem = MAPFProblem(
+        grid, [Agent("a", (1, 0), (1, 2)), Agent("b", (1, 2), (1, 0))]
+    )
 
     stream = io.StringIO()
     view = viz.LiveConsoleView(grid, throttle=0.0, color=False, stream=stream)

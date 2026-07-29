@@ -92,7 +92,9 @@ def _build(name: str, params: Optional[FlockParams]):
 
 
 def _controller(name: str) -> Callable:
-    def call(state: SwarmState, index: int, params: Optional[FlockParams] = None) -> np.ndarray:
+    def call(
+        state: SwarmState, index: int, params: Optional[FlockParams] = None
+    ) -> np.ndarray:
         behavior = _build(name, params)
         behavior.reset(state)
         return behavior.command(state, index)
@@ -140,7 +142,11 @@ def simulate(
 ) -> Tuple[List[SwarmState], SwarmMetrics]:
     """Run a flock; returns ``(history, metrics)`` as it always did."""
     params = params or FlockParams()
-    name = controller if isinstance(controller, str) else getattr(controller, "__name__", "acceleration")
+    name = (
+        controller
+        if isinstance(controller, str)
+        else getattr(controller, "__name__", "acceleration")
+    )
     behavior = _build(name, params)
     simulator = SwarmSimulator(
         behavior,

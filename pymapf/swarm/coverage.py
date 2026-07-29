@@ -102,7 +102,9 @@ class CoverageController(ABC):
         gain: float = 1.0,
         max_step: float = 1.5,
     ):
-        self.domain: Domain = get_domain(domain) if domain is not None else PlanarDomain()
+        self.domain: Domain = (
+            get_domain(domain) if domain is not None else PlanarDomain()
+        )
         self.density: DensityField = (
             get_density(density) if density is not None else UniformDensity()
         )
@@ -135,7 +137,7 @@ class CoverageController(ABC):
         nearest = distances[np.arange(len(self._points)), np.argmin(distances, axis=1)]
         nearest = self._clip_range(nearest)
         weights = self.weights(time)
-        return float(np.mean(weights * nearest ** 2) * self.domain.measure)
+        return float(np.mean(weights * nearest**2) * self.domain.measure)
 
     def _clip_range(self, nearest: np.ndarray) -> np.ndarray:
         """Hook for limited-range variants; unlimited by default."""
@@ -286,7 +288,9 @@ class AdaptiveCoverage(CoverageController):
             step = max(1, len(self._points) // 16)
             centres = self._points[::step][:16]
             basis = GaussianMixtureDensity(
-                means=centres, covariances=[self._basis_width()] * len(centres), floor=0.0
+                means=centres,
+                covariances=[self._basis_width()] * len(centres),
+                floor=0.0,
             )
         self.basis = basis
         self.estimate = np.ones(self.basis.k) / self.basis.k
@@ -317,8 +321,8 @@ class AdaptiveCoverage(CoverageController):
             self._samples.append(np.asarray(position, dtype=float))
             self._values.append(float(value))
         if len(self._samples) > self.memory:
-            self._samples = self._samples[-self.memory:]
-            self._values = self._values[-self.memory:]
+            self._samples = self._samples[-self.memory :]
+            self._values = self._values[-self.memory :]
 
         sample_points = np.asarray(self._samples)
         targets = np.asarray(self._values)
@@ -326,7 +330,7 @@ class AdaptiveCoverage(CoverageController):
         # Step size scaled by the basis magnitude: the components are normalised
         # Gaussians whose peak height depends on the domain size, so a fixed
         # rate is either inert or divergent depending on the map.
-        scale = float(np.mean(components ** 2)) + 1e-12
+        scale = float(np.mean(components**2)) + 1e-12
 
         for _ in range(self.steps_per_update):
             predicted = components @ self.estimate
@@ -334,10 +338,12 @@ class AdaptiveCoverage(CoverageController):
             # Projected gradient: a negative importance is not a thing. No
             # renormalisation -- this is a least-squares fit of an unnormalised
             # field, and forcing the weights to sum to one fixes the wrong scale.
-            self.estimate = np.maximum(0.0, self.estimate - (self.rate / scale) * gradient)
+            self.estimate = np.maximum(
+                0.0, self.estimate - (self.rate / scale) * gradient
+            )
 
         residual = components @ self.estimate - targets
-        self.history.append(float(np.mean(residual ** 2)))
+        self.history.append(float(np.mean(residual**2)))
 
 
 @register_coverage("gmm")
@@ -355,7 +361,12 @@ class MixtureCoverage(CoverageController):
     covers neither.
     """
 
-    def __init__(self, mixture: Optional[GaussianMixtureDensity] = None, stickiness: float = 0.7, **kwargs):
+    def __init__(
+        self,
+        mixture: Optional[GaussianMixtureDensity] = None,
+        stickiness: float = 0.7,
+        **kwargs,
+    ):
         if mixture is not None:
             kwargs.setdefault("density", mixture)
         super().__init__(**kwargs)
@@ -393,9 +404,13 @@ class MixtureCoverage(CoverageController):
             # Restrict the quadrature to this component's share of importance,
             # then run an ordinary Lloyd step among its members only.
             share = component_weights[:, component] * self.mixture.weights[component]
-            relevant = share > share.max() * 0.05 if share.max() > 0 else np.ones(len(share), bool)
+            relevant = (
+                share > share.max() * 0.05
+                if share.max() > 0
+                else np.ones(len(share), bool)
+            )
             points = self._points[relevant]
-            local_weights = (weights[relevant] * share[relevant])
+            local_weights = weights[relevant] * share[relevant]
             if not len(points):
                 continue
             distances = self.domain.distance(points, positions[members])
@@ -403,7 +418,9 @@ class MixtureCoverage(CoverageController):
             for local_index, agent in enumerate(members):
                 mask = owner == local_index
                 if np.any(mask):
-                    targets[agent] = self.domain.centroid(points[mask], local_weights[mask])
+                    targets[agent] = self.domain.centroid(
+                        points[mask], local_weights[mask]
+                    )
         return targets
 
 
@@ -481,9 +498,13 @@ class CoverageSimulator:
             self.n_agents, rng, clustered=self.clustered_start
         )
 
-    def run(self, steps: int = 50, initial: Optional[np.ndarray] = None) -> CoverageResult:
+    def run(
+        self, steps: int = 50, initial: Optional[np.ndarray] = None
+    ) -> CoverageResult:
         positions = (
-            np.array(initial, dtype=float) if initial is not None else self.initial_positions()
+            np.array(initial, dtype=float)
+            if initial is not None
+            else self.initial_positions()
         )
         history = [positions.copy()]
         costs = [self.controller.cost(positions, 0.0)]

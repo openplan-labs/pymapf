@@ -219,7 +219,8 @@ def random_obstacles(
         name="random_obstacles",
         grid=GridMap(occupancy),
         agents=_sample_agents(occupancy, n_agents, rng),
-        description="%dx%d grid, %.0f%% random obstacles." % (height, width, 100 * density),
+        description="%dx%d grid, %.0f%% random obstacles."
+        % (height, width, 100 * density),
         meta={"seed": seed, "density": density},
     )
 
@@ -258,7 +259,8 @@ def warehouse(
         name="warehouse",
         grid=GridMap(occupancy),
         agents=_sample_agents(occupancy, n_agents, rng, min_separation=6),
-        description="Warehouse aisles: %d x %d shelf blocks." % (shelf_rows, shelf_cols),
+        description="Warehouse aisles: %d x %d shelf blocks."
+        % (shelf_rows, shelf_cols),
         meta={"seed": seed},
     )
 
@@ -325,12 +327,8 @@ def bottleneck(room: int = 5, corridor: int = 5, n_agents: int = 4, seed: int = 
     for c in range(room + 1, room + corridor + 1):
         occupancy[mid][c] = 0
 
-    left = sorted(
-        (r, c) for r in range(1, height - 1) for c in left_cols
-    )
-    right = sorted(
-        (r, c) for r in range(1, height - 1) for c in right_cols
-    )
+    left = sorted((r, c) for r in range(1, height - 1) for c in left_cols)
+    right = sorted((r, c) for r in range(1, height - 1) for c in right_cols)
     rng = random.Random(seed)
     rng.shuffle(left)
     rng.shuffle(right)
@@ -340,7 +338,9 @@ def bottleneck(room: int = 5, corridor: int = 5, n_agents: int = 4, seed: int = 
     for i in range(per_side):
         agents.append(Agent(_agent_name(len(agents)), left[i], right[i]))
     for i in range(n_agents - per_side):
-        agents.append(Agent(_agent_name(len(agents)), right[per_side + i], left[per_side + i]))
+        agents.append(
+            Agent(_agent_name(len(agents)), right[per_side + i], left[per_side + i])
+        )
 
     return Scenario(
         name="bottleneck",
@@ -377,7 +377,8 @@ def corner_swap(size: int = 9, n_agents: int = 4, seed: int = 0):
     if n_agents > len(ring):
         raise ValueError("corner_swap supports at most %d agents" % len(ring))
     agents = [
-        Agent(_agent_name(i), start, goal) for i, (start, goal) in enumerate(ring[:n_agents])
+        Agent(_agent_name(i), start, goal)
+        for i, (start, goal) in enumerate(ring[:n_agents])
     ]
     return Scenario(
         name="corner_swap",

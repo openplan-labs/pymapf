@@ -76,5 +76,7 @@ def test_expansion_cap_is_honoured():
 
 def test_unsolvable_instance_returns_none():
     grid = GridMap([[1, 1, 1], [0, 0, 0], [1, 1, 1]])
-    problem = MAPFProblem(grid, [Agent("a", (1, 0), (1, 2)), Agent("b", (1, 2), (1, 0))])
+    problem = MAPFProblem(
+        grid, [Agent("a", (1, 0), (1, 2)), Agent("b", (1, 2), (1, 0))]
+    )
     assert WeightedCBS(weight=2.0, max_expansions=200).solve(problem) is None

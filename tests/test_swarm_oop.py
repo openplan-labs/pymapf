@@ -70,7 +70,11 @@ def test_commands_are_finite_and_within_limits(name):
         command = behavior.command(state, index)
         assert command.shape == (2,)
         assert np.all(np.isfinite(command))
-        ceiling = params.max_speed if behavior.output == "velocity" else params.max_acceleration
+        ceiling = (
+            params.max_speed
+            if behavior.output == "velocity"
+            else params.max_acceleration
+        )
         assert np.linalg.norm(command) <= ceiling + 1e-6
 
 
@@ -111,8 +115,11 @@ def test_composite_sums_its_parts():
     expected = a.command(state, 0) + b.command(state, 0)
     assert np.allclose(
         composite.command(state, 0),
-        expected if np.linalg.norm(expected) <= params.max_acceleration
-        else expected * params.max_acceleration / np.linalg.norm(expected),
+        (
+            expected
+            if np.linalg.norm(expected) <= params.max_acceleration
+            else expected * params.max_acceleration / np.linalg.norm(expected)
+        ),
     )
 
 
@@ -164,9 +171,7 @@ def test_cone_neighbourhood_excludes_agents_behind():
 
 
 def test_gaussian_kernel_weights_decay_with_distance():
-    state = SwarmState(
-        np.array([[0.0, 0.0], [1.0, 0.0], [3.0, 0.0]]), np.zeros((3, 2))
-    )
+    state = SwarmState(np.array([[0.0, 0.0], [1.0, 0.0], [3.0, 0.0]]), np.zeros((3, 2)))
     kernel = GaussianKernelNeighborhood(sigma=2.0)
     params = SwarmParams()
     neighbours = kernel.of(state, 0, params)
@@ -200,9 +205,11 @@ def test_a_behavior_accepts_any_neighbourhood():
 
 def test_acceleration_model_sustains_motion_without_a_waypoint():
     """Self-propulsion is the distinguishing feature: the flock keeps flying."""
-    summary = SwarmSimulator(
-        "acceleration", n_agents=16, params=SwarmParams(seed=1)
-    ).run(steps=250).metrics.summary()
+    summary = (
+        SwarmSimulator("acceleration", n_agents=16, params=SwarmParams(seed=1))
+        .run(steps=250)
+        .metrics.summary()
+    )
     assert summary["mean_speed"] > 1.0
     assert summary["order"] > 0.8
     assert summary["steady_collisions"] == 0
@@ -232,17 +239,19 @@ def test_active_elastic_uses_only_relative_positions():
 
 def test_olfati_saber_settles_at_the_reference_spacing():
     params = SwarmParams(seed=1)
-    summary = SwarmSimulator("olfati_saber", n_agents=16, params=params).run(
-        steps=250
-    ).metrics.summary()
+    summary = (
+        SwarmSimulator("olfati_saber", n_agents=16, params=params)
+        .run(steps=250)
+        .metrics.summary()
+    )
     assert summary["min_distance"] > 0.8 * params.reference_distance
     assert summary["steady_collisions"] == 0
 
 
 def test_cucker_smale_reaches_velocity_consensus():
-    result = SwarmSimulator("cucker_smale", n_agents=12, params=SwarmParams(seed=4)).run(
-        steps=200
-    )
+    result = SwarmSimulator(
+        "cucker_smale", n_agents=12, params=SwarmParams(seed=4)
+    ).run(steps=200)
     velocities = result.final.velocities
     spread = np.linalg.norm(velocities - velocities.mean(axis=0), axis=1).mean()
     assert spread < 0.5
@@ -256,14 +265,20 @@ def test_bounds_reflect_agents_back_inside():
 
 
 def test_simulation_is_reproducible():
-    a = SwarmSimulator("acceleration", n_agents=8, params=SwarmParams(seed=9)).run(steps=50)
-    b = SwarmSimulator("acceleration", n_agents=8, params=SwarmParams(seed=9)).run(steps=50)
+    a = SwarmSimulator("acceleration", n_agents=8, params=SwarmParams(seed=9)).run(
+        steps=50
+    )
+    b = SwarmSimulator("acceleration", n_agents=8, params=SwarmParams(seed=9)).run(
+        steps=50
+    )
     assert np.allclose(a.final.positions, b.final.positions)
 
 
 def test_observer_sees_every_step():
     seen = []
-    SwarmSimulator("boids", n_agents=5).run(steps=10, observer=lambda i, s: seen.append(i))
+    SwarmSimulator("boids", n_agents=5).run(
+        steps=10, observer=lambda i, s: seen.append(i)
+    )
     assert seen == list(range(11))
 
 
@@ -317,13 +332,17 @@ def test_unknown_domain_is_rejected():
 
 
 def test_mixture_density_peaks_at_its_components():
-    mixture = GaussianMixtureDensity(means=[(0.0, 0.0), (10.0, 0.0)], covariances=[1.0, 1.0])
+    mixture = GaussianMixtureDensity(
+        means=[(0.0, 0.0), (10.0, 0.0)], covariances=[1.0, 1.0]
+    )
     values = mixture(np.array([[0.0, 0.0], [5.0, 0.0], [10.0, 0.0]]))
     assert values[0] > values[1] and values[2] > values[1]
 
 
 def test_mixture_responsibilities_sum_to_one():
-    mixture = GaussianMixtureDensity(means=[(0.0, 0.0), (10.0, 0.0)], covariances=[2.0, 2.0])
+    mixture = GaussianMixtureDensity(
+        means=[(0.0, 0.0), (10.0, 0.0)], covariances=[2.0, 2.0]
+    )
     responsibilities = mixture.responsibilities(np.array([[1.0, 0.0], [9.0, 0.0]]))
     assert np.allclose(responsibilities.sum(axis=1), 1.0)
     assert responsibilities[0, 0] > 0.5 and responsibilities[1, 1] > 0.5
@@ -347,7 +366,9 @@ def test_mixture_rejects_mismatched_weights():
 def test_time_varying_density_moves_its_peak():
     from pymapf.swarm.density import GaussianDensity
 
-    moving = TimeVaryingDensity(GaussianDensity((0.0, 0.0), sigma=1.0), motion=lambda t: (t, 0.0))
+    moving = TimeVaryingDensity(
+        GaussianDensity((0.0, 0.0), sigma=1.0), motion=lambda t: (t, 0.0)
+    )
     probe = np.array([[5.0, 0.0]])
     assert moving(probe, time=5.0)[0] > moving(probe, time=0.0)[0]
 
@@ -361,7 +382,9 @@ def test_coverage_controllers_are_registered():
     )
 
 
-@pytest.mark.parametrize("domain", ["planar", "disk", "sphere", "hemisphere", "annulus"])
+@pytest.mark.parametrize(
+    "domain", ["planar", "disk", "sphere", "hemisphere", "annulus"]
+)
 def test_lloyd_reduces_cost_on_every_domain(domain):
     result = CoverageSimulator("lloyd", domain=domain, n_agents=8, seed=1).run(steps=30)
     assert result.improvement > 0.3
@@ -377,7 +400,9 @@ def test_limited_range_is_harder_than_unlimited():
 
 
 def test_agents_stay_on_their_domain():
-    result = CoverageSimulator("lloyd", domain="hemisphere", n_agents=6, seed=2).run(steps=20)
+    result = CoverageSimulator("lloyd", domain="hemisphere", n_agents=6, seed=2).run(
+        steps=20
+    )
     final = result.final
     assert np.allclose(np.linalg.norm(final, axis=1), 10.0)
     assert np.all(final[:, 2] >= -1e-6)
@@ -385,7 +410,9 @@ def test_agents_stay_on_their_domain():
 
 def test_density_pulls_the_team_toward_the_hot_spots():
     mixture = GaussianMixtureDensity(means=[(3.0, 3.0)], covariances=[2.0])
-    weighted = CoverageSimulator("lloyd", density=mixture, n_agents=6, seed=1).run(steps=30)
+    weighted = CoverageSimulator("lloyd", density=mixture, n_agents=6, seed=1).run(
+        steps=30
+    )
     flat = CoverageSimulator("lloyd", n_agents=6, seed=1).run(steps=30)
     centre = np.array([3.0, 3.0])
     assert np.mean(np.linalg.norm(weighted.final - centre, axis=1)) < np.mean(
@@ -394,7 +421,9 @@ def test_density_pulls_the_team_toward_the_hot_spots():
 
 
 def test_adaptive_coverage_learns_the_density():
-    truth = GaussianMixtureDensity(means=[(4.0, 4.0), (16.0, 16.0)], covariances=[3.0, 3.0])
+    truth = GaussianMixtureDensity(
+        means=[(4.0, 4.0), (16.0, 16.0)], covariances=[3.0, 3.0]
+    )
     simulator = CoverageSimulator("adaptive", truth=truth, n_agents=8, seed=1)
     result = simulator.run(steps=40)
     errors = result.extras["estimation_error"]
@@ -436,7 +465,9 @@ def test_unknown_coverage_controller_is_rejected():
 def _match_error(positions, mixture, seed=0):
     draws = mixture.sample(2000, np.random.default_rng(seed))
     return float(
-        np.linalg.norm(draws[:, None, :] - positions[None, :, :], axis=2).min(axis=1).mean()
+        np.linalg.norm(draws[:, None, :] - positions[None, :, :], axis=2)
+        .min(axis=1)
+        .mean()
     )
 
 
@@ -445,7 +476,9 @@ def test_distribution_control_matches_the_target(behavior):
     target = GaussianMixtureDensity(
         means=[(-8.0, 0.0), (8.0, 4.0)], covariances=[3.0, 3.0], weights=[0.5, 0.5]
     )
-    kwargs = {"target": target} if behavior == "density_matching" else {"mixture": target}
+    kwargs = (
+        {"target": target} if behavior == "density_matching" else {"mixture": target}
+    )
     result = SwarmSimulator(
         behavior, n_agents=20, params=SwarmParams(seed=2, max_speed=6), **kwargs
     ).run(steps=300)
@@ -459,7 +492,10 @@ def test_mixture_assignment_allocates_roughly_by_weight():
         means=[(-10.0, 0.0), (10.0, 0.0)], covariances=[2.0, 2.0], weights=[0.75, 0.25]
     )
     simulator = SwarmSimulator(
-        "mixture_assignment", n_agents=20, params=SwarmParams(seed=1, max_speed=6), mixture=target
+        "mixture_assignment",
+        n_agents=20,
+        params=SwarmParams(seed=1, max_speed=6),
+        mixture=target,
     )
     simulator.run(steps=200)
     counts = np.bincount(simulator.behavior._assignment, minlength=2)
@@ -477,8 +513,11 @@ def test_density_matching_works_in_three_dimensions():
         means=[(0.0, 0.0, 0.0), (10.0, 0.0, 5.0)], covariances=[2.0, 2.0]
     )
     result = SwarmSimulator(
-        "density_matching", n_agents=12, dimension=3,
-        params=SwarmParams(seed=1, max_speed=6), target=target
+        "density_matching",
+        n_agents=12,
+        dimension=3,
+        params=SwarmParams(seed=1, max_speed=6),
+        target=target,
     ).run(steps=200)
     assert np.all(np.isfinite(result.final.positions))
     assert _match_error(result.final.positions, target) < _match_error(
@@ -499,10 +538,16 @@ def test_minimalistic_flocks_on_range_and_bearing_alone():
     still agrees on a heading nobody transmitted.
     """
     for dimension in (2, 3):
-        summary = SwarmSimulator(
-            "minimalistic", n_agents=20, dimension=dimension,
-            params=SwarmParams(seed=1),
-        ).run(steps=400).metrics.summary()
+        summary = (
+            SwarmSimulator(
+                "minimalistic",
+                n_agents=20,
+                dimension=dimension,
+                params=SwarmParams(seed=1),
+            )
+            .run(steps=400)
+            .metrics.summary()
+        )
         assert summary["order"] > 0.7
         assert summary["mean_speed"] > 0.5
         assert summary["steady_collisions"] == 0
@@ -525,8 +570,8 @@ def test_minimalistic_attraction_is_bounded_and_repulsion_is_not():
     behavior = get_behavior("minimalistic", params=SwarmParams())
     reference = behavior.params.reference_distance
 
-    assert behavior.proximal(reference * 0.5) < 0        # repels when too close
-    assert behavior.proximal(reference * 1.5) > 0        # attracts when too far
+    assert behavior.proximal(reference * 0.5) < 0  # repels when too close
+    assert behavior.proximal(reference * 1.5) > 0  # attracts when too far
     assert behavior.proximal(reference) == pytest.approx(0.0, abs=1e-9)
 
     # Attraction decays with distance; repulsion grows without it.
@@ -550,11 +595,14 @@ def test_the_proximal_family_rests_at_the_reference_distance(name):
 
 def test_distributed_3d_settles_into_a_flatter_lattice_than_an_isotropic_law():
     """Albani et al. (2022): a multirotor swarm should not be a ball."""
+
     def aspect(name):
         params = SwarmParams(seed=1, migration_point=(60.0, 60.0, 10.0))
-        final = SwarmSimulator(
-            name, n_agents=20, dimension=3, params=params
-        ).run(steps=500).final.positions
+        final = (
+            SwarmSimulator(name, n_agents=20, dimension=3, params=params)
+            .run(steps=500)
+            .final.positions
+        )
         offsets = final - final.mean(axis=0)
         horizontal = float(np.sqrt(np.mean(np.sum(offsets[:, :2] ** 2, axis=1))))
         vertical = float(np.sqrt(np.mean(offsets[:, 2] ** 2)))
@@ -570,7 +618,10 @@ def test_the_vertical_weighting_is_capped_by_the_safety_margin():
     behavior = get_behavior("distributed_3d", params=params, vertical_scale=10.0)
     scale = behavior.effective_vertical_scale()
     assert scale < 10.0
-    assert params.reference_distance / scale >= behavior.safety_margin * params.separation_distance
+    assert (
+        params.reference_distance / scale
+        >= behavior.safety_margin * params.separation_distance
+    )
 
 
 def test_the_vertical_weighting_does_nothing_in_the_plane():
@@ -613,14 +664,22 @@ def test_the_proximal_family_is_cohesive_when_it_has_somewhere_to_go():
     environments and for missions with a direction. Give them either and they
     are tight.
     """
-    open_space = SwarmSimulator(
-        "proximal", n_agents=20, dimension=2, params=SwarmParams(seed=1)
-    ).run(steps=400).metrics.summary()
+    open_space = (
+        SwarmSimulator("proximal", n_agents=20, dimension=2, params=SwarmParams(seed=1))
+        .run(steps=400)
+        .metrics.summary()
+    )
 
-    with_goal = SwarmSimulator(
-        "proximal", n_agents=20, dimension=2,
-        params=SwarmParams(seed=1, migration_point=(60.0, 60.0)),
-    ).run(steps=400).metrics.summary()
+    with_goal = (
+        SwarmSimulator(
+            "proximal",
+            n_agents=20,
+            dimension=2,
+            params=SwarmParams(seed=1, migration_point=(60.0, 60.0)),
+        )
+        .run(steps=400)
+        .metrics.summary()
+    )
 
     assert open_space["cohesion"] > 20.0
     assert with_goal["cohesion"] < 8.0

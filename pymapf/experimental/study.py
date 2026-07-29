@@ -28,6 +28,7 @@ from typing import Dict, List, Optional, Sequence
 
 import pymapf
 from pymapf import experimental  # noqa: F401  # pylint: disable=unused-import
+
 # ^ imported for its side effect: importing the package registers the x-* solvers.
 from pymapf.core.heuristics import true_distance
 
@@ -73,7 +74,9 @@ def _ratio_summary(pairs: List[tuple]) -> Dict[str, float]:
 # --------------------------------------------------------------------------
 
 
-def experiment_congestion_pibt(seeds: int, agents: Sequence[int], alphas=(0.0, 0.1, 0.3, 0.6, 1.0, 2.0)):
+def experiment_congestion_pibt(
+    seeds: int, agents: Sequence[int], alphas=(0.0, 0.1, 0.3, 0.6, 1.0, 2.0)
+):
     rows = []
     per_alpha: Dict[float, List[tuple]] = {alpha: [] for alpha in alphas}
     solved: Dict[float, int] = {alpha: 0 for alpha in alphas}
@@ -286,8 +289,10 @@ def experiment_true_distance(seeds: int, budget: float = 5.0):
 def run(scale: str = "quick", output: Optional[str] = None) -> Dict:
     config = SCALES[scale]
     seeds, agents, budget = config["seeds"], config["agents"], config["budget"]
-    print("Experimental study (%s): %d seeds, agents %s, budget %.2gs"
-          % (scale, seeds, agents, budget))
+    print(
+        "Experimental study (%s): %d seeds, agents %s, budget %.2gs"
+        % (scale, seeds, agents, budget)
+    )
 
     results: Dict[str, Dict] = {}
     all_rows: List[Dict] = []
@@ -295,7 +300,10 @@ def run(scale: str = "quick", output: Optional[str] = None) -> Dict:
     for label, runner in (
         ("A. congestion-aware PIBT", lambda: experiment_congestion_pibt(seeds, agents)),
         ("B. delay-targeted LNS", lambda: experiment_delay_lns(seeds, agents, budget)),
-        ("C. LaCAM leftover budget", lambda: experiment_lacam_anytime(seeds, agents, budget)),
+        (
+            "C. LaCAM leftover budget",
+            lambda: experiment_lacam_anytime(seeds, agents, budget),
+        ),
         ("D. true-distance heuristic", lambda: experiment_true_distance(seeds, budget)),
     ):
         print("  running %s..." % label, end="", flush=True)
@@ -327,7 +335,9 @@ def _format(results: Dict) -> str:
         lines.append("\n%s" % label)
         lines.append("-" * len(label))
         if "by_alpha" in summary:
-            lines.append("  alpha   n   mean ratio  median  best   worst  win/tie/loss  solved")
+            lines.append(
+                "  alpha   n   mean ratio  median  best   worst  win/tie/loss  solved"
+            )
             for alpha, stats in summary["by_alpha"].items():
                 if not stats.get("n"):
                     continue
@@ -347,7 +357,9 @@ def _format(results: Dict) -> str:
                     )
                 )
         elif "by_variant" in summary:
-            lines.append("  variant                n   mean ratio  median  win/tie/loss")
+            lines.append(
+                "  variant                n   mean ratio  median  win/tie/loss"
+            )
             for variant, stats in summary["by_variant"].items():
                 if not stats.get("n"):
                     continue

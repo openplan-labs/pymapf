@@ -349,7 +349,9 @@ def animate_search(
     return animation
 
 
-def save(animation, path: str, fps: int = 20, dpi: int = 120, bitrate: int = 3200) -> str:
+def save(
+    animation, path: str, fps: int = 20, dpi: int = 120, bitrate: int = 3200
+) -> str:
     """Write an animation to ``.mp4`` or ``.gif`` and return the path.
 
     MP4 needs ffmpeg on PATH (or ``imageio-ffmpeg`` installed, which we wire up

@@ -168,7 +168,9 @@ class SwarmSimulator:
         """One integration step. Public so a caller can drive the loop itself."""
         commands = self.behavior.commands(state)
         if self.params.noise:
-            commands = commands + self.rng.normal(0, self.params.noise, size=commands.shape)
+            commands = commands + self.rng.normal(
+                0, self.params.noise, size=commands.shape
+            )
 
         nxt = state.copy()
         if getattr(self.behavior, "output", "acceleration") == "velocity":

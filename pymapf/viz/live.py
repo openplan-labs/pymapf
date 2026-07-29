@@ -39,7 +39,9 @@ class LiveSolveView:
         theme: ``"dark"``, ``"light"`` or a :class:`~pymapf.viz.theme.Theme`.
     """
 
-    def __init__(self, source, throttle: float = 0.05, theme="dark", title: str = "Live solve"):
+    def __init__(
+        self, source, throttle: float = 0.05, theme="dark", title: str = "Live solve"
+    ):
         import matplotlib.pyplot as plt
 
         from .plots import _draw_map, _new_axes
@@ -246,7 +248,9 @@ class LiveConsoleView:
                 self.expansions,
             )
             return self._paint(text, theme_module.STATUS["good"])
-        return self._paint("failed: %s" % event.get("reason", ""), theme_module.STATUS["critical"])
+        return self._paint(
+            "failed: %s" % event.get("reason", ""), theme_module.STATUS["critical"]
+        )
 
     def _paint(self, text: str, hex_color: str) -> str:
         return "%s%s%s" % (_ansi(hex_color), text, _RESET) if self.color else text
@@ -295,7 +299,8 @@ class LiveConsoleView:
         lines.append(
             footer
             if footer is not None
-            else "searching · node %d · %d conflicts" % (self.expansions, self.conflicts)
+            else "searching · node %d · %d conflicts"
+            % (self.expansions, self.conflicts)
         )
 
         if self._lines_drawn:

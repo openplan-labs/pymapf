@@ -92,16 +92,34 @@ def main() -> int:
     _done(started, scenario_sheet(args.output))
 
     started = _step("solution")
-    _done(started, viz.save(viz.plot_solution(reference, scenario, theme=THEME), out("solution.png")))
+    _done(
+        started,
+        viz.save(
+            viz.plot_solution(reference, scenario, theme=THEME), out("solution.png")
+        ),
+    )
 
     started = _step("congestion")
-    _done(started, viz.save(viz.plot_congestion(reference, scenario, theme=THEME), out("congestion.png")))
+    _done(
+        started,
+        viz.save(
+            viz.plot_congestion(reference, scenario, theme=THEME), out("congestion.png")
+        ),
+    )
 
     started = _step("space-time")
-    _done(started, viz.save(viz.plot_spacetime(reference, scenario, theme=THEME), out("spacetime.png")))
+    _done(
+        started,
+        viz.save(
+            viz.plot_spacetime(reference, scenario, theme=THEME), out("spacetime.png")
+        ),
+    )
 
     started = _step("timeline")
-    _done(started, viz.save(viz.plot_timeline(reference, theme=THEME), out("timeline.png")))
+    _done(
+        started,
+        viz.save(viz.plot_timeline(reference, theme=THEME), out("timeline.png")),
+    )
 
     started = _step("comparison")
     figure = viz.compare_solutions(
@@ -121,7 +139,10 @@ def main() -> int:
 
     started = _step("search progress")
     traces = {"cbs": trace}
-    _done(started, viz.save(viz.plot_cost_curve(traces, theme=THEME), out("cost-curve.png")))
+    _done(
+        started,
+        viz.save(viz.plot_cost_curve(traces, theme=THEME), out("cost-curve.png")),
+    )
 
     started = _step("benchmark dashboard")
     scaling = scaling_study(
@@ -145,11 +166,17 @@ def main() -> int:
     if not args.fast:
         started = _step("animated plan")
         animation = viz.animate_solution(reference, scenario, theme=THEME, trail=10)
-        _done(started, viz.save_animation(animation, out("animated-plan.gif"), fps=16, dpi=90))
+        _done(
+            started,
+            viz.save_animation(animation, out("animated-plan.gif"), fps=16, dpi=90),
+        )
 
         started = _step("animated search")
         animation = viz.animate_search(trace, scenario, theme=THEME, max_nodes=24)
-        _done(started, viz.save_animation(animation, out("animated-search.gif"), fps=6, dpi=90))
+        _done(
+            started,
+            viz.save_animation(animation, out("animated-search.gif"), fps=6, dpi=90),
+        )
 
     print("done.")
     return 0
