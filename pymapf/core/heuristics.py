@@ -52,6 +52,41 @@ HEURISTICS: Dict[str, Heuristic] = {
 }
 
 
+def true_distance(graph, goal: Cell, allow_diagonals: bool = False) -> Heuristic:
+    """An exact, admissible heuristic: the real distance to ``goal``.
+
+    Runs one backward Dijkstra from the goal and closes over the resulting
+    table, so it costs O(V log V) once and O(1) per query. Unlike the geometric
+    heuristics it accounts for walls, which is what makes it the right default
+    on mazes and the *only* option on a graph without coordinates
+    (:class:`~pymapf.core.graph.ExplicitGraph`).
+
+    Nodes from which the goal is unreachable get ``inf``, which prunes them
+    from any search that uses this heuristic.
+
+    References:
+        The "true distance heuristic" is standard practice in MAPF
+        implementations; see e.g. Sturtevant, N.; Felner, A.; Barrer, M.;
+        Schaeffer, J.; and Burch, N. 2009. *Memory-based heuristics for
+        explicit state spaces.* IJCAI 2009: 609-614.
+    """
+    from ..algorithms.search import distance_table
+
+    table = distance_table(graph, goal, allow_diagonals=allow_diagonals)
+
+    def heuristic(node: Cell, target: Cell) -> float:
+        if target != goal:
+            # The table is goal-specific; fall back rather than lie.
+            raise ValueError(
+                "true_distance heuristic was built for goal %r, queried for %r"
+                % (goal, target)
+            )
+        return float(table.get(node, float("inf")))
+
+    heuristic.goal = goal  # lets callers detect/rebuild a stale table
+    return heuristic
+
+
 def get_heuristic(heuristic) -> Heuristic:
     """Resolve a heuristic from a name or pass through a callable.
 
@@ -63,8 +98,8 @@ def get_heuristic(heuristic) -> Heuristic:
         return heuristic
     try:
         return HEURISTICS[heuristic]
-    except KeyError:
+    except KeyError as error:
         raise ValueError(
             "Unknown heuristic %r. Available: %s"
             % (heuristic, ", ".join(sorted(HEURISTICS)))
-        )
+        ) from error

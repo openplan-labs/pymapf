@@ -11,11 +11,38 @@ On each expansion we find the first conflict in the current joint plan and
 branch by forbidding one of the two involved agents from that (vertex or edge)
 constraint, then replan only that agent. The first conflict-free node is
 returned and is optimal in sum-of-costs.
+
+References
+----------
+* Sharon, G.; Stern, R.; Felner, A.; and Sturtevant, N. R. 2015. *Conflict-based
+  search for optimal multi-agent pathfinding.* Artificial Intelligence 219:
+  40-66.  (Earlier version: AAAI 2012: 563-569.)
+* Boyarski, E.; Felner, A.; Stern, R.; Sharon, G.; Tolpin, D.; Betzalel, O.; and
+  Shimony, S. E. 2015. *ICBS: Improved conflict-based search algorithm for
+  multi-agent pathfinding.* IJCAI 2015: 740-746.  (conflict prioritisation and
+  the meta-agent variant)
+* Boyarski, E.; Felner, A.; Sharon, G.; and Stern, R. 2015. *Don't split, try to
+  work it out: Bypassing conflicts in multi-agent pathfinding.* SOCS 2015:
+  159-162.  (the bypass technique)
+* Felner, A.; Li, J.; Boyarski, E.; Ma, H.; Cohen, L.; Kumar, T. K. S.; and
+  Koenig, S. 2018. *Adding heuristics to conflict-based search for multi-agent
+  path finding.* ICAPS 2018: 83-87.  (CBSH: admissible high-level heuristics)
+* Li, J.; Harabor, D.; Stuckey, P. J.; Ma, H.; and Koenig, S. 2019. *Disjoint
+  splitting for multi-agent path finding with conflict-based search.* ICAPS
+  2019: 279-283.
+* Li, J.; Harabor, D.; Stuckey, P. J.; and Koenig, S. 2021. *Pairwise symmetry
+  reasoning for multi-agent path finding search.* Artificial Intelligence 301:
+  103574.  (corridor and rectangle symmetry breaking)
+* Stern, R.; Sturtevant, N. R.; Felner, A.; Koenig, S.; Ma, H.; Walker, T. T.;
+  Li, J.; Atzmon, D.; Cohen, L.; Kumar, T. K. S.; Boyarski, E.; and Bartak, R.
+  2019. *Multi-agent pathfinding: Definitions, variants, and benchmarks.* SOCS
+  2019: 151-158.  (the problem definitions this implementation follows)
 """
 
 from __future__ import annotations
 
 import heapq
+import time
 from itertools import count
 from typing import Dict, List, Optional
 
@@ -24,20 +51,32 @@ from ..core.solver import (
     Constraints,
     MAPFProblem,
     MAPFSolver,
+    Observer,
     Solution,
+    count_conflicts,
     find_first_conflict,
     register_solver,
 )
+from ..core.trace import _Emitter
 from .space_time_astar import space_time_astar
 
 
 class _Node:
-    __slots__ = ("constraints", "paths", "cost")
+    """A constraint-tree node: constraints, the plan they induce, and its cost.
+
+    ``conflicts`` is the tie-breaker. Among nodes of equal sum-of-costs the one
+    closest to being conflict-free is the one worth expanding, and preferring it
+    is what keeps CBS from breadth-first-ing through a plateau of equal-cost
+    nodes on corridor-heavy maps.
+    """
+
+    __slots__ = ("constraints", "paths", "cost", "conflicts", "_expanded")
 
     def __init__(self, constraints, paths):
         self.constraints: Dict[str, Constraints] = constraints
         self.paths: Dict[str, List] = paths
         self.cost = sum(len(p) - 1 for p in paths.values())
+        self.conflicts = count_conflicts(paths)
 
 
 @register_solver("cbs")
@@ -48,13 +87,27 @@ class ConflictBasedSearch(MAPFSolver):
         heuristic: name or callable for the low-level search.
         max_expansions: safety cap on high-level nodes; returns ``None`` if
             exceeded (guards against pathological/unsolvable instances).
+        time_limit: optional wall-clock budget in seconds. CBS is exponential in
+            the number of conflicts, so on a hard instance "it will finish
+            eventually" is not a useful promise -- a budget turns an unbounded
+            wait into a reported failure. ``None`` means no limit.
     """
 
-    def __init__(self, heuristic="manhattan", max_expansions: int = 10000):
+    def __init__(
+        self,
+        heuristic="manhattan",
+        max_expansions: int = 10000,
+        time_limit: Optional[float] = None,
+    ):
         self.heuristic = heuristic
         self.max_expansions = max_expansions
+        self.time_limit = time_limit
 
-    def solve(self, problem: MAPFProblem) -> Optional[Solution]:
+    def solve(
+        self, problem: MAPFProblem, observer: Optional[Observer] = None
+    ) -> Optional[Solution]:
+        emit = _Emitter(observer)
+        started = time.perf_counter()
         agents = list(problem.agents)
 
         # Root: plan every agent independently, with no constraints.
@@ -63,28 +116,93 @@ class ConflictBasedSearch(MAPFSolver):
         for a in agents:
             path = self._low_level(problem, a.start, a.goal, root_constraints[a.name])
             if path is None:
+                emit("failed", reason="agent %r has no individual path" % a.name)
                 return None
             root_paths[a.name] = path
+            emit(
+                "agent_planned",
+                agent=a.name,
+                path=list(path),
+                cost=len(path) - 1,
+            )
+
+        root = _Node(root_constraints, root_paths)
+        emit("root", agents=[a.name for a in agents], cost=root.cost)
 
         counter = count()
-        open_heap = [(0, next(counter), _Node(root_constraints, root_paths))]
+        open_heap = [(root.cost, root.conflicts, next(counter), root)]
         expansions = 0
 
+        timed_out = False
         while open_heap and expansions < self.max_expansions:
-            _, _, node = heapq.heappop(open_heap)
+            if (
+                self.time_limit is not None
+                and time.perf_counter() - started > self.time_limit
+            ):
+                timed_out = True
+                break
+            _, _, _, node = heapq.heappop(open_heap)
             expansions += 1
+            # The node's paths ride along so an observer can *show* the plan
+            # CBS is currently considering; copying is only paid when observed.
+            emit(
+                "expand",
+                node=expansions,
+                cost=node.cost,
+                open=len(open_heap),
+                paths={n: list(p) for n, p in node.paths.items()} if emit else None,
+            )
 
             conflict = find_first_conflict(node.paths)
             if conflict is None:
-                return Solution(
-                    paths=node.paths, algorithm=self.name, expansions=expansions
+                solution = Solution(
+                    paths=node.paths,
+                    algorithm=self.name,
+                    expansions=expansions,
+                    runtime=time.perf_counter() - started,
                 )
+                emit(
+                    "solved",
+                    cost=solution.sum_of_costs,
+                    makespan=solution.makespan,
+                    expansions=expansions,
+                    paths={n: list(p) for n, p in solution.paths.items()},
+                )
+                return solution
+
+            emit(
+                "conflict",
+                type=conflict.kind,
+                a=conflict.a,
+                b=conflict.b,
+                t=conflict.t,
+                cell=conflict.cell_a,
+            )
 
             for agent_name in self._agents_to_constrain(conflict):
                 child = self._branch(problem, node, conflict, agent_name)
                 if child is not None:
-                    heapq.heappush(open_heap, (child.cost, next(counter), child))
+                    emit(
+                        "branch",
+                        agent=agent_name,
+                        constraint=conflict.kind,
+                        cost=child.cost,
+                    )
+                    heapq.heappush(
+                        open_heap,
+                        (child.cost, child.conflicts, next(counter), child),
+                    )
 
+        if timed_out:
+            reason = "time limit (%.3gs) reached after %d nodes" % (
+                self.time_limit,
+                expansions,
+            )
+        elif expansions >= self.max_expansions:
+            reason = "expansion limit (%d) reached" % self.max_expansions
+        else:
+            reason = "constraint tree exhausted"
+        emit("failed", reason=reason)
         return None
 
     @staticmethod

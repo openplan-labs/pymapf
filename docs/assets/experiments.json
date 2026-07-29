@@ -1,0 +1,154 @@
+{
+  "scale": "quick",
+  "results": {
+    "A. congestion-aware PIBT": {
+      "instances": 36,
+      "by_alpha": {
+        "0.0": {
+          "n": 25,
+          "mean_ratio": 1.0,
+          "median_ratio": 1.0,
+          "best_ratio": 1.0,
+          "worst_ratio": 1.0,
+          "wins": 0,
+          "losses": 0,
+          "ties": 25,
+          "success_rate": 0.6944444444444444
+        },
+        "0.1": {
+          "n": 25,
+          "mean_ratio": 0.940353899732377,
+          "median_ratio": 0.937888198757764,
+          "best_ratio": 0.6666666666666666,
+          "worst_ratio": 1.0778443113772456,
+          "wins": 18,
+          "losses": 5,
+          "ties": 2,
+          "success_rate": 0.7777777777777778
+        },
+        "0.3": {
+          "n": 25,
+          "mean_ratio": 0.940353899732377,
+          "median_ratio": 0.937888198757764,
+          "best_ratio": 0.6666666666666666,
+          "worst_ratio": 1.0778443113772456,
+          "wins": 18,
+          "losses": 5,
+          "ties": 2,
+          "success_rate": 0.7777777777777778
+        },
+        "0.6": {
+          "n": 25,
+          "mean_ratio": 0.940353899732377,
+          "median_ratio": 0.937888198757764,
+          "best_ratio": 0.6666666666666666,
+          "worst_ratio": 1.0778443113772456,
+          "wins": 18,
+          "losses": 5,
+          "ties": 2,
+          "success_rate": 0.7777777777777778
+        },
+        "1.0": {
+          "n": 25,
+          "mean_ratio": 0.940353899732377,
+          "median_ratio": 0.937888198757764,
+          "best_ratio": 0.6666666666666666,
+          "worst_ratio": 1.0778443113772456,
+          "wins": 18,
+          "losses": 5,
+          "ties": 2,
+          "success_rate": 0.7777777777777778
+        },
+        "2.0": {
+          "n": 17,
+          "mean_ratio": 0.9180195423506258,
+          "median_ratio": 0.9310344827586207,
+          "best_ratio": 0.6845238095238095,
+          "worst_ratio": 1.0521739130434782,
+          "wins": 14,
+          "losses": 2,
+          "ties": 1,
+          "success_rate": 0.5555555555555556
+        }
+      }
+    },
+    "B. delay-targeted LNS": {
+      "budget": 0.5,
+      "n": 25,
+      "mean_ratio": 0.9997868435912609,
+      "median_ratio": 1.0,
+      "best_ratio": 0.967032967032967,
+      "worst_ratio": 1.08,
+      "wins": 5,
+      "losses": 2,
+      "ties": 18
+    },
+    "C. LaCAM leftover budget": {
+      "budget": 0.5,
+      "by_variant": {
+        "first solution": {
+          "n": 28,
+          "mean_ratio": 1.0,
+          "median_ratio": 1.0,
+          "best_ratio": 1.0,
+          "worst_ratio": 1.0,
+          "wins": 0,
+          "losses": 0,
+          "ties": 28
+        },
+        "anytime (in-search)": {
+          "n": 28,
+          "mean_ratio": 1.0,
+          "median_ratio": 1.0,
+          "best_ratio": 1.0,
+          "worst_ratio": 1.0,
+          "wins": 0,
+          "losses": 0,
+          "ties": 28
+        },
+        "restarts": {
+          "n": 28,
+          "mean_ratio": 0.8076121864200333,
+          "median_ratio": 0.8959007551240561,
+          "best_ratio": 0.14018691588785046,
+          "worst_ratio": 1.0,
+          "wins": 26,
+          "losses": 0,
+          "ties": 2
+        },
+        "LNS refinement": {
+          "n": 28,
+          "mean_ratio": 0.7862937041719958,
+          "median_ratio": 0.8775432672013508,
+          "best_ratio": 0.12149532710280374,
+          "worst_ratio": 1.0,
+          "wins": 25,
+          "losses": 0,
+          "ties": 3
+        }
+      }
+    },
+    "D. true-distance heuristic": {
+      "runtime": {
+        "n": 17,
+        "mean_ratio": 1.0749160268903817,
+        "median_ratio": 1.1446717101158224,
+        "best_ratio": 0.4929532203874437,
+        "worst_ratio": 1.3943647737636122,
+        "wins": 5,
+        "losses": 12,
+        "ties": 0
+      },
+      "expansions": {
+        "n": 17,
+        "mean_ratio": 0.9841460747867921,
+        "median_ratio": 1.0,
+        "best_ratio": 0.5,
+        "worst_ratio": 1.2304832713754648,
+        "wins": 1,
+        "losses": 1,
+        "ties": 15
+      }
+    }
+  }
+}
