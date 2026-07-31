@@ -72,9 +72,13 @@ class EvaluationResult:
                 if any(m is not None for m in self.makespans)
                 else float("nan")
             ),
-            "mean_collisions": float(np.mean(self.collisions)) if self.collisions else 0.0,
+            "mean_collisions": (
+                float(np.mean(self.collisions)) if self.collisions else 0.0
+            ),
             "mean_runtime": float(np.mean(self.runtimes)) if self.runtimes else 0.0,
-            "suboptimality": float(np.mean(self.ratios)) if self.ratios else float("nan"),
+            "suboptimality": (
+                float(np.mean(self.ratios)) if self.ratios else float("nan")
+            ),
         }
 
     def __repr__(self) -> str:
@@ -87,7 +91,9 @@ class EvaluationResult:
         )
 
 
-def rollout(env: MAPFEnv, policy, deterministic: bool = True, seed: Optional[int] = None):
+def rollout(
+    env: MAPFEnv, policy, deterministic: bool = True, seed: Optional[int] = None
+):
     """Run one episode under ``policy``; return its :class:`Solution` and summary.
 
     ``policy`` is anything with ``act(observations) -> {agent: action}``, which
@@ -231,7 +237,10 @@ def compare(
     """
     rows: List[Dict[str, float]] = []
     labelled = {
-        ("%s (%s)" % (name, mode) if len(modes) > 1 else name): (policy, mode == "greedy")
+        ("%s (%s)" % (name, mode) if len(modes) > 1 else name): (
+            policy,
+            mode == "greedy",
+        )
         for name, policy in policies.items()
         for mode in modes
     }

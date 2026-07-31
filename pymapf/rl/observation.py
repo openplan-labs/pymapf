@@ -112,7 +112,9 @@ class LocalWindow(ObservationEncoder):
 
     @property
     def flat_size(self) -> int:
-        return self.channels * self.size * self.size + (3 if self.include_goal_vector else 0)
+        return self.channels * self.size * self.size + (
+            3 if self.include_goal_vector else 0
+        )
 
     def space(self, env) -> Box:
         return Box(low=-1.0, high=1.0, shape=(self.flat_size,))
@@ -125,13 +127,9 @@ class LocalWindow(ObservationEncoder):
         window = np.zeros((self.channels, size, size), dtype=np.float32)
 
         others = {
-            position: name
-            for name, position in env.positions.items()
-            if name != agent
+            position: name for name, position in env.positions.items() if name != agent
         }
-        other_goals = {
-            env.goals[name] for name in env.possible_agents if name != agent
-        }
+        other_goals = {env.goals[name] for name in env.possible_agents if name != agent}
 
         for dr in range(-self.radius, self.radius + 1):
             for dc in range(-self.radius, self.radius + 1):
@@ -157,7 +155,9 @@ class LocalWindow(ObservationEncoder):
         delta_col = goal[1] - col
         distance = float(np.hypot(delta_row, delta_col))
         if distance > 1e-9:
-            bearing = np.array([delta_row / distance, delta_col / distance], dtype=np.float32)
+            bearing = np.array(
+                [delta_row / distance, delta_col / distance], dtype=np.float32
+            )
         else:
             bearing = np.zeros(2, dtype=np.float32)
         # Normalised by the grid diagonal so the scale is comparable across maps.

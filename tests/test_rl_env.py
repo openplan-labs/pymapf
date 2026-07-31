@@ -256,13 +256,13 @@ def test_a_solved_episode_matches_the_planner_cost_convention():
     env = MAPFEnv(problem, max_steps=20)
     env.reset(seed=0)
     env.step({"A": RIGHT})
-    env.step({"A": RIGHT})          # arrives at t=2
+    env.step({"A": RIGHT})  # arrives at t=2
     for _ in range(5):
         if env.agents:
             env.step({"A": STAY})
 
     solution = env.solution()
-    assert solution.sum_of_costs == 2      # not 7
+    assert solution.sum_of_costs == 2  # not 7
     assert solution.paths["A"] == [(1, 1), (1, 2), (1, 3)]
     optimal = pymapf.solve(problem, "cbs")
     assert solution.sum_of_costs == optimal.sum_of_costs
@@ -315,7 +315,7 @@ def test_the_local_window_marks_walls_and_the_map_edge():
     env.reset(seed=0)
     encoder = env.encoder
     observation = encoder.encode(env, "A")
-    obstacles = observation[: encoder.size ** 2].reshape(encoder.size, encoder.size)
+    obstacles = observation[: encoder.size**2].reshape(encoder.size, encoder.size)
     # A sits at (1,1) in a 3x5 grid: everything above and below is wall.
     assert obstacles[0, 1] == 1.0
     assert obstacles[2, 1] == 1.0
@@ -412,9 +412,7 @@ def test_shaping_is_potential_based_so_a_round_trip_nets_out():
 
 
 def test_unreachable_cells_do_not_produce_infinities():
-    grid = pymapf.GridMap(
-        [[1, 1, 1, 1, 1], [1, 0, 1, 0, 1], [1, 1, 1, 1, 1]]
-    )
+    grid = pymapf.GridMap([[1, 1, 1, 1, 1], [1, 0, 1, 0, 1], [1, 1, 1, 1, 1]])
     problem = pymapf.MAPFProblem(grid, [pymapf.Agent("A", (1, 1), (1, 1))])
     reward = ShapedReward()
     env = MAPFEnv(problem, reward=reward)
@@ -488,7 +486,12 @@ def test_every_vector_worker_gets_its_own_reward_function():
     from pymapf.rl import VectorMAPFEnv
 
     template = MAPFEnv(
-        "random_obstacles", height=10, width=10, n_agents=2, density=0.15, reward="shaped"
+        "random_obstacles",
+        height=10,
+        width=10,
+        n_agents=2,
+        density=0.15,
+        reward="shaped",
     )
     vector = VectorMAPFEnv(template.respawn, n=4, seed=0)
     identities = {id(worker.reward_function) for worker in vector.envs}

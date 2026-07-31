@@ -113,7 +113,9 @@ class RolloutBuffer:
         self.values = np.zeros((steps, streams), dtype=np.float32)
         self._cursor = 0
 
-    def add(self, observations, critic_inputs, actions, log_probs, rewards, dones, values):
+    def add(
+        self, observations, critic_inputs, actions, log_probs, rewards, dones, values
+    ):
         t = self._cursor
         self.observations[t] = observations
         self.critic_inputs[t] = critic_inputs
@@ -138,7 +140,9 @@ class RolloutBuffer:
         returns = advantages + self.values
         flat = {
             "observations": self.observations.reshape(-1, self.observations.shape[-1]),
-            "critic_inputs": self.critic_inputs.reshape(-1, self.critic_inputs.shape[-1]),
+            "critic_inputs": self.critic_inputs.reshape(
+                -1, self.critic_inputs.shape[-1]
+            ),
             "actions": self.actions.reshape(-1),
             "log_probs": self.log_probs.reshape(-1),
             "advantages": advantages.reshape(-1),
@@ -232,10 +236,16 @@ class PPOTrainer:
     def _stack(self, observations: Sequence[Dict[str, np.ndarray]]) -> np.ndarray:
         """``[envs * agents, obs_dim]`` in a fixed, reproducible order."""
         return np.stack(
-            [observation[agent] for observation in observations for agent in self.agents]
+            [
+                observation[agent]
+                for observation in observations
+                for agent in self.agents
+            ]
         )
 
-    def _critic_inputs(self, observations: Sequence[Dict[str, np.ndarray]]) -> np.ndarray:
+    def _critic_inputs(
+        self, observations: Sequence[Dict[str, np.ndarray]]
+    ) -> np.ndarray:
         if not self.centralized_critic:
             return self._stack(observations)
         # One global state per environment, repeated for each of its agents:
@@ -256,12 +266,15 @@ class PPOTrainer:
             index = 0
             for _ in range(self.vector.num_envs):
                 per_env.append(
-                    {agent: int(actions[index + offset]) for offset, agent in enumerate(self.agents)}
+                    {
+                        agent: int(actions[index + offset])
+                        for offset, agent in enumerate(self.agents)
+                    }
                 )
                 index += len(self.agents)
 
-            next_observations, rewards, terminations, truncations, infos = self.vector.step(
-                per_env
+            next_observations, rewards, terminations, truncations, infos = (
+                self.vector.step(per_env)
             )
             flat_rewards = np.array(
                 [
@@ -274,7 +287,8 @@ class PPOTrainer:
             flat_dones = np.array(
                 [
                     float(
-                        terminations[e].get(agent, False) or truncations[e].get(agent, False)
+                        terminations[e].get(agent, False)
+                        or truncations[e].get(agent, False)
                     )
                     for e in range(self.vector.num_envs)
                     for agent in self.agents
@@ -304,7 +318,9 @@ class PPOTrainer:
                     self._solved.append(1.0 if summary["solved"] else 0.0)
                     break
 
-    def learn(self, total_steps: int = 100_000, log_every: int = 10, verbose: bool = False):
+    def learn(
+        self, total_steps: int = 100_000, log_every: int = 10, verbose: bool = False
+    ):
         """Train for approximately ``total_steps`` environment-agent steps."""
         observations = self.vector.reset()
         started = time.perf_counter()
@@ -325,7 +341,11 @@ class PPOTrainer:
                 elapsed=time.perf_counter() - started,
             )
             self.history.append(record)
-            if self.keep_best and len(recent) >= 50 and record["solved"] > self.best_score:
+            if (
+                self.keep_best
+                and len(recent) >= 50
+                and record["solved"] > self.best_score
+            ):
                 self.best_score = record["solved"]
                 self.best = self.policy.state_dict()
             if verbose and iteration % log_every == 0:
@@ -377,12 +397,17 @@ class PPOTrainer:
                     entropy_coefficient=self.entropy_coefficient,
                     max_grad_norm=self.max_grad_norm,
                 )
-            if self.target_kl is not None and last.get("approx_kl", 0.0) > self.target_kl:
+            if (
+                self.target_kl is not None
+                and last.get("approx_kl", 0.0) > self.target_kl
+            ):
                 break
         return last
 
     # ------------------------------------------------------------------
-    def act(self, observations: Dict[str, np.ndarray], deterministic: bool = True) -> Dict[str, int]:
+    def act(
+        self, observations: Dict[str, np.ndarray], deterministic: bool = True
+    ) -> Dict[str, int]:
         """Greedy (or sampled) joint action -- the deployment interface."""
         agents = list(observations)
         stacked = np.stack([observations[agent] for agent in agents])
@@ -393,7 +418,9 @@ class PPOTrainer:
         import pickle
 
         with open(path, "wb") as handle:
-            pickle.dump({"algorithm": self.name, "state": self.policy.state_dict()}, handle)
+            pickle.dump(
+                {"algorithm": self.name, "state": self.policy.state_dict()}, handle
+            )
 
     def load(self, path: str) -> None:
         import pickle

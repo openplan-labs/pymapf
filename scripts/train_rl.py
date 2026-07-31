@@ -150,7 +150,10 @@ def main() -> int:
     parser.add_argument("--only", default=None, help="run one family by name")
     args = parser.parse_args()
 
-    print("PyMAPF RL benchmark  (backend=%s, %d steps/algorithm)" % (args.backend, args.steps))
+    print(
+        "PyMAPF RL benchmark  (backend=%s, %d steps/algorithm)"
+        % (args.backend, args.steps)
+    )
     results = []
     for family, kwargs in SETTINGS:
         if args.only and family != args.only:
@@ -163,7 +166,11 @@ def main() -> int:
         os.makedirs(os.path.dirname(args.output), exist_ok=True)
         with open(args.output, "w") as handle:
             json.dump(
-                {"settings": results, "config": vars(args), "version": pymapf.__version__},
+                {
+                    "settings": results,
+                    "config": vars(args),
+                    "version": pymapf.__version__,
+                },
                 handle,
                 indent=2,
             )

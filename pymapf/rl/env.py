@@ -138,7 +138,9 @@ class MAPFEnv:
         self.encoder: ObservationEncoder = get_observation(
             observation, **(observation_kwargs or {})
         )
-        self.reward_function: RewardFunction = get_reward(reward, **(reward_kwargs or {}))
+        self.reward_function: RewardFunction = get_reward(
+            reward, **(reward_kwargs or {})
+        )
         self._max_steps = max_steps
         self._random = np.random.default_rng(seed)
         self._episode = 0
@@ -359,7 +361,7 @@ class MAPFEnv:
             if delta == (0, 0):
                 intended[agent] = current
             elif not self.grid.is_free(target):
-                intended[agent] = current          # walls refuse the move
+                intended[agent] = current  # walls refuse the move
                 blocked[agent] = True
             elif self.allow_diagonals and delta[0] and delta[1]:
                 # Corner-cutting uses the same rule as the planners' neighbours.
@@ -497,7 +499,10 @@ class MAPFEnv:
     def render(self, mode: str = "human") -> str:
         """An ASCII frame. Lowercase marks an agent standing on its goal."""
         canvas = [
-            ["#" if not self.grid.is_free((r, c)) else "." for c in range(self.grid.width)]
+            [
+                "#" if not self.grid.is_free((r, c)) else "."
+                for c in range(self.grid.width)
+            ]
             for r in range(self.grid.height)
         ]
         for index, agent in enumerate(self.possible_agents):

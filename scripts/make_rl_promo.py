@@ -75,7 +75,10 @@ class Content:
         self.curve = [
             (record["steps"], record["solved"]) for record in self.trainer.history
         ]
-        print("     %.0f steps/s, best %.0f%% solved" % (self.rate, 100 * self.trainer.best_score))
+        print(
+            "     %.0f steps/s, best %.0f%% solved"
+            % (self.rate, 100 * self.trainer.best_score)
+        )
 
         # The centrepiece: one instance, one set of weights, two action modes.
         print("  hunting for an instance that separates greedy from sampled...")
@@ -133,7 +136,7 @@ class Content:
         point lands faster when one side finishes while the other is still
         going nowhere.
         """
-        best, best_length = None, 10 ** 9
+        best, best_length = None, 10**9
         for seed in range(60):
             if self._solved(seed, True):
                 continue
@@ -180,7 +183,9 @@ class Content:
             collisions = blocks = 0
             while self.env.agents:
                 actions = self.trainer.act(observations, deterministic=True)
-                observations, _, terminations, truncations, infos = self.env.step(actions)
+                observations, _, terminations, truncations, infos = self.env.step(
+                    actions
+                )
                 collisions += sum(info["collided"] for info in infos.values())
                 blocks += sum(info["blocked"] for info in infos.values())
                 if any(terminations.values()) or any(truncations.values()):
@@ -246,7 +251,10 @@ def board(ax, grid, box, positions, goals, alpha=1.0, trail=None, halo=None):
 
     def xy(cell_rc):
         row, col = cell_rc
-        return ox + (col + 0.5) * cell, oy + (grid.height - 1 - row + 0.5) * cell * ASPECT
+        return (
+            ox + (col + 0.5) * cell,
+            oy + (grid.height - 1 - row + 0.5) * cell * ASPECT,
+        )
 
     for row in range(grid.height):
         for col in range(grid.width):
@@ -265,26 +273,57 @@ def board(ax, grid, box, positions, goals, alpha=1.0, trail=None, halo=None):
     for index, (name, goal) in enumerate(sorted(goals.items())):
         x, y = xy(goal)
         ax.add_patch(
-            disc(ax, x, y, cell * 0.26, facecolor="none",
-                 edgecolor=THEME.agent_color(index), linewidth=2.0,
-                 alpha=0.9 * alpha, zorder=3)
+            disc(
+                ax,
+                x,
+                y,
+                cell * 0.26,
+                facecolor="none",
+                edgecolor=THEME.agent_color(index),
+                linewidth=2.0,
+                alpha=0.9 * alpha,
+                zorder=3,
+            )
         )
     if trail:
         for index, name in enumerate(sorted(goals)):
             points = [xy(frame[name]) for frame in trail]
             if len(points) > 1:
-                ax.plot(*zip(*points), color=THEME.agent_color(index), linewidth=1.6,
-                        alpha=0.35 * alpha, transform=ax.transAxes, zorder=2)
+                ax.plot(
+                    *zip(*points),
+                    color=THEME.agent_color(index),
+                    linewidth=1.6,
+                    alpha=0.35 * alpha,
+                    transform=ax.transAxes,
+                    zorder=2,
+                )
     for index, name in enumerate(sorted(positions)):
         x, y = xy(positions[name])
         if halo:
             ax.add_patch(
-                disc(ax, x, y, cell * 0.46, facecolor=halo, edgecolor="none",
-                     alpha=0.22 * alpha, zorder=3)
+                disc(
+                    ax,
+                    x,
+                    y,
+                    cell * 0.46,
+                    facecolor=halo,
+                    edgecolor="none",
+                    alpha=0.22 * alpha,
+                    zorder=3,
+                )
             )
         ax.add_patch(
-            disc(ax, x, y, cell * 0.32, facecolor=THEME.agent_color(index),
-                 edgecolor=THEME.plane, linewidth=1.0, alpha=alpha, zorder=6)
+            disc(
+                ax,
+                x,
+                y,
+                cell * 0.32,
+                facecolor=THEME.agent_color(index),
+                edgecolor=THEME.plane,
+                linewidth=1.0,
+                alpha=alpha,
+                zorder=6,
+            )
         )
     return xy, cell
 
@@ -303,22 +342,66 @@ def frame_at(frames, t, seconds_per_step=0.28, hold=True):
 
 def scene_title(ax, t, content):
     positions = frame_at(content.sampled, t * 0.9)
-    board(ax, content.grid, (0.30, 0.10, 0.40, 0.80), positions, content.goals,
-          alpha=0.16 * ease_out(t / 1.0))
-    text(ax, 0.5, 0.60, "PyMAPF", size=76, weight="bold", ha="center",
-         alpha=fade(ax, t, 0.1))
-    text(ax, 0.5, 0.485, "learning to solve what it can already prove", size=23,
-         color=THEME.ink_secondary, ha="center", alpha=fade(ax, t, 0.6))
-    text(ax, 0.5, 0.37, "pymapf.rl", size=26, family=MONO,
-         color=THEME.agent_color(0), ha="center", alpha=fade(ax, t, 1.1))
+    board(
+        ax,
+        content.grid,
+        (0.30, 0.10, 0.40, 0.80),
+        positions,
+        content.goals,
+        alpha=0.16 * ease_out(t / 1.0),
+    )
+    text(
+        ax,
+        0.5,
+        0.60,
+        "PyMAPF",
+        size=76,
+        weight="bold",
+        ha="center",
+        alpha=fade(ax, t, 0.1),
+    )
+    text(
+        ax,
+        0.5,
+        0.485,
+        "learning to solve what it can already prove",
+        size=23,
+        color=THEME.ink_secondary,
+        ha="center",
+        alpha=fade(ax, t, 0.6),
+    )
+    text(
+        ax,
+        0.5,
+        0.37,
+        "pymapf.rl",
+        size=26,
+        family=MONO,
+        color=THEME.agent_color(0),
+        ha="center",
+        alpha=fade(ax, t, 1.1),
+    )
 
 
 def scene_premise(ax, t, content):
-    text(ax, 0.07, 0.88, "The instances already exist. So does the answer.", size=33,
-         weight="bold", alpha=fade(ax, t, 0.0))
-    text(ax, 0.07, 0.81,
-         "Which is the expensive half of any learned-MAPF result.",
-         size=16, color=THEME.ink_secondary, alpha=fade(ax, t, 0.3))
+    text(
+        ax,
+        0.07,
+        0.88,
+        "The instances already exist. So does the answer.",
+        size=33,
+        weight="bold",
+        alpha=fade(ax, t, 0.0),
+    )
+    text(
+        ax,
+        0.07,
+        0.81,
+        "Which is the expensive half of any learned-MAPF result.",
+        size=16,
+        color=THEME.ink_secondary,
+        alpha=fade(ax, t, 0.3),
+    )
 
     snippet = (
         "from pymapf.rl import MAPFEnv, make_trainer, compare\n\n"
@@ -328,8 +411,17 @@ def scene_premise(ax, t, content):
         'compare(env, {"mappo": trainer}, baselines=("cbs",))'
     )
     body = typewriter(snippet, (t - 0.7) / 3.2)
-    text(ax, 0.07, 0.44, body, size=17, family=MONO, color=THEME.ink,
-         va="center", alpha=fade(ax, t, 0.7))
+    text(
+        ax,
+        0.07,
+        0.44,
+        body,
+        size=17,
+        family=MONO,
+        color=THEME.ink,
+        va="center",
+        alpha=fade(ax, t, 0.7),
+    )
 
     notes = [
         ("PettingZoo parallel API, without importing PettingZoo", 3.6),
@@ -337,26 +429,57 @@ def scene_premise(ax, t, content):
         ("so both are scored by the planner's own code", 4.4),
     ]
     for row, (line, start) in enumerate(notes):
-        text(ax, 0.07, 0.20 - row * 0.058, line, size=15.5,
-             color=THEME.agent_color(2) if row == 2 else THEME.muted,
-             alpha=fade(ax, t, start))
+        text(
+            ax,
+            0.07,
+            0.20 - row * 0.058,
+            line,
+            size=15.5,
+            color=THEME.agent_color(2) if row == 2 else THEME.muted,
+            alpha=fade(ax, t, start),
+        )
 
 
 def scene_training(ax, t, content):
     text(ax, 0.07, 0.88, "It learns.", size=33, weight="bold", alpha=fade(ax, t, 0.0))
-    text(ax, 0.07, 0.81,
-         "IPPO, parameters shared across agents — on numpy alone, no framework.",
-         size=16, color=THEME.ink_secondary, alpha=fade(ax, t, 0.3))
+    text(
+        ax,
+        0.07,
+        0.81,
+        "IPPO, parameters shared across agents — on numpy alone, no framework.",
+        size=16,
+        color=THEME.ink_secondary,
+        alpha=fade(ax, t, 0.3),
+    )
 
     px, py, pw, ph = 0.10, 0.22, 0.52, 0.48
     for fraction in (0.0, 0.25, 0.5, 0.75, 1.0):
         y = py + ph * fraction
-        ax.plot([px, px + pw], [y, y], color=THEME.grid, linewidth=0.7,
-                transform=ax.transAxes)
-        text(ax, px - 0.012, y, "%d%%" % int(100 * fraction), size=11,
-             color=THEME.muted, ha="right")
-    text(ax, px, py + ph + 0.06, "instances solved, during training", size=15,
-         color=THEME.muted, alpha=fade(ax, t, 0.2))
+        ax.plot(
+            [px, px + pw],
+            [y, y],
+            color=THEME.grid,
+            linewidth=0.7,
+            transform=ax.transAxes,
+        )
+        text(
+            ax,
+            px - 0.012,
+            y,
+            "%d%%" % int(100 * fraction),
+            size=11,
+            color=THEME.muted,
+            ha="right",
+        )
+    text(
+        ax,
+        px,
+        py + ph + 0.06,
+        "instances solved, during training",
+        size=15,
+        color=THEME.muted,
+        alpha=fade(ax, t, 0.2),
+    )
 
     curve = content.curve
     if curve:
@@ -367,36 +490,102 @@ def scene_training(ax, t, content):
             (px + pw * steps / total, py + ph * min(1.0, solved))
             for steps, solved in curve[:count]
         ]
-        ax.plot(*zip(*points), color=THEME.agent_color(0), linewidth=2.4,
-                transform=ax.transAxes, solid_capstyle="round", zorder=4)
+        ax.plot(
+            *zip(*points),
+            color=THEME.agent_color(0),
+            linewidth=2.4,
+            transform=ax.transAxes,
+            solid_capstyle="round",
+            zorder=4,
+        )
         peak = max(solved for _, solved in curve[:count])
-        text(ax, px + pw / 2, py - 0.075, "%s environment-agent steps" % f"{total:,}",
-             size=13, color=THEME.ink_secondary, ha="center")
+        text(
+            ax,
+            px + pw / 2,
+            py - 0.075,
+            "%s environment-agent steps" % f"{total:,}",
+            size=13,
+            color=THEME.ink_secondary,
+            ha="center",
+        )
         if t > 2.4:
-            text(ax, 0.68, 0.60, "peak", size=14, color=THEME.muted,
-                 alpha=fade(ax, t, 2.4))
-            text(ax, 0.68, 0.53, "%.0f%%" % (100 * peak), size=40, weight="bold",
-                 family=MONO, color=THEME.agent_color(2), alpha=fade(ax, t, 2.4))
+            text(
+                ax,
+                0.68,
+                0.60,
+                "peak",
+                size=14,
+                color=THEME.muted,
+                alpha=fade(ax, t, 2.4),
+            )
+            text(
+                ax,
+                0.68,
+                0.53,
+                "%.0f%%" % (100 * peak),
+                size=40,
+                weight="bold",
+                family=MONO,
+                color=THEME.agent_color(2),
+                alpha=fade(ax, t, 2.4),
+            )
         if t > 3.0:
-            text(ax, 0.68, 0.40, "throughput", size=14, color=THEME.muted,
-                 alpha=fade(ax, t, 3.0))
-            text(ax, 0.68, 0.33, "%.0f steps/s" % content.rate, size=25, weight="bold",
-                 family=MONO, color=THEME.ink, alpha=fade(ax, t, 3.0))
-            text(ax, 0.68, 0.26, "numpy backend, gradient-checked", size=12.5,
-                 color=THEME.muted, alpha=fade(ax, t, 3.3))
+            text(
+                ax,
+                0.68,
+                0.40,
+                "throughput",
+                size=14,
+                color=THEME.muted,
+                alpha=fade(ax, t, 3.0),
+            )
+            text(
+                ax,
+                0.68,
+                0.33,
+                "%.0f steps/s" % content.rate,
+                size=25,
+                weight="bold",
+                family=MONO,
+                color=THEME.ink,
+                alpha=fade(ax, t, 3.0),
+            )
+            text(
+                ax,
+                0.68,
+                0.26,
+                "numpy backend, gradient-checked",
+                size=12.5,
+                color=THEME.muted,
+                alpha=fade(ax, t, 3.3),
+            )
         if t > 3.8:
             # The curve peaks and settles. Saying so is better than letting it
             # read as a rendering glitch -- and the next scene is the reason.
-            text(ax, 0.10, 0.10,
-                 "It peaks, then settles. That is not noise, and the next "
-                 "scene is why.",
-                 size=14, color=THEME.ink_secondary, alpha=fade(ax, t, 3.8))
+            text(
+                ax,
+                0.10,
+                0.10,
+                "It peaks, then settles. That is not noise, and the next "
+                "scene is why.",
+                size=14,
+                color=THEME.ink_secondary,
+                alpha=fade(ax, t, 3.8),
+            )
 
 
 def scene_split(ax, t, content):
     """The centrepiece: one policy, one instance, two ways of sampling it."""
-    text(ax, 0.5, 0.93, "Same weights. Same instance. Two ways to act.", size=31,
-         weight="bold", ha="center", alpha=fade(ax, t, 0.0))
+    text(
+        ax,
+        0.5,
+        0.93,
+        "Same weights. Same instance. Two ways to act.",
+        size=31,
+        weight="bold",
+        ha="center",
+        alpha=fade(ax, t, 0.0),
+    )
 
     begin, rate = 0.9, 0.20
     local = max(0.0, t - begin)
@@ -424,33 +613,90 @@ def scene_split(ax, t, content):
     ]
     for side, (label, frames, frame, colour) in enumerate(panels):
         x0 = 0.05 + side * 0.50
-        text(ax, x0 + 0.20, 0.845, label, size=22, weight="bold", family=MONO,
-             color=colour, ha="center", alpha=fade(ax, t, 0.2 + 0.15 * side))
+        text(
+            ax,
+            x0 + 0.20,
+            0.845,
+            label,
+            size=22,
+            weight="bold",
+            family=MONO,
+            color=colour,
+            ha="center",
+            alpha=fade(ax, t, 0.2 + 0.15 * side),
+        )
         done = greedy_looping if side == 0 else sampled_done
         # A short trail only: the whole history on the looping side is a scribble.
         upto = min(len(frames), step + 1)
         trail = frames[max(0, upto - 9) : upto]
-        board(ax, content.grid, (x0, 0.24, 0.40, 0.55), frame, content.goals,
-              alpha=ease_out(t / 0.6), trail=trail,
-              halo=colour if done else None)
+        board(
+            ax,
+            content.grid,
+            (x0, 0.24, 0.40, 0.55),
+            frame,
+            content.goals,
+            alpha=ease_out(t / 0.6),
+            trail=trail,
+            halo=colour if done else None,
+        )
 
     if greedy_looping:
-        text(ax, 0.25, 0.175, "cycling, forever", size=18, ha="center",
-             color=THEME.agent_color(1), weight="bold", alpha=fade(ax, t, 0.1))
+        text(
+            ax,
+            0.25,
+            0.175,
+            "cycling, forever",
+            size=18,
+            ha="center",
+            color=THEME.agent_color(1),
+            weight="bold",
+            alpha=fade(ax, t, 0.1),
+        )
         if content.period:
-            text(ax, 0.25, 0.125,
-                 "period-%d orbit \u2014 it will never arrive" % content.period,
-                 size=13.5, color=THEME.muted, ha="center", alpha=fade(ax, t, 0.3))
+            text(
+                ax,
+                0.25,
+                0.125,
+                "period-%d orbit \u2014 it will never arrive" % content.period,
+                size=13.5,
+                color=THEME.muted,
+                ha="center",
+                alpha=fade(ax, t, 0.3),
+            )
     if sampled_done:
-        text(ax, 0.75, 0.175, "solved in %d steps" % (len(content.sampled) - 1),
-             size=18, ha="center", color=THEME.agent_color(2), weight="bold",
-             alpha=fade(ax, t, 0.1))
-        text(ax, 0.75, 0.125, "the only noise in the system", size=13.5,
-             color=THEME.muted, ha="center", alpha=fade(ax, t, 0.3))
+        text(
+            ax,
+            0.75,
+            0.175,
+            "solved in %d steps" % (len(content.sampled) - 1),
+            size=18,
+            ha="center",
+            color=THEME.agent_color(2),
+            weight="bold",
+            alpha=fade(ax, t, 0.1),
+        )
+        text(
+            ax,
+            0.75,
+            0.125,
+            "the only noise in the system",
+            size=13.5,
+            color=THEME.muted,
+            ha="center",
+            alpha=fade(ax, t, 0.3),
+        )
 
-    text(ax, 0.5, 0.045, "45% solved at 1.11x optimal      \u2502      "
-         "100% solved at 2.94x optimal", size=15.5, family=MONO,
-         color=THEME.ink_secondary, ha="center", alpha=fade(ax, t, begin + 3.0))
+    text(
+        ax,
+        0.5,
+        0.045,
+        "45% solved at 1.11x optimal      \u2502      " "100% solved at 2.94x optimal",
+        size=15.5,
+        family=MONO,
+        color=THEME.ink_secondary,
+        ha="center",
+        alpha=fade(ax, t, begin + 3.0),
+    )
 
 
 def scene_why(ax, t, content):
@@ -460,12 +706,25 @@ def scene_why(ax, t, content):
     orbit_share = modes["orbit"] / total
     freeze_share = modes["freeze"] / total
 
-    text(ax, 0.07, 0.88, "Why it gets stuck: two answers, not one.", size=32,
-         weight="bold", alpha=fade(ax, t, 0.0))
-    text(ax, 0.07, 0.81,
-         "%d failures over %d instances. Sample a single one and you will "
-         "reach the wrong conclusion." % (modes["failures"], modes["instances"]),
-         size=16, color=THEME.ink_secondary, alpha=fade(ax, t, 0.3))
+    text(
+        ax,
+        0.07,
+        0.88,
+        "Why it gets stuck: two answers, not one.",
+        size=32,
+        weight="bold",
+        alpha=fade(ax, t, 0.0),
+    )
+    text(
+        ax,
+        0.07,
+        0.81,
+        "%d failures over %d instances. Sample a single one and you will "
+        "reach the wrong conclusion." % (modes["failures"], modes["instances"]),
+        size=16,
+        color=THEME.ink_secondary,
+        alpha=fade(ax, t, 0.3),
+    )
 
     panels = [
         (
@@ -496,39 +755,103 @@ def scene_why(ax, t, content):
     for side, (title, share, count, note, body, colour, start) in enumerate(panels):
         x = 0.09 + side * 0.47
         alpha = fade(ax, t, start)
-        text(ax, x, 0.68, title, size=21, weight="bold", family=MONO,
-             color=colour, alpha=alpha)
-        text(ax, x, 0.585, "%.0f%%" % (100 * share), size=46, weight="bold",
-             family=MONO, color=colour, alpha=alpha)
-        text(ax, x + 0.115, 0.585, "%d of %d" % (count, total), size=14,
-             color=THEME.muted, alpha=alpha)
+        text(
+            ax,
+            x,
+            0.68,
+            title,
+            size=21,
+            weight="bold",
+            family=MONO,
+            color=colour,
+            alpha=alpha,
+        )
+        text(
+            ax,
+            x,
+            0.585,
+            "%.0f%%" % (100 * share),
+            size=46,
+            weight="bold",
+            family=MONO,
+            color=colour,
+            alpha=alpha,
+        )
+        text(
+            ax,
+            x + 0.115,
+            0.585,
+            "%d of %d" % (count, total),
+            size=14,
+            color=THEME.muted,
+            alpha=alpha,
+        )
         # A share bar, so the 70/30 lands before the text is read.
         ax.add_patch(
-            Rectangle((x, 0.515), 0.36 * share * ease_out((t - start) / 0.6), 0.022,
-                      facecolor=colour, edgecolor="none", alpha=0.55 * alpha,
-                      transform=ax.transAxes)
+            Rectangle(
+                (x, 0.515),
+                0.36 * share * ease_out((t - start) / 0.6),
+                0.022,
+                facecolor=colour,
+                edgecolor="none",
+                alpha=0.55 * alpha,
+                transform=ax.transAxes,
+            )
         )
-        text(ax, x, 0.465, note, size=15, weight="bold",
-             color=THEME.ink_secondary, alpha=alpha)
+        text(
+            ax,
+            x,
+            0.465,
+            note,
+            size=15,
+            weight="bold",
+            color=THEME.ink_secondary,
+            alpha=alpha,
+        )
         text(ax, x, 0.325, body, size=14, color=THEME.muted, alpha=alpha)
 
-    text(ax, 0.07, 0.14,
-         "No failure of either kind touches a wall, and in every one of them "
-         "both agents solve\nthat same instance perfectly well alone.",
-         size=15, color=THEME.ink, alpha=fade(ax, t, 3.0))
-    text(ax, 0.07, 0.055,
-         "Both modes share a cause: a fully deterministic policy cannot leave a "
-         "loop it has entered.",
-         size=14.5, color=THEME.agent_color(2), alpha=fade(ax, t, 3.6))
+    text(
+        ax,
+        0.07,
+        0.14,
+        "No failure of either kind touches a wall, and in every one of them "
+        "both agents solve\nthat same instance perfectly well alone.",
+        size=15,
+        color=THEME.ink,
+        alpha=fade(ax, t, 3.0),
+    )
+    text(
+        ax,
+        0.07,
+        0.055,
+        "Both modes share a cause: a fully deterministic policy cannot leave a "
+        "loop it has entered.",
+        size=14.5,
+        color=THEME.agent_color(2),
+        alpha=fade(ax, t, 3.6),
+    )
 
 
 def scene_benchmark(ax, t, content):
-    text(ax, 0.07, 0.88, "Measured against the optimum.", size=33, weight="bold",
-         alpha=fade(ax, t, 0.0))
-    text(ax, 0.07, 0.81,
-         "CBS is optimal, so the ratio is true suboptimality — not a gap "
-         "against another heuristic.",
-         size=16, color=THEME.ink_secondary, alpha=fade(ax, t, 0.3))
+    text(
+        ax,
+        0.07,
+        0.88,
+        "Measured against the optimum.",
+        size=33,
+        weight="bold",
+        alpha=fade(ax, t, 0.0),
+    )
+    text(
+        ax,
+        0.07,
+        0.81,
+        "CBS is optimal, so the ratio is true suboptimality — not a gap "
+        "against another heuristic.",
+        size=16,
+        color=THEME.ink_secondary,
+        alpha=fade(ax, t, 0.3),
+    )
 
     headers = [("method", 0.09), ("solved", 0.46), ("cost", 0.62), ("vs optimal", 0.78)]
     for label, x in headers:
@@ -539,41 +862,117 @@ def scene_benchmark(ax, t, content):
         alpha = fade(ax, t, 0.8 + 0.16 * row)
         planner = entry["method"] in ("cbs", "pibt")
         colour = THEME.ink if planner else THEME.agent_color(0)
-        text(ax, 0.09, y, entry["method"], size=17, family=MONO, color=colour, alpha=alpha)
+        text(
+            ax,
+            0.09,
+            y,
+            entry["method"],
+            size=17,
+            family=MONO,
+            color=colour,
+            alpha=alpha,
+        )
 
         bar = 0.30 * entry["success_rate"] * ease_out((t - 0.8 - 0.16 * row) / 0.5)
         ax.add_patch(
-            Rectangle((0.46, y - 0.016), max(0.001, bar * 0.5), 0.032,
-                      facecolor=colour, edgecolor="none", alpha=0.35 * alpha,
-                      transform=ax.transAxes)
+            Rectangle(
+                (0.46, y - 0.016),
+                max(0.001, bar * 0.5),
+                0.032,
+                facecolor=colour,
+                edgecolor="none",
+                alpha=0.35 * alpha,
+                transform=ax.transAxes,
+            )
         )
-        text(ax, 0.46, y, "%.0f%%" % (100 * entry["success_rate"]), size=16,
-             family=MONO, color=THEME.ink_secondary, alpha=alpha)
+        text(
+            ax,
+            0.46,
+            y,
+            "%.0f%%" % (100 * entry["success_rate"]),
+            size=16,
+            family=MONO,
+            color=THEME.ink_secondary,
+            alpha=alpha,
+        )
         cost = entry["mean_cost"]
-        text(ax, 0.62, y, "-" if cost != cost else "%.1f" % cost, size=16,
-             family=MONO, color=THEME.ink_secondary, alpha=alpha)
+        text(
+            ax,
+            0.62,
+            y,
+            "-" if cost != cost else "%.1f" % cost,
+            size=16,
+            family=MONO,
+            color=THEME.ink_secondary,
+            alpha=alpha,
+        )
         ratio = entry["suboptimality"]
-        text(ax, 0.78, y, "-" if ratio != ratio else "%.2fx" % ratio, size=16,
-             family=MONO, weight="bold",
-             color=THEME.agent_color(2) if ratio == 1.0 else THEME.ink_secondary,
-             alpha=alpha)
+        text(
+            ax,
+            0.78,
+            y,
+            "-" if ratio != ratio else "%.2fx" % ratio,
+            size=16,
+            family=MONO,
+            weight="bold",
+            color=THEME.agent_color(2) if ratio == 1.0 else THEME.ink_secondary,
+            alpha=alpha,
+        )
 
-    text(ax, 0.07, 0.10,
-         "Validity is 100% in every row, including a random policy: the "
-         "environment resolves\nvertex, edge and cascading conflicts with MAPF's "
-         "rules, so a rollout is a valid plan.",
-         size=14, color=THEME.muted, alpha=fade(ax, t, 2.6))
+    text(
+        ax,
+        0.07,
+        0.10,
+        "Validity is 100% in every row, including a random policy: the "
+        "environment resolves\nvertex, edge and cascading conflicts with MAPF's "
+        "rules, so a rollout is a valid plan.",
+        size=14,
+        color=THEME.muted,
+        alpha=fade(ax, t, 2.6),
+    )
 
 
 def scene_outro(ax, t, content):
-    board(ax, content.grid, (0.32, 0.14, 0.36, 0.72),
-          frame_at(content.sampled, t * 0.7), content.goals, alpha=0.13)
-    text(ax, 0.5, 0.63, "pip install pymapf[rl]", size=40, weight="bold",
-         ha="center", family=MONO, alpha=fade(ax, t, 0.1))
-    text(ax, 0.5, 0.52, "environment · IPPO · MAPPO · benchmarked against CBS",
-         size=19, color=THEME.ink_secondary, ha="center", alpha=fade(ax, t, 0.5))
-    text(ax, 0.5, 0.42, "github.com/apla-toolbox/pymapf", size=16,
-         color=THEME.agent_color(0), ha="center", family=MONO, alpha=fade(ax, t, 0.9))
+    board(
+        ax,
+        content.grid,
+        (0.32, 0.14, 0.36, 0.72),
+        frame_at(content.sampled, t * 0.7),
+        content.goals,
+        alpha=0.13,
+    )
+    text(
+        ax,
+        0.5,
+        0.63,
+        "pip install pymapf[rl]",
+        size=40,
+        weight="bold",
+        ha="center",
+        family=MONO,
+        alpha=fade(ax, t, 0.1),
+    )
+    text(
+        ax,
+        0.5,
+        0.52,
+        "environment · IPPO · MAPPO · benchmarked against CBS",
+        size=19,
+        color=THEME.ink_secondary,
+        ha="center",
+        alpha=fade(ax, t, 0.5),
+    )
+    text(
+        ax,
+        0.5,
+        0.42,
+        "github.com/apla-toolbox/pymapf",
+        size=16,
+        color=THEME.agent_color(0),
+        ha="center",
+        family=MONO,
+        alpha=fade(ax, t, 0.9),
+    )
 
 
 SCENES = [
@@ -619,13 +1018,29 @@ def build_animation(content, seconds=None):
                 scene(ax, local, content)
                 remaining = duration - local
                 if remaining < 0.35:
-                    ax.add_patch(Rectangle((0, 0), 1, 1, facecolor=THEME.plane,
-                                           alpha=1 - remaining / 0.35,
-                                           transform=ax.transAxes, zorder=50))
+                    ax.add_patch(
+                        Rectangle(
+                            (0, 0),
+                            1,
+                            1,
+                            facecolor=THEME.plane,
+                            alpha=1 - remaining / 0.35,
+                            transform=ax.transAxes,
+                            zorder=50,
+                        )
+                    )
                 if local < 0.3:
-                    ax.add_patch(Rectangle((0, 0), 1, 1, facecolor=THEME.plane,
-                                           alpha=1 - local / 0.3,
-                                           transform=ax.transAxes, zorder=50))
+                    ax.add_patch(
+                        Rectangle(
+                            (0, 0),
+                            1,
+                            1,
+                            facecolor=THEME.plane,
+                            alpha=1 - local / 0.3,
+                            transform=ax.transAxes,
+                            zorder=50,
+                        )
+                    )
                 break
             elapsed += duration
         else:
@@ -634,8 +1049,11 @@ def build_animation(content, seconds=None):
         text(ax, 0.955, 0.045, "pymapf.rl", size=12, color=THEME.axis, ha="right")
         return []
 
-    return figure, FuncAnimation(figure, render, frames=frames,
-                                 interval=1000 // FPS, blit=False), frames
+    return (
+        figure,
+        FuncAnimation(figure, render, frames=frames, interval=1000 // FPS, blit=False),
+        frames,
+    )
 
 
 def main() -> int:
@@ -667,9 +1085,17 @@ def main() -> int:
     animation.save(
         args.output,
         writer=FFMpegWriter(
-            fps=FPS, bitrate=6000, codec="libx264",
-            extra_args=["-pix_fmt", "yuv420p", "-preset", "slow",
-                        "-movflags", "+faststart"],
+            fps=FPS,
+            bitrate=6000,
+            codec="libx264",
+            extra_args=[
+                "-pix_fmt",
+                "yuv420p",
+                "-preset",
+                "slow",
+                "-movflags",
+                "+faststart",
+            ],
         ),
         dpi=args.dpi,
     )

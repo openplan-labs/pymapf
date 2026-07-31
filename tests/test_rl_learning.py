@@ -53,10 +53,14 @@ def _ppo_losses(network, batch):
     unclipped = ratio * batch["advantages"]
     clipped = np.clip(ratio, 1 - CLIP, 1 + CLIP) * batch["advantages"]
     entropy = -(probabilities * log_probs).sum(-1)
-    actor = -np.mean(np.minimum(unclipped, clipped)) - ENTROPY_COEFFICIENT * np.mean(entropy)
+    actor = -np.mean(np.minimum(unclipped, clipped)) - ENTROPY_COEFFICIENT * np.mean(
+        entropy
+    )
 
     values, _ = network.critic.forward(batch["critic_inputs"])
-    critic = VALUE_COEFFICIENT * 0.5 * np.mean((values.reshape(-1) - batch["returns"]) ** 2)
+    critic = (
+        VALUE_COEFFICIENT * 0.5 * np.mean((values.reshape(-1) - batch["returns"]) ** 2)
+    )
     return float(actor), float(critic)
 
 
@@ -94,13 +98,19 @@ def test_hand_written_gradients_match_finite_differences(head):
         onehot[rows, batch["actions"]] = 1.0
         d_logits = (d_ratio * ratio)[:, None] * (onehot - probabilities)
         entropy = -(probabilities * log_probs).sum(-1)
-        d_logits += ENTROPY_COEFFICIENT * (probabilities * (log_probs + entropy[:, None])) / count
+        d_logits += (
+            ENTROPY_COEFFICIENT
+            * (probabilities * (log_probs + entropy[:, None]))
+            / count
+        )
         gradients = module.backward(d_logits, cache)
         index = 0
     else:
         values, cache = module.forward(batch["critic_inputs"])
         count = len(batch["returns"])
-        d_values = (VALUE_COEFFICIENT * (values.reshape(-1) - batch["returns"]) / count).reshape(-1, 1)
+        d_values = (
+            VALUE_COEFFICIENT * (values.reshape(-1) - batch["returns"]) / count
+        ).reshape(-1, 1)
         gradients = module.backward(d_values, cache)
         index = 1
 
@@ -158,7 +168,7 @@ def test_gradient_clipping_bounds_the_global_norm():
 
     gradients = [np.full((4,), 10.0), np.full((4,), 10.0)]
     _clip_global_norm(gradients, 1.0)
-    total = np.sqrt(sum(float((g ** 2).sum()) for g in gradients))
+    total = np.sqrt(sum(float((g**2).sum()) for g in gradients))
     assert total == pytest.approx(1.0, rel=1e-6)
 
 
@@ -179,7 +189,7 @@ def test_gae_matches_a_hand_computed_case():
     step = gamma * lam
     assert advantages[2, 0] == pytest.approx(1.0)
     assert advantages[1, 0] == pytest.approx(1.0 + step)
-    assert advantages[0, 0] == pytest.approx(1.0 + step + step ** 2)
+    assert advantages[0, 0] == pytest.approx(1.0 + step + step**2)
 
 
 def test_gae_does_not_bootstrap_across_an_episode_boundary():
@@ -279,9 +289,7 @@ def test_training_improves_the_policy(algorithm):
     is the number that matters -- a falling loss can mean nothing at all.
     """
     env = MAPFEnv("empty_room", height=7, width=7, n_agents=2, randomise=False)
-    trainer = make_trainer(
-        algorithm, env, n_envs=8, rollout_steps=64, seed=0, lr=1e-3
-    )
+    trainer = make_trainer(algorithm, env, n_envs=8, rollout_steps=64, seed=0, lr=1e-3)
     trainer.learn(total_steps=40_000)
     solved = [record["solved"] for record in trainer.history]
     assert max(solved[-3:]) > max(0.15, solved[0] + 0.1), solved[-5:]

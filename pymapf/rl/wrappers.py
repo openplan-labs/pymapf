@@ -130,7 +130,11 @@ class SingleAgentGym:
 
     def step(self, action: int):
         actions = {
-            name: (int(action) if name == self.agent else int(self.others(self._last[name])))
+            name: (
+                int(action)
+                if name == self.agent
+                else int(self.others(self._last[name]))
+            )
             for name in self.env.agents
         }
         observations, rewards, terminations, truncations, infos = self.env.step(actions)
@@ -164,7 +168,9 @@ class VectorMAPFEnv:
     already providing at the batch level.
     """
 
-    def __init__(self, factory: Callable[[], "MAPFEnv"], n: int = 8, seed: Optional[int] = None):
+    def __init__(
+        self, factory: Callable[[], "MAPFEnv"], n: int = 8, seed: Optional[int] = None
+    ):
         if n < 1:
             raise ValueError("need at least one environment, got %d" % n)
         self.envs: List["MAPFEnv"] = [factory() for _ in range(n)]
@@ -195,7 +201,11 @@ class VectorMAPFEnv:
         observations, rewards, terminations, truncations, infos = [], [], [], [], []
         for env, action in zip(self.envs, actions):
             observation, reward, termination, truncation, info = env.step(action)
-            done = (not env.agents) or any(termination.values()) or any(truncation.values())
+            done = (
+                (not env.agents)
+                or any(termination.values())
+                or any(truncation.values())
+            )
             if done:
                 final_info = {agent: dict(entry) for agent, entry in info.items()}
                 final_observation = observation

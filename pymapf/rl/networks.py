@@ -45,8 +45,14 @@ def _log_softmax(logits: np.ndarray) -> np.ndarray:
 class Adam:
     """Adam, on a list of parameter arrays (Kingma and Ba, 2015)."""
 
-    def __init__(self, shapes: Sequence[Tuple[int, ...]], lr: float = 3e-4,
-                 beta1: float = 0.9, beta2: float = 0.999, eps: float = 1e-8):
+    def __init__(
+        self,
+        shapes: Sequence[Tuple[int, ...]],
+        lr: float = 3e-4,
+        beta1: float = 0.9,
+        beta2: float = 0.999,
+        eps: float = 1e-8,
+    ):
         self.lr, self.beta1, self.beta2, self.eps = lr, beta1, beta2, eps
         self.m = [np.zeros(shape) for shape in shapes]
         self.v = [np.zeros(shape) for shape in shapes]
@@ -54,8 +60,8 @@ class Adam:
 
     def step(self, params: List[np.ndarray], grads: List[np.ndarray]) -> None:
         self.t += 1
-        correction1 = 1 - self.beta1 ** self.t
-        correction2 = 1 - self.beta2 ** self.t
+        correction1 = 1 - self.beta1**self.t
+        correction2 = 1 - self.beta2**self.t
         for index, (param, grad) in enumerate(zip(params, grads)):
             self.m[index] = self.beta1 * self.m[index] + (1 - self.beta1) * grad
             self.v[index] = self.beta2 * self.v[index] + (1 - self.beta2) * grad * grad
@@ -74,14 +80,21 @@ class MLP:
     confident spends its first updates undoing that confidence.
     """
 
-    def __init__(self, sizes: Sequence[int], output_gain: float = 0.01, seed: Optional[int] = None):
+    def __init__(
+        self,
+        sizes: Sequence[int],
+        output_gain: float = 0.01,
+        seed: Optional[int] = None,
+    ):
         self.sizes = list(sizes)
         random = np.random.default_rng(seed)
         self.weights: List[np.ndarray] = []
         self.biases: List[np.ndarray] = []
         for index in range(len(sizes) - 1):
             gain = np.sqrt(2.0) if index < len(sizes) - 2 else output_gain
-            self.weights.append(_orthogonal((sizes[index], sizes[index + 1]), gain, random))
+            self.weights.append(
+                _orthogonal((sizes[index], sizes[index + 1]), gain, random)
+            )
             self.biases.append(np.zeros(sizes[index + 1]))
 
     @property
@@ -106,7 +119,9 @@ class MLP:
                 activations.append(current)
         return current, activations
 
-    def backward(self, grad_output: np.ndarray, activations: List[np.ndarray]) -> List[np.ndarray]:
+    def backward(
+        self, grad_output: np.ndarray, activations: List[np.ndarray]
+    ) -> List[np.ndarray]:
         """Gradients w.r.t. the parameters, given dL/d(output)."""
         grads: List[np.ndarray] = [None] * (2 * len(self.weights))
         delta = grad_output
@@ -115,7 +130,7 @@ class MLP:
             grads[2 * index] = activation.T @ delta
             grads[2 * index + 1] = delta.sum(axis=0)
             if index > 0:
-                delta = (delta @ self.weights[index].T) * (1 - activation ** 2)
+                delta = (delta @ self.weights[index].T) * (1 - activation**2)
         return grads
 
 
@@ -201,7 +216,9 @@ class NumpyActorCritic(ActorCritic):
         self.obs_dim = int(obs_dim)
         self.n_actions = int(n_actions)
         self.critic_dim = int(critic_dim if critic_dim is not None else obs_dim)
-        self.actor = MLP([self.obs_dim, *hidden, self.n_actions], output_gain=0.01, seed=seed)
+        self.actor = MLP(
+            [self.obs_dim, *hidden, self.n_actions], output_gain=0.01, seed=seed
+        )
         self.critic = MLP(
             [self.critic_dim, *hidden, 1],
             output_gain=1.0,
@@ -289,7 +306,7 @@ class NumpyActorCritic(ActorCritic):
             approx_kl = float(np.mean(old_log_probs - chosen))
         return {
             "policy_loss": float(-np.mean(np.minimum(unclipped, clipped))),
-            "value_loss": float(0.5 * np.mean(residual ** 2)),
+            "value_loss": float(0.5 * np.mean(residual**2)),
             "entropy": float(np.mean(entropy)),
             "approx_kl": approx_kl,
             "clip_fraction": float(np.mean(np.abs(ratio - 1) > clip)),
@@ -315,7 +332,7 @@ def _clip_global_norm(grads: List[np.ndarray], max_norm: float) -> float:
     """Scale gradients so their global L2 norm is at most ``max_norm``."""
     if not max_norm:
         return 0.0
-    total = np.sqrt(sum(float((grad ** 2).sum()) for grad in grads))
+    total = np.sqrt(sum(float((grad**2).sum()) for grad in grads))
     if total > max_norm:
         scale = max_norm / (total + 1e-8)
         for grad in grads:
@@ -371,7 +388,9 @@ class TorchActorCritic(ActorCritic):
                     layers.append(nn.Tanh())
             return nn.Sequential(*layers)
 
-        self.actor = build([self.obs_dim, *hidden, self.n_actions], 0.01).to(self.device)
+        self.actor = build([self.obs_dim, *hidden, self.n_actions], 0.01).to(
+            self.device
+        )
         self.critic = build([self.critic_dim, *hidden, 1], 1.0).to(self.device)
         self.optimiser = torch.optim.Adam(
             list(self.actor.parameters()) + list(self.critic.parameters()), lr=lr
@@ -394,7 +413,12 @@ class TorchActorCritic(ActorCritic):
     def value(self, critic_inputs: np.ndarray) -> np.ndarray:
         torch = self._torch
         with torch.no_grad():
-            return self.critic(self._tensor(np.atleast_2d(critic_inputs))).squeeze(-1).cpu().numpy()
+            return (
+                self.critic(self._tensor(np.atleast_2d(critic_inputs)))
+                .squeeze(-1)
+                .cpu()
+                .numpy()
+            )
 
     def update(
         self,
@@ -425,11 +449,14 @@ class TorchActorCritic(ActorCritic):
         values = self.critic(critic_inputs).squeeze(-1)
         value_loss = 0.5 * ((values - returns) ** 2).mean()
 
-        loss = policy_loss + value_coefficient * value_loss - entropy_coefficient * entropy
+        loss = (
+            policy_loss + value_coefficient * value_loss - entropy_coefficient * entropy
+        )
         self.optimiser.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(
-            list(self.actor.parameters()) + list(self.critic.parameters()), max_grad_norm
+            list(self.actor.parameters()) + list(self.critic.parameters()),
+            max_grad_norm,
         )
         self.optimiser.step()
 
