@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `docs/` is now **`.docs/`**. Every reference moved with it, including the Pages
+  workflow's path filter, bundle check and upload path. Publishing is unaffected
+  because this repository deploys through `actions/upload-pages-artifact` rather
+  than the "deploy from a branch, /docs folder" setting, which offers only `/`
+  or `/docs` and could not have followed the move.
+
+### Added
+
+- **`.docs/survey-v2.md`** -- a second edition of the survey. It revises the
+  framing rather than the measurements: lifelong MAPF has replaced one-shot MAPF
+  as the objective the field optimises (throughput, not sum-of-costs);
+  guidance-graph optimisation is a third lever that improves the *environment*
+  rather than the solver, and is orthogonal to everything already implemented
+  here; and learning has settled into supplying heuristics, priorities and
+  neighbourhoods *inside* a sound search rather than replacing it -- which our
+  own RL numbers support from the negative side.
+- **`.docs/research-notes.md`** -- the annotated literature scan behind it,
+  recording for each citation how far it was actually read. Nothing in it is
+  reproduced here unless marked [impl].
+
 ## [0.7.0]
 
 Multi-agent reinforcement learning on the library's own MAPF instances,

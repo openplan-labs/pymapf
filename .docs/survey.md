@@ -5,6 +5,13 @@ Sarkar, 2021, DOI 10.13140/RG.2.2.14030.28486), covering what changed in the
 five years since, and adding the decentralized swarm-control line of work that
 the original left out.*
 
+> **A [second edition](survey-v2.md) is available.** It revises the *framing* —
+> lifelong MAPF as the real objective, guidance-graph optimisation as a third
+> lever, and learning's role as a component inside search rather than a
+> replacement for it. This first edition remains the reference for everything
+> implemented and measured in this repository; its tables and methodology are
+> not superseded.
+
 Every algorithm named here is cited in [`REFERENCES.md`](../REFERENCES.md).
 Algorithms marked **[impl]** are implemented in this repository and were run to
 produce the numbers in [§7](#7-experiments); everything else is surveyed only.
