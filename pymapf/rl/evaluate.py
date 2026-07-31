@@ -159,8 +159,6 @@ def evaluate(
     *both* it and the optimal baseline succeeded -- the only instances on which
     the ratio means anything.
     """
-    import pymapf
-
     results = {"policy": EvaluationResult("policy")}
     if baseline:
         results[baseline] = EvaluationResult(baseline)
@@ -230,8 +228,6 @@ def compare(
     three times the cost, because a sampled policy also wanders. Reporting only
     one of those two numbers would be reporting half the result.
     """
-    import pymapf
-
     rows: List[Dict[str, float]] = []
     labelled = {
         ("%s (%s)" % (name, mode) if len(modes) > 1 else name): (policy, mode == "greedy")

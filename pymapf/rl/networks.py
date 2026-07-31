@@ -156,8 +156,22 @@ class ActorCritic(ABC):
         state for MAPPO -- which is the entire difference between them."""
 
     @abstractmethod
-    def update(self, batch: Dict[str, np.ndarray], **hyperparameters) -> Dict[str, float]:
-        """One PPO step on a minibatch. Returns diagnostics."""
+    def update(
+        self,
+        batch: Dict[str, np.ndarray],
+        clip: float = 0.2,
+        value_coefficient: float = 0.5,
+        entropy_coefficient: float = 0.01,
+        max_grad_norm: float = 0.5,
+    ) -> Dict[str, float]:
+        """One PPO step on a minibatch. Returns diagnostics.
+
+        The hyperparameters are named rather than collected into ``**kwargs``.
+        An open-ended signature here would promise callers something no backend
+        actually honours -- every implementation takes exactly these four, and
+        declaring otherwise is a Liskov violation that a linter is right to
+        flag.
+        """
 
     def state_dict(self) -> dict:
         raise NotImplementedError
@@ -448,7 +462,8 @@ def available_backends() -> List[str]:
     """Backend names that can actually be constructed on this machine."""
     usable = ["numpy"]
     try:  # pragma: no cover - depends on the environment
-        import torch  # noqa: F401
+        # Imported purely to find out whether it is importable.
+        import torch  # noqa: F401  # pylint: disable=unused-import
 
         usable.append("torch")
     except ImportError:
