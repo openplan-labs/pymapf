@@ -12,23 +12,32 @@ it, so importing this module costs nothing on a machine with neither installed.
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 
-from .env import MAPFEnv
 from .spaces import to_gymnasium
+
+if TYPE_CHECKING:  # pragma: no cover
+    # Imported for annotations only. `env` imports this module (lazily, inside
+    # to_pettingzoo) and this module needs `MAPFEnv` for its type hints, which
+    # is a genuine import cycle if both are resolved at runtime. `from __future__
+    # import annotations` makes the hints strings, so the cycle can simply not
+    # exist rather than being worked around.
+    from .env import MAPFEnv
 
 __all__ = ["PettingZooParallel", "SingleAgentGym", "VectorMAPFEnv"]
 
 
-def PettingZooParallel(env: MAPFEnv):
+def PettingZooParallel(env: "MAPFEnv"):
     """Wrap ``env`` in a genuine ``pettingzoo.ParallelEnv``.
 
     Built as a factory rather than a module-level class because the base class
     only exists once PettingZoo is imported, and this package must import
     cleanly without it.
     """
+    from .env import MAPFEnv  # local: see the TYPE_CHECKING note above
+
     try:
         from pettingzoo.utils.env import ParallelEnv
     except ImportError as error:  # pragma: no cover - needs pettingzoo
@@ -41,7 +50,7 @@ def PettingZooParallel(env: MAPFEnv):
     class _PettingZooMAPF(ParallelEnv):
         metadata = dict(MAPFEnv.metadata, render_modes=["human", "ansi"])
 
-        def __init__(self, inner: MAPFEnv):
+        def __init__(self, inner: "MAPFEnv"):
             super().__init__()
             self.inner = inner
             self.possible_agents = list(inner.possible_agents)
@@ -95,7 +104,7 @@ class SingleAgentGym:
 
     def __init__(
         self,
-        env: MAPFEnv,
+        env: "MAPFEnv",
         agent: Optional[str] = None,
         others: Optional[Callable[[np.ndarray], int]] = None,
     ):
@@ -155,10 +164,10 @@ class VectorMAPFEnv:
     already providing at the batch level.
     """
 
-    def __init__(self, factory: Callable[[], MAPFEnv], n: int = 8, seed: Optional[int] = None):
+    def __init__(self, factory: Callable[[], "MAPFEnv"], n: int = 8, seed: Optional[int] = None):
         if n < 1:
             raise ValueError("need at least one environment, got %d" % n)
-        self.envs: List[MAPFEnv] = [factory() for _ in range(n)]
+        self.envs: List["MAPFEnv"] = [factory() for _ in range(n)]
         self.n = n
         self._random = np.random.default_rng(seed)
         self.possible_agents = list(self.envs[0].possible_agents)
