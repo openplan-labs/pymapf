@@ -10,7 +10,7 @@ Modules that need matplotlib/numpy (``pymapf.viz``, ``pymapf.decentralized``)
 are deliberately excluded: pulling them in would drag megabytes of wheels into
 the page for code the playground never calls.
 
-    python scripts/build_web_bundle.py [--output docs/pymapf-bundle.json]
+    python scripts/build_web_bundle.py [--output .docs/pymapf-bundle.json]
 """
 
 from __future__ import annotations
@@ -81,8 +81,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",
-        default=os.path.join(ROOT, "docs", "pymapf-bundle.json"),
-        help="destination JSON file (default: docs/pymapf-bundle.json)",
+        default=os.path.join(ROOT, ".docs", "pymapf-bundle.json"),
+        help="destination JSON file (default: .docs/pymapf-bundle.json)",
     )
     args = parser.parse_args()
     build(args.output)

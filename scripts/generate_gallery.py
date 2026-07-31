@@ -5,7 +5,7 @@ Nothing here is bespoke plotting code: the gallery is the public
 :mod:`pymapf.viz` API, called the way a user would call it. If a figure in the
 gallery looks good, the function that produced it is available to everyone.
 
-    python scripts/generate_gallery.py [--output docs/assets] [--fast]
+    python scripts/generate_gallery.py [--output .docs/assets] [--fast]
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ def scenario_sheet(output: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", default=os.path.join(ROOT, "docs", "assets"))
+    parser.add_argument("--output", default=os.path.join(ROOT, ".docs", "assets"))
     parser.add_argument(
         "--fast",
         action="store_true",

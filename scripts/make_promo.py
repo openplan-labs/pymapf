@@ -8,7 +8,7 @@ is produced by the library: the maps come from :mod:`pymapf.scenarios`, the
 search is a real recorded :class:`~pymapf.core.trace.SearchTrace`, and the
 benchmark numbers are measured while the script runs.
 
-    python scripts/make_promo.py --output docs/assets/pymapf-promo.mp4
+    python scripts/make_promo.py --output .docs/assets/pymapf-promo.mp4
     python scripts/make_promo.py --gif        # also write a looping GIF
     python scripts/make_promo.py --preview 6  # render 6 seconds, for iteration
 """
@@ -1383,7 +1383,7 @@ def build_animation(content, seconds=None):
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--output", default=os.path.join(ROOT, "docs", "assets", "pymapf-promo.mp4")
+        "--output", default=os.path.join(ROOT, ".docs", "assets", "pymapf-promo.mp4")
     )
     parser.add_argument("--gif", action="store_true", help="also write a looping GIF")
     parser.add_argument(

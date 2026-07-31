@@ -39,7 +39,7 @@ benchmarked against its own optimal planner.
     around walls -- a stronger potential than a learned-MAPF paper normally has.
   - `compare()` scores policies and planners on identical seeded instances and
     reports true suboptimality against the optimum.
-- `scripts/train_rl.py` reproduces every number in `docs/survey.md` § 7.6.
+- `scripts/train_rl.py` reproduces every number in `.docs/survey.md` § 7.6.
 - `scripts/make_rl_promo.py` renders a 62-second film for the learning layer.
   The policy is trained while the film renders, the split-screen scene is that
   policy acting on one shared instance in both action modes, and the 70/30
@@ -120,7 +120,7 @@ Formation control, and the post-2020 flocking models from the Albani / Ferrante
     expensive and a drone below another sits in its downwash. Settles into a
     lattice with vertical-to-horizontal spread 0.44 against 0.71 for the
     isotropic law.
-- `docs/survey.md` gains section 6.2c on formation control, with measured
+- `.docs/survey.md` gains section 6.2c on formation control, with measured
   convergence times for all four controllers and the three findings below.
 - **Two new promo scenes** covering the swarm side: the minimalistic flocking
   model, and formation control with its taxonomy table. Both draw live
@@ -275,7 +275,7 @@ referenced bibliography, an extended survey, and an experimental section.
 - **`REFERENCES.md`** -- every algorithm mapped to its source, including what
   is surveyed but not implemented, and an implementation-notes section stating
   every deviation from the cited work.
-- **`docs/survey.md`** -- an extension of *Survey of the Multi-Agent Pathfinding
+- **`.docs/survey.md`** -- an extension of *Survey of the Multi-Agent Pathfinding
   Solutions* (Lejeune and Sarkar, 2021) covering 2021-2026, the decentralized
   swarm line, and an experiments section reporting measured results including
   the negative ones.
@@ -309,10 +309,10 @@ referenced bibliography, an extended survey, and an experimental section.
 
 ### Added
 
-- **Interactive playground** (`docs/`, published to GitHub Pages): edit a map,
+- **Interactive playground** (`.docs/`, published to GitHub Pages): edit a map,
   pick a solver and watch the search resolve conflicts in the browser. It runs
   the library's own source under Pyodide in a web worker, with a JavaScript port
-  of the solvers (`docs/mapf.js`) as an instant-response fallback. The Python
+  of the solvers (`.docs/mapf.js`) as an instant-response fallback. The Python
   tab runs arbitrary user code against the real package; the benchmark tab runs
   a sweep and charts it live.
 - **Weighted CBS** (`pymapf.algorithms.WeightedCBS`, registered as `"wcbs"`):

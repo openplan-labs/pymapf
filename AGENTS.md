@@ -4,7 +4,7 @@
 
 PyMAPF is a self-contained Python multi-agent path finding library (no servers, DBs, or
 external services). "Running the app" means executing a planner and rendering a matplotlib
-animation, or serving the static playground in `docs/`.
+animation, or serving the static playground in `.docs/`.
 
 Layout:
 - `pymapf/core` + `pymapf/algorithms` + `pymapf/scenarios.py` + `pymapf/benchmark.py` — the
@@ -13,7 +13,7 @@ Layout:
 - `pymapf/viz` — matplotlib visualisation (optional `[viz]` extra).
 - `pymapf/decentralized` — reactive planners (NMPC, Velocity Obstacles); needs numpy/scipy.
 - `pymapf/centralized` — the legacy cooperative A* modules, kept for compatibility.
-- `docs/` — the static playground (see below).
+- `.docs/` — the static playground (see below).
 
 ### Environment / interpreter
 - The pinned deps (`numpy==1.21.4`, `scipy==1.7.2`, `matplotlib==3.5.0`) only ship wheels
@@ -40,12 +40,12 @@ Layout:
 - NMPC simulations are heavy (scipy optimization per step): ~30-70s per `run_simulation`, so
   `tests/test_nmpc.py` takes ~3 min. Velocity-Obstacle tests take ~20s. Use generous timeouts.
 
-### The playground (`docs/`)
+### The playground (`.docs/`)
 - Static site, no build step. Serve it with `python -m http.server -d docs 8000`.
-- `docs/pymapf-bundle.json` is generated — **re-run `python scripts/build_web_bundle.py` after
+- `.docs/pymapf-bundle.json` is generated — **re-run `python scripts/build_web_bundle.py` after
   touching `pymapf/core`, `pymapf/algorithms`, `pymapf/scenarios.py` or `pymapf/benchmark.py`**,
   or the page will run stale code. CI regenerates it before deploying.
-- `docs/mapf.js` is a hand-maintained JavaScript port of the same solvers, used while Pyodide
+- `.docs/mapf.js` is a hand-maintained JavaScript port of the same solvers, used while Pyodide
   downloads and when it is unavailable. If you change search behaviour in Python, change it
   there too — the two are expected to return identical optimal costs.
 - Pyodide loads from a CDN. In a sandbox without egress the page falls back to the JS engine;

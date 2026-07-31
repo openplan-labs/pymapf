@@ -13,7 +13,7 @@ Every experiment reports the *paired* comparison -- same instance, same seed,
 same budget -- because MAPF instance difficulty varies by orders of magnitude
 and unpaired means are dominated by which instances happened to be sampled.
 
-    python -m pymapf.experimental.study --output docs/assets --scale quick
+    python -m pymapf.experimental.study --output .docs/assets --scale quick
 """
 
 from __future__ import annotations

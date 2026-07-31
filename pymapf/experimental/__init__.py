@@ -15,7 +15,7 @@ confused with the reference implementations::
 
 Run the study with::
 
-    python -m pymapf.experimental.study --output docs/assets
+    python -m pymapf.experimental.study --output .docs/assets
 """
 
 from .congestion_pibt import CongestionPIBT, congestion_map

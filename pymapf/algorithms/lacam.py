@@ -28,7 +28,7 @@ empirical: continuing the search in place and relaxing g-values over the
 explored graph -- our first attempt at LaCAM*'s scheme -- won 0 of 28 paired
 instances, while restarts won 26 of 28 (mean cost 0.81x) and handing the first
 solution to :class:`~pymapf.algorithms.lns.LargeNeighborhoodSearch` won 25 of 28
-(0.79x). See ``docs/survey.md`` section 7.4. This is *not* LaCAM*'s
+(0.79x). See ``.docs/survey.md`` section 7.4. This is *not* LaCAM*'s
 eventual-optimality guarantee, which requires the full cost-propagation scheme
 of Okumura (2023).
 

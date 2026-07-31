@@ -7,7 +7,7 @@ on instances drawn by seed so every method sees the same maps::
     python scripts/train_rl.py                       # the standard sweep
     python scripts/train_rl.py --steps 1000000       # longer
     python scripts/train_rl.py --backend torch       # if torch is installed
-    python scripts/train_rl.py --output docs/assets/rl-benchmark.json
+    python scripts/train_rl.py --output .docs/assets/rl-benchmark.json
 
 The comparison is against CBS, which is *optimal*, so the reported ratio is
 true suboptimality rather than a gap against another heuristic. Instances CBS
@@ -145,7 +145,7 @@ def main() -> int:
     parser.add_argument("--time-limit", type=float, default=5.0)
     parser.add_argument("--log-every", type=int, default=20)
     parser.add_argument(
-        "--output", default=os.path.join(ROOT, "docs", "assets", "rl-benchmark.json")
+        "--output", default=os.path.join(ROOT, ".docs", "assets", "rl-benchmark.json")
     )
     parser.add_argument("--only", default=None, help="run one family by name")
     args = parser.parse_args()

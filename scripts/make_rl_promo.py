@@ -52,7 +52,7 @@ from make_promo import (  # noqa: E402
 )
 from pymapf.rl import MAPFEnv, make_trainer  # noqa: E402
 
-BENCHMARK = os.path.join(ROOT, "docs", "assets", "rl-benchmark.json")
+BENCHMARK = os.path.join(ROOT, ".docs", "assets", "rl-benchmark.json")
 
 
 # --------------------------------------------------------------------------
@@ -1059,7 +1059,7 @@ def build_animation(content, seconds=None):
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--output", default=os.path.join(ROOT, "docs", "assets", "pymapf-rl-promo.mp4")
+        "--output", default=os.path.join(ROOT, ".docs", "assets", "pymapf-rl-promo.mp4")
     )
     parser.add_argument("--steps", type=int, default=250_000)
     parser.add_argument("--preview", type=float, default=None)

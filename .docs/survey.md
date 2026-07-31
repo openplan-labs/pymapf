@@ -444,7 +444,7 @@ produced invalid plans that a validity sweep caught (306 runs, now all valid).
 
 Three deliberate deviations, each measured against the algorithm it modifies,
 plus one question about heuristics. Paired ratios; **ratio < 1 means the
-variant is cheaper**. Raw data: `docs/assets/experiments.{json,csv}`.
+variant is cheaper**. Raw data: `.docs/assets/experiments.{json,csv}`.
 
 **A. Congestion-aware PIBT.** Add a static penalty — how many agents'
 individually-shortest paths cross a vertex — to PIBT's distance-based
@@ -698,10 +698,10 @@ the sharper the argmax, the more instances close an orbit.
 ```bash
 pip install -e ".[all,dev]"
 
-python -m pymapf.experimental.study --scale full --output docs/assets
+python -m pymapf.experimental.study --scale full --output .docs/assets
 python scripts/generate_gallery.py
 pytest
 ```
 
-The playground at [`docs/index.html`](index.html) runs the same solvers in a
+The playground at [`.docs/index.html`](index.html) runs the same solvers in a
 browser, so any claim in §7 can be poked at directly.

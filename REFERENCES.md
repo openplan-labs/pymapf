@@ -95,7 +95,7 @@ Implemented in `pymapf/algorithms/search.py`, `space_time_astar.py`, `sipp.py`.
 
 ## Learning-based MAPF
 
-Surveyed in `docs/survey.md`; not implemented (the core of this library is
+Surveyed in `.docs/survey.md`; not implemented (the core of this library is
 dependency-free by design, and these need a trained model).
 
 | Method | Reference |
@@ -109,7 +109,7 @@ dependency-free by design, and these need a trained model).
 
 ## Variants and extensions
 
-Surveyed in `docs/survey.md`; not implemented.
+Surveyed in `.docs/survey.md`; not implemented.
 
 | Variant | Reference |
 |---|---|
@@ -240,7 +240,7 @@ search after the first solution and relaxes g-values over the explored graph,
 following the idea of LaCAM\* (IJCAI 2023) — but it does not implement the full
 cost-propagation scheme, and it should not be read as carrying LaCAM\*'s
 eventual-optimality guarantee. The measured effect of that continuation is
-reported in `docs/survey.md` § Experiments. None of the LaCAM3 engineering
+reported in `.docs/survey.md` § Experiments. None of the LaCAM3 engineering
 (swap operations, monte-carlo generation, multi-threading) is present.
 
 **MAPF-LNS** uses the destroy/repair loop and adaptive operator weights of the
@@ -260,7 +260,7 @@ function ρ_h and both navigational-feedback terms. One deviation is deliberate:
 the interaction range is clamped to 1.2 × the reference distance, per the
 paper's α-lattice construction. Left at this library's default sensing range
 (2 × reference distance) the lattice collapses — measured, and documented in
-`docs/survey.md` § Experiments.
+`.docs/survey.md` § Experiments.
 
 **Active elastic flocking** implements the first-order formulation of Ferrante
 et al. (2013): forward speed ``v + alpha (F . n)``, heading rate
@@ -269,7 +269,7 @@ et al. (2013): forward speed ``v + alpha (F . n)``, heading rate
 that module. The default neighbourhood is topological (k = 3) rather than
 metric, because bounded springs plus a wide metric radius let summed attraction
 from many neighbours crush the lattice — measured, and documented in
-`docs/survey.md` § Experiments. The published gains were not used; the defaults
+`.docs/survey.md` § Experiments. The published gains were not used; the defaults
 here were tuned on this simulator.
 
 **Gaussian-kernel flocking** applies the kernel as a *normalised* weighting
@@ -424,7 +424,7 @@ papers' shaping — Ng et al.'s invariance result holds for *any* potential — 
 it is a stronger potential than a learned-MAPF paper would normally have
 available, and it is available only because the exact oracle is already here.
 
-The **suboptimality ratios** in `docs/survey.md` are against CBS, which is
+The **suboptimality ratios** in `.docs/survey.md` are against CBS, which is
 optimal, so they are true ratios rather than gaps against another heuristic.
 Instances CBS cannot close inside its time limit are excluded from the ratio
 rather than counted as learned-policy wins.
@@ -436,4 +436,4 @@ nothing here: per-update KL stays between 0.0004 and 0.014, so the conventional
 Raising the entropy coefficient does not help either — 0.01, 0.03 and 0.05 give
 52%, 53% and 53% final solve rate. What does explain the training curve peaking
 near 100% and settling near 50% is the *evaluation mode*, not the training: see
-the greedy-versus-sampled result in `docs/survey.md` § 7.7.
+the greedy-versus-sampled result in `.docs/survey.md` § 7.7.

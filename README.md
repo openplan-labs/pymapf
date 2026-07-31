@@ -42,7 +42,7 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 - 🐦 **Decentralized swarm control**, all object-oriented and registry-based: 10 flocking models (boids, Vicsek, Cucker–Smale, Olfati-Saber, proximal, active-elastic, acceleration-based, Gaussian-kernel, minimalistic, distributed-3D), 5 coverage controllers over 6 pluggable domains, and Gaussian-mixture distribution control
 - 📐 **Formation control** on the displacement / distance / bearing taxonomy, with exact Hungarian slot assignment and a rigidity test that tells you when a target shape is holdable at all
 - 🧠 **Multi-agent RL** (`pymapf.rl`): the MAPF instances as a PettingZoo-parallel environment, IPPO and MAPPO that train with **no dependency beyond numpy**, and a benchmark scored against the *optimal* CBS solution rather than another heuristic
-- 🔬 **[Extended survey](docs/survey.md)** of MAPF 2021→2026 plus an experimental section with measured (and negative) results
+- 🔬 **[Extended survey](.docs/survey.md)** of MAPF 2021→2026 plus an experimental section with measured (and negative) results
 - 🧩 Pluggable solver framework with a name-based registry, pluggable heuristics and deterministic maps
 - 🔭 **Observable search**: every solver streams `SearchEvent`s — record them, animate them, or watch them live
 - 🗺️ **Six reproducible scenario families** (empty room, random obstacles, warehouse, maze, bottleneck, corner swap) plus ASCII maps
@@ -53,7 +53,7 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 
 <div align="center">
 
-<img src="docs/assets/animated-search.gif" alt="Conflict-based search resolving conflicts" width="640">
+<img src=".docs/assets/animated-search.gif" alt="Conflict-based search resolving conflicts" width="640">
 
 <em>CBS finding and resolving conflicts, node by node — produced by <code>pymapf.viz.animate_search</code></em>
 
@@ -117,7 +117,7 @@ Measured on the 8-agent warehouse instance: CBS spends 6 470 expansions and
 5.3 s for cost 100; weighted CBS reaches 104 in 23 expansions and 18 ms; LaCAM
 returns a valid plan in 4 ms; LNS takes PIBT's 175 down to 113 in two seconds.
 The full picture, including where each one fails, is in
-[`docs/survey.md`](docs/survey.md).
+[`.docs/survey.md`](.docs/survey.md).
 
 CBS is exponential in the number of conflicts, so give it a budget on hard maps:
 
@@ -204,7 +204,7 @@ viz.save_animation(viz.animate_search(trace, scenario), "search.mp4")
 
 | | | |
 |---|---|---|
-| ![solution](docs/assets/solution.png) | ![congestion](docs/assets/congestion.png) | ![space-time](docs/assets/spacetime.png) |
+| ![solution](.docs/assets/solution.png) | ![congestion](.docs/assets/congestion.png) | ![space-time](.docs/assets/spacetime.png) |
 | `plot_solution` | `plot_congestion` | `plot_spacetime` |
 
 ### Benchmarking 📊
@@ -221,7 +221,7 @@ scaling = scaling_study("random_obstacles", agent_counts=(2, 4, 6, 8, 10, 12))
 viz.dashboard(scaling, report).savefig("dashboard.png")
 ```
 
-![dashboard](docs/assets/dashboard.png)
+![dashboard](.docs/assets/dashboard.png)
 
 ### Adding your own solver 🔌
 
@@ -404,7 +404,7 @@ Both have the same cure: sampling is the only noise in the system, so it always
 escapes — and it also wanders, hence 3x the cost. Reporting either number alone
 would be reporting half the result, so `compare()` reports both by default.
 
-There is a short film for this layer — `docs/assets/pymapf-rl-promo.mp4`, built
+There is a short film for this layer — `.docs/assets/pymapf-rl-promo.mp4`, built
 by `scripts/make_rl_promo.py`. It trains the policy while it renders, so the
 split-screen is that policy acting on one shared instance, and the 70/30 split
 is measured over 80 instances during the render rather than quoted.
@@ -440,7 +440,7 @@ sim.visualize("filename_test_2", 10, 10)
 ### Scripts 💨
 
 ```bash
-python scripts/generate_gallery.py     # every figure in docs/assets
+python scripts/generate_gallery.py     # every figure in .docs/assets
 python scripts/make_promo.py           # the promo film
 python scripts/make_rl_promo.py        # the learning-layer film
 python scripts/train_rl.py             # train IPPO/MAPPO, benchmark vs CBS
@@ -450,7 +450,7 @@ python scripts/switch_positions_nmpc.py
 
 ### The playground 🌐
 
-`docs/` is a static site that runs PyMAPF in the browser under Pyodide — the
+`.docs/` is a static site that runs PyMAPF in the browser under Pyodide — the
 same source files, loaded into a WebAssembly interpreter, with a JavaScript port
 of the solvers as an instant-response fallback. Serve it locally with:
 
