@@ -333,3 +333,15 @@ def test_every_available_backend_trains(backend):
 def test_an_unknown_backend_is_rejected():
     with pytest.raises(ValueError):
         make_actor_critic("jax", obs_dim=4, n_actions=5)
+
+
+def test_planner_failures_are_absorbed_but_bugs_are_not():
+    """`plan` must not swallow a programming error as "unsolvable"."""
+    from pymapf.rl.evaluate import plan
+
+    env = MAPFEnv("empty_room", height=6, width=6, n_agents=2, randomise=False)
+    env.reset(seed=0)
+    assert plan(env.problem, "cbs") is not None
+    # An unknown solver is a mistake in the caller, not an unsolvable instance.
+    with pytest.raises(ValueError):
+        plan(env.problem, "no_such_solver")

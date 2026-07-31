@@ -38,7 +38,7 @@ exactly the condition a MAPF plan has to satisfy.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -127,6 +127,14 @@ class MAPFEnv:
         if self.randomise and self._family is None:
             raise ValueError("randomise=True needs a scenario family name to draw from")
 
+        # The *specification* is kept, not just the built objects, so respawn()
+        # can construct fresh ones. Sharing a reward function across vectorised
+        # workers would be a correctness bug rather than an efficiency one:
+        # ShapedReward caches a distance field per instance, and workers reset
+        # at different times, so one worker's reset would silently overwrite the
+        # potentials another worker is midway through using.
+        self._observation_spec = (observation, dict(observation_kwargs or {}))
+        self._reward_spec = (reward, dict(reward_kwargs or {}))
         self.encoder: ObservationEncoder = get_observation(
             observation, **(observation_kwargs or {})
         )
@@ -157,6 +165,47 @@ class MAPFEnv:
             # Long enough that a competent policy is never truncated, short
             # enough that a hopeless one does not burn the rollout budget.
             self.max_steps = int(4 * (self.grid.height + self.grid.width))
+
+    @property
+    def problem(self) -> "object":
+        """The :class:`pymapf.MAPFProblem` currently loaded.
+
+        Public because the evaluation harness needs to hand exactly this
+        instance to a planner; reaching through ``env._problem`` to do it was
+        the tell that the attribute belonged in the API.
+        """
+        return self._problem
+
+    def respawn(self) -> "MAPFEnv":
+        """A fresh environment configured like this one.
+
+        Rebuilt from the configuration rather than deep-copied, because the
+        scenario family and its kwargs define the instance *distribution* --
+        copying a bound instance would hand every vectorised worker the same
+        map, and the policy would learn that one map.
+        """
+        import copy
+
+        observation, observation_kwargs = self._observation_spec
+        reward, reward_kwargs = self._reward_spec
+        # A spec given as an *instance* would otherwise be shared by every
+        # worker, which is the same cache-clobbering bug as above arriving by a
+        # different route. Copied rather than reused; a name already builds
+        # something fresh.
+        if isinstance(observation, ObservationEncoder):
+            observation = copy.deepcopy(observation)
+        if isinstance(reward, RewardFunction):
+            reward = copy.deepcopy(reward)
+        return MAPFEnv(
+            self._family if self._family is not None else self._problem,
+            observation=observation,
+            reward=reward,
+            observation_kwargs=observation_kwargs,
+            reward_kwargs=reward_kwargs,
+            max_steps=self._max_steps,
+            randomise=self.randomise,
+            **self._scenario_kwargs,
+        )
 
     def instance_signature(self) -> tuple:
         """Identifies the current instance, for caches keyed on it."""

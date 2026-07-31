@@ -197,7 +197,7 @@ class PPOTrainer:
         self.target_kl = target_kl
         self._random = np.random.default_rng(seed)
 
-        factory = env_factory or (lambda: _clone(env))
+        factory = env_factory or env.respawn
         self.vector = VectorMAPFEnv(factory, n=n_envs, seed=seed)
         self.agents = list(self.vector.possible_agents)
         self.rollout_steps = rollout_steps
@@ -400,50 +400,6 @@ class PPOTrainer:
 
         with open(path, "rb") as handle:
             self.policy.load_state_dict(pickle.load(handle)["state"])
-
-
-def _clone(env: MAPFEnv) -> MAPFEnv:
-    """A fresh environment configured like ``env``.
-
-    Rebuilt from the constructor arguments rather than deep-copied: the
-    scenario family and its kwargs are what define the instance *distribution*,
-    and copying an instance would give every worker the same map.
-    """
-    return MAPFEnv(
-        env._family if env._family is not None else env._problem,
-        observation=type(env.encoder)(**_encoder_kwargs(env.encoder)),
-        reward=type(env.reward_function)(**_reward_kwargs(env.reward_function)),
-        max_steps=env._max_steps,
-        randomise=env.randomise,
-        **env._scenario_kwargs,
-    )
-
-
-def _encoder_kwargs(encoder) -> dict:
-    from .observation import LocalWindow
-
-    if isinstance(encoder, LocalWindow):
-        return {
-            "radius": encoder.radius,
-            "include_goal_vector": encoder.include_goal_vector,
-        }
-    return {}
-
-
-def _reward_kwargs(reward) -> dict:
-    from .reward import ShapedReward, SparseReward
-
-    kwargs = {}
-    if isinstance(reward, SparseReward):
-        kwargs.update(
-            step=reward.step,
-            goal=reward.goal,
-            collision=reward.collision,
-            blocked=reward.blocked,
-        )
-    if isinstance(reward, ShapedReward):
-        kwargs.update(gamma=reward.gamma, scale=reward.scale)
-    return kwargs
 
 
 class IPPO(PPOTrainer):

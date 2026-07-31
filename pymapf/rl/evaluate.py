@@ -23,13 +23,13 @@ rather than counted as learned-policy wins.
 from __future__ import annotations
 
 import time
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
 from .env import MAPFEnv
 
-__all__ = ["EvaluationResult", "rollout", "evaluate", "compare"]
+__all__ = ["EvaluationResult", "rollout", "evaluate", "compare", "plan"]
 
 
 class EvaluationResult:
@@ -102,6 +102,38 @@ def rollout(env: MAPFEnv, policy, deterministic: bool = True, seed: Optional[int
     return env.solution(), env.episode_summary()
 
 
+#: What a planner can hit on an instance it cannot handle, as opposed to what a
+#: caller can get wrong. Deliberately narrow: a bare ``except Exception`` also
+#: swallows the ``ValueError`` from asking for a solver that does not exist, and
+#: reporting a typo as "the planner found this unsolvable" is worse than
+#: crashing.
+PLANNER_FAILURES = (RuntimeError, MemoryError, RecursionError)
+
+
+def plan(problem, algorithm: str, time_limit: float = 5.0):
+    """Run a planner, returning ``None`` if it cannot solve the instance.
+
+    The solver is *constructed first*, outside the guard, so an unknown name
+    raises rather than being absorbed. Only the search itself is guarded, and
+    only against the ways a search can genuinely give out. Also absorbs the one
+    interface wrinkle in the registry: not every solver takes ``time_limit``,
+    and the ones that do not signal it with a ``TypeError`` from construction
+    rather than advertising it.
+    """
+    import pymapf
+
+    try:
+        solver = pymapf.get_solver(algorithm, time_limit=time_limit)
+    except TypeError:
+        solver = pymapf.get_solver(algorithm)
+
+    try:
+        solution = solver.solve(problem)
+    except PLANNER_FAILURES:
+        return None
+    return solution if solution is not None and solution.is_valid() else None
+
+
 def _ask(policy, observations, deterministic):
     if hasattr(policy, "act"):
         try:
@@ -144,14 +176,10 @@ def evaluate(
 
         optimal_cost = None
         if baseline:
-            problem = env._problem
             started = time.perf_counter()
-            try:
-                planned = pymapf.solve(problem, baseline, time_limit=baseline_time_limit)
-            except TypeError:  # a solver without a time limit argument
-                planned = pymapf.solve(problem, baseline)
+            planned = plan(env.problem, baseline, baseline_time_limit)
             planner_runtime = time.perf_counter() - started
-            found = planned is not None and planned.is_valid()
+            found = planned is not None
             optimal_cost = planned.sum_of_costs if found else None
             results[baseline].add(
                 solved=found,
@@ -217,17 +245,11 @@ def compare(
     # The optimal costs first, so every learned row can be scored against them.
     for episode in range(episodes):
         env.reset(seed=seed + episode)
-        problem = env._problem
         started = time.perf_counter()
-        try:
-            planned = pymapf.solve(problem, "cbs", time_limit=baseline_time_limit)
-        except Exception:
-            planned = None
-        optimal[episode] = (
-            planned.sum_of_costs if planned is not None and planned.is_valid() else None
-        )
+        planned = plan(env.problem, "cbs", baseline_time_limit)
+        optimal[episode] = planned.sum_of_costs if planned is not None else None
         if "cbs" in tallies:
-            found = planned is not None and planned.is_valid()
+            found = planned is not None
             tallies["cbs"].add(
                 found,
                 bool(found),
@@ -244,13 +266,8 @@ def compare(
         for episode in range(episodes):
             env.reset(seed=seed + episode)
             started = time.perf_counter()
-            try:
-                planned = pymapf.solve(
-                    env._problem, name, time_limit=baseline_time_limit
-                )
-            except Exception:
-                planned = None
-            found = planned is not None and planned.is_valid()
+            planned = plan(env.problem, name, baseline_time_limit)
+            found = planned is not None
             cost = planned.sum_of_costs if found else None
             reference = optimal.get(episode)
             tallies[name].add(

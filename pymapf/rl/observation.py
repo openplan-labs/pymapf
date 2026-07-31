@@ -39,7 +39,7 @@ References
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, Type
 
 import numpy as np
 

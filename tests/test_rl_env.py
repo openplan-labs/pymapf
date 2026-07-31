@@ -445,3 +445,58 @@ def test_render_shows_agents_walls_and_goals():
     frame = env.render(mode="ansi")
     assert "#" in frame and "A" in frame and "B" in frame
     assert len(frame.splitlines()) == env.grid.height
+
+
+# --------------------------------------------------------------------------
+# respawn, and the shared-state bug it has to avoid
+# --------------------------------------------------------------------------
+
+
+def test_respawn_preserves_the_configuration():
+    env = MAPFEnv(
+        "random_obstacles",
+        height=9,
+        width=9,
+        n_agents=3,
+        density=0.2,
+        observation_kwargs={"radius": 2},
+        max_steps=37,
+    )
+    copy = env.respawn()
+    assert copy.encoder.radius == 2
+    assert copy.max_steps == 37
+    assert copy.randomise == env.randomise
+    assert copy.observation_space("A").shape == env.observation_space("A").shape
+
+
+@pytest.mark.parametrize("reward", ["shaped", ShapedReward(scale=2.0)])
+def test_respawn_never_shares_a_reward_function(reward):
+    """Sharing one would be a correctness bug, not an efficiency one.
+
+    ShapedReward caches a distance field per instance. Vectorised workers reset
+    at different times, so a shared reward function means one worker's reset
+    silently overwrites the potentials another is midway through using.
+    """
+    env = MAPFEnv("random_obstacles", height=9, width=9, n_agents=2, reward=reward)
+    first, second = env.respawn(), env.respawn()
+    assert first.reward_function is not second.reward_function
+    assert first.reward_function is not env.reward_function
+    assert first.encoder is not second.encoder
+
+
+def test_every_vector_worker_gets_its_own_reward_function():
+    from pymapf.rl import VectorMAPFEnv
+
+    template = MAPFEnv(
+        "random_obstacles", height=10, width=10, n_agents=2, density=0.15, reward="shaped"
+    )
+    vector = VectorMAPFEnv(template.respawn, n=4, seed=0)
+    identities = {id(worker.reward_function) for worker in vector.envs}
+    assert len(identities) == 4
+
+
+def test_the_problem_is_reachable_without_touching_privates():
+    env = MAPFEnv("empty_room", height=8, width=8, n_agents=2, randomise=False)
+    env.reset(seed=0)
+    optimal = pymapf.solve(env.problem, "cbs")
+    assert optimal is not None and optimal.is_valid()
