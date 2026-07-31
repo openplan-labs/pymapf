@@ -40,15 +40,22 @@ benchmarked against its own optimal planner.
   - `compare()` scores policies and planners on identical seeded instances and
     reports true suboptimality against the optimum.
 - `scripts/train_rl.py` reproduces every number in `docs/survey.md` § 7.6.
+- `scripts/make_rl_promo.py` renders a 62-second film for the learning layer.
+  The policy is trained while the film renders, the split-screen scene is that
+  policy acting on one shared instance in both action modes, and the 70/30
+  failure split is measured over 80 instances during the render -- so the film
+  cannot drift from the library's behaviour.
 - New extras: `rl` (numpy only), `rl-torch`, `rl-ecosystem`.
 
 ### Findings
 
 - **How a policy is sampled matters more than which algorithm trained it.** The
   same weights score 45% solved at 1.11x optimal under argmax, and 100% at 2.94x
-  when sampled. Greedy agents that both want a cell are refused, revert and
-  repeat -- a livelock, the same one PIBT has. `compare()` reports both modes by
-  default because either alone is half the result.
+  when sampled. Over 80 instances the 33 greedy failures split into two modes:
+  70% are collision-free period-2 orbits where the agents never touch, and 30%
+  are period-1 freezes colliding every step -- a genuine livelock. None involves
+  a wall, and in every case both agents solve the instance alone. `compare()`
+  reports both action modes by default because either alone is half the result.
 - **IPPO and MAPPO are indistinguishable here** (45% vs 44%, 1.11x vs 1.11x),
   matching the MAPPO paper's own conclusion.
 - **On the hardest setting the optimal planner is the one that fails**: CBS

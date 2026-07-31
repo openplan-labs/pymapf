@@ -607,13 +607,38 @@ report.
 
 **1. How you sample the policy matters more than which algorithm trained it.**
 The same weights, evaluated two ways, are either a 45%-success policy at 1.11x
-optimal or a 100%-success policy at 2.94x. Taking the argmax makes the policy
-deterministic, and two deterministic agents that both want the same cell are
-refused by the conflict rules, revert, and then choose exactly the same thing
-again — a **livelock**, and precisely the failure mode PIBT has on 25% of
-warehouse instances (§7.3). Sampling breaks the symmetry, so the flock always
-eventually gets through; it also wanders, hence three times the cost. Reporting
-either number alone reports half the result, so the harness reports both.
+optimal or a 100%-success policy at 2.94x.
+
+There are **two** mechanisms behind that gap, and instrumenting them matters
+because each on its own is a plausible-sounding story that is wrong most of the
+time. Over 80 instances, 33 greedy failures, separating cleanly by the period of
+the configuration the policy ends up repeating:
+
+| failure mode | share | collisions | what is happening |
+|---|---|---|---|
+| period-2 orbit | 23 / 33 (70%) | **0** | the agents never touch |
+| period-1 freeze | 10 / 33 (30%) | ~128 (every step) | the agents genuinely block each other |
+
+Not one failure of either kind involves a wall contact, and in every case both
+agents solve that same instance perfectly well **alone**.
+
+The 30% is the story you would guess: a **livelock**, two agents each wanting a
+cell the other holds, refused by the conflict rules, reverting, choosing
+identically again — the same failure PIBT has on 25% of warehouse instances
+(§7.3), arrived at by a different route.
+
+The 70% is not, and it is the larger share. Those agents never come near each
+other; there is no contention to resolve and the conflict rules are never
+invoked at all. Taking the argmax makes each agent a deterministic function of
+its observation, that observation *contains the other agent's position*, and the
+two-body system settles onto a closed orbit. The other agent is not an obstacle
+there; it is an **input** that happens to put the policy on a cycle.
+
+Both modes have the same cure and the same cause: a fully deterministic policy
+has no way out of a loop it has entered. Sampling is the only noise in the
+system, which is why it escapes every time — and why it wanders, at three times
+the cost. Reporting either number alone reports half the result, so the harness
+reports both.
 
 **2. IPPO and MAPPO are indistinguishable here.** 45% versus 44%, 1.11x versus
 1.11x, 94% versus 94%. That is the MAPPO paper's own finding restated: the
@@ -643,7 +668,8 @@ fires, because the measured per-update KL stays between 0.0004 and 0.014 and
 the conventional threshold is 0.02 — runs with and without it are bit-identical.
 Raising the entropy coefficient from 0.01 through 0.03 to 0.05 moves the final
 solve rate from 52% to 53% to 53%. The curve is not the policy degrading; it is
-the greedy-evaluation livelock of finding (1) arriving as the policy sharpens.
+the deterministic limit cycle of finding (1) arriving as the policy sharpens:
+the sharper the argmax, the more instances close an orbit.
 
 ## 8. Open problems
 

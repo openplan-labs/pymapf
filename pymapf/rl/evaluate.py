@@ -220,13 +220,14 @@ def compare(
 
     Each learned policy is scored in **both** action modes, because on this
     domain the choice is not a detail -- it is the single largest effect in the
-    table. Taking the argmax makes the policy deterministic, and two
-    deterministic agents that both want the same cell are refused, revert, and
-    then choose exactly the same thing again: a livelock, and the direct
-    analogue of the one PIBT suffers. Sampling breaks the symmetry, so the same
-    weights go from solving 47% of instances to solving 100% of them -- at
-    three times the cost, because a sampled policy also wanders. Reporting only
-    one of those two numbers would be reporting half the result.
+    table, and it has two distinct causes. Measured over 80 instances: 70% of
+    greedy failures are collision-free period-2 orbits, where the argmax makes
+    each agent a deterministic function of an observation containing the other
+    and the pair closes a loop without ever touching; the other 30% are
+    period-1 freezes that collide every step, a genuine livelock. Sampling is
+    the only noise in the system and escapes both, taking the same weights from
+    45% solved to 100% -- at three times the cost, because it also wanders.
+    Reporting one of those numbers alone would be reporting half the result.
     """
     rows: List[Dict[str, float]] = []
     labelled = {

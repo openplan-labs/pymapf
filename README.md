@@ -389,13 +389,25 @@ worth knowing about:
 | IPPO, sampled | **100%** | 29.5 | 3.05x |
 | CBS (optimal) | 100% | 9.6 | 1.00x |
 
-The same weights, evaluated two ways. Taking the argmax makes the policy
-deterministic, and two deterministic agents that both want the same cell are
-refused, revert, and choose exactly the same thing again — a livelock, and the
-direct analogue of the one PIBT suffers. Sampling breaks the symmetry so it
-always eventually solves, but it also wanders, hence 3x the cost. Reporting
-either number alone would be reporting half the result, so `compare()` reports
-both by default.
+The same weights, evaluated two ways — and the gap has **two** causes, measured
+over 80 instances (33 greedy failures, no wall contacts, and in every case both
+agents solve that instance fine *alone*):
+
+- **70%** are collision-free **period-2 orbits**. The agents never touch. The
+  argmax makes each a deterministic function of an observation that contains the
+  other agent, and the pair settles onto a closed loop.
+- **30%** are **period-1 freezes** with a collision on every step — a genuine
+  livelock, two agents each wanting the cell the other holds. The same failure
+  PIBT has, reached by a different route.
+
+Both have the same cure: sampling is the only noise in the system, so it always
+escapes — and it also wanders, hence 3x the cost. Reporting either number alone
+would be reporting half the result, so `compare()` reports both by default.
+
+There is a short film for this layer — `docs/assets/pymapf-rl-promo.mp4`, built
+by `scripts/make_rl_promo.py`. It trains the policy while it renders, so the
+split-screen is that policy acting on one shared instance, and the 70/30 split
+is measured over 80 instances during the render rather than quoted.
 
 ### Reactive planners 🔎
 
@@ -430,6 +442,8 @@ sim.visualize("filename_test_2", 10, 10)
 ```bash
 python scripts/generate_gallery.py     # every figure in docs/assets
 python scripts/make_promo.py           # the promo film
+python scripts/make_rl_promo.py        # the learning-layer film
+python scripts/train_rl.py             # train IPPO/MAPPO, benchmark vs CBS
 python scripts/build_web_bundle.py     # refresh the playground's copy of the library
 python scripts/switch_positions_nmpc.py
 ```
