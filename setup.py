@@ -20,6 +20,12 @@ EXTRAS = {
         "coloredlogs>=15.0",
         "termcolor>=1.1",
     ],
+    # The RL layer. numpy alone is enough -- the default backend is a numpy
+    # MLP with hand-written gradients, so `pymapf.rl` trains out of the box.
+    # The rest is interoperability and scale, and is genuinely optional.
+    "rl": ["numpy>=1.20"],
+    "rl-torch": ["numpy>=1.20", "torch>=1.13"],
+    "rl-ecosystem": ["numpy>=1.20", "gymnasium>=0.29", "pettingzoo>=1.24"],
     "dev": ["pytest>=6.0", "pytest-cov"],
 }
 EXTRAS["all"] = sorted(
@@ -28,12 +34,13 @@ EXTRAS["all"] = sorted(
 
 setuptools.setup(
     name="pymapf",
-    version="0.6.0",
+    version="0.7.0",
     author="Erwin Lejeune",
     author_email="erwinlejeune.pro@gmail.com",
     description=(
         "Multi-agent path finding: a solver framework (CBS, weighted CBS, "
-        "prioritized planning) with scenarios, benchmarks and visualisation"
+        "PIBT, LaCAM, LNS), decentralized swarm control, and a multi-agent RL "
+        "environment benchmarked against the optimal planner"
     ),
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -58,6 +65,7 @@ setuptools.setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Mathematics",
         "Framework :: Pytest",
     ],
     python_requires=">=3.8",

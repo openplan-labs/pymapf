@@ -568,6 +568,83 @@ waypoint 60 m away it consumed the entire acceleration budget and the clamp
 scaled collision avoidance to nothing. Bounding navigational authority to a
 fixed share of the budget fixed it for every controller.
 
+### 7.6 Learned MAPF, measured against the optimum
+
+The 2021 survey covered learning-based MAPF (§4) but could not benchmark it,
+because a learned-MAPF number is normally a *success rate* — the optimum is too
+expensive to obtain per instance. That is exactly the thing this repository
+already owns, so the tables below report **true suboptimality**: the learned
+sum-of-costs over the CBS sum-of-costs, computed by the planner's own code on
+the same instance.
+
+IPPO and MAPPO (`pymapf.rl`), shared parameters, 400k environment-agent steps
+each, egocentric 9×9 observation, potential-based shaping from the exact
+distance oracle. 100 held-out instances per setting.
+
+| setting | method | solved | cost | vs optimal |
+|---|---|---|---|---|
+| 8×8, 2 agents | ippo (greedy) | 45% | 10.5 | **1.11x** |
+| | ippo (sampled) | **100%** | 27.3 | 2.94x |
+| | mappo (greedy) | 44% | 10.5 | 1.11x |
+| | mappo (sampled) | **100%** | 27.4 | 2.97x |
+| | CBS | 100% | 9.6 | 1.00x |
+| | PIBT | 100% | 9.9 | 1.03x |
+| 10×10, 4 agents | ippo (greedy) | 10% | 30.6 | 1.38x |
+| | ippo (sampled) | 94% | 128.3 | 5.33x |
+| | mappo (sampled) | 94% | 122.2 | 5.24x |
+| | CBS | 100% | 24.1 | 1.00x |
+| 10×10 + obstacles | ippo (sampled) | 65% | 164.6 | 6.68x |
+| | mappo (sampled) | 67% | 166.2 | 6.84x |
+| | CBS | 100% | 26.7 | 1.00x |
+| | PIBT | 97% | 29.4 | 1.11x |
+| bottleneck, 4 agents | ippo (sampled) | 58% | 299.1 | 7.43x |
+| | mappo (sampled) | 0% | — | — |
+| | CBS | **1%** | 58.0 | 1.00x |
+| | PIBT | 100% | 77.7 | 1.07x |
+
+Four things fall out of this, and only the first is the one people usually
+report.
+
+**1. How you sample the policy matters more than which algorithm trained it.**
+The same weights, evaluated two ways, are either a 45%-success policy at 1.11x
+optimal or a 100%-success policy at 2.94x. Taking the argmax makes the policy
+deterministic, and two deterministic agents that both want the same cell are
+refused by the conflict rules, revert, and then choose exactly the same thing
+again — a **livelock**, and precisely the failure mode PIBT has on 25% of
+warehouse instances (§7.3). Sampling breaks the symmetry, so the flock always
+eventually gets through; it also wanders, hence three times the cost. Reporting
+either number alone reports half the result, so the harness reports both.
+
+**2. IPPO and MAPPO are indistinguishable here.** 45% versus 44%, 1.11x versus
+1.11x, 94% versus 94%. That is the MAPPO paper's own finding restated: the
+centralized critic is not where the performance comes from. It is worth saying
+plainly because the two differ in this codebase by a single class attribute, so
+there is no implementation gap hiding a real one.
+
+**3. The learned policies are conflict-free by construction, not by training.**
+Validity is 100% in every row including the random baseline, because the
+environment resolves vertex, edge and cascading conflicts with MAPF's rules
+rather than letting agents overlap and penalising it afterwards. This is a
+modelling choice with teeth: it means a policy can never score well by cheating
+on the physics, and it means "success rate" and "collision rate" are not
+trading off against each other.
+
+**4. On the hardest setting the *optimal* planner is the one that fails.** CBS
+closed 1% of the bottleneck instances inside five seconds. PIBT closed 100% of
+them at 1.07x. The learned policy closed 58% at 7.43x. If you only ever compare
+against an optimal baseline you will not be able to run this row at all — which
+is the practical argument for keeping a suboptimal planner in the comparison,
+and the reason the harness takes a list of baselines rather than one.
+
+Two things that did **not** work, recorded so they are not re-attempted. The
+training curve peaks near 100% solved around 100k steps and settles near 50%,
+and neither of the standard remedies touches it: KL-based early stopping never
+fires, because the measured per-update KL stays between 0.0004 and 0.014 and
+the conventional threshold is 0.02 — runs with and without it are bit-identical.
+Raising the entropy coefficient from 0.01 through 0.03 to 0.05 moves the final
+solve rate from 52% to 53% to 53%. The curve is not the policy degrading; it is
+the greedy-evaluation livelock of finding (1) arriving as the policy sharpens.
+
 ## 8. Open problems
 
 1. **Optimality at scale.** LaCAM\* converges to optimal in the limit, but the

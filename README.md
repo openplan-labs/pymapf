@@ -41,6 +41,7 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 - 🕸️ Works on **arbitrary graphs**, not just grids (roadmaps, warehouse topologies, PRMs)
 - 🐦 **Decentralized swarm control**, all object-oriented and registry-based: 10 flocking models (boids, Vicsek, Cucker–Smale, Olfati-Saber, proximal, active-elastic, acceleration-based, Gaussian-kernel, minimalistic, distributed-3D), 5 coverage controllers over 6 pluggable domains, and Gaussian-mixture distribution control
 - 📐 **Formation control** on the displacement / distance / bearing taxonomy, with exact Hungarian slot assignment and a rigidity test that tells you when a target shape is holdable at all
+- 🧠 **Multi-agent RL** (`pymapf.rl`): the MAPF instances as a PettingZoo-parallel environment, IPPO and MAPPO that train with **no dependency beyond numpy**, and a benchmark scored against the *optimal* CBS solution rather than another heuristic
 - 🔬 **[Extended survey](docs/survey.md)** of MAPF 2021→2026 plus an experimental section with measured (and negative) results
 - 🧩 Pluggable solver framework with a name-based registry, pluggable heuristics and deterministic maps
 - 🔭 **Observable search**: every solver streams `SearchEvent`s — record them, animate them, or watch them live
@@ -335,6 +336,66 @@ is_infinitesimally_rigid(line, [(i, j) for i in range(6) for j in range(i + 1, 6
 
 The functional API in `pymapf.decentralized.flocking` / `.coverage` still works;
 it now delegates to this layer.
+
+### Reinforcement learning 🧠
+
+The same instances the planners solve, as a multi-agent environment — and the
+reason to have it here rather than in a separate repo is that a rollout comes
+back as a `pymapf.Solution`, so a learned policy and CBS are scored by
+*identical* code:
+
+```python
+from pymapf.rl import MAPFEnv, make_trainer, compare
+
+env = MAPFEnv("random_obstacles", n_agents=4, height=10, width=10)
+trainer = make_trainer("mappo", env)      # or "ippo"
+trainer.learn(total_steps=400_000)        # ~7k steps/s, numpy only
+
+for row in compare(env, {"mappo": trainer}, episodes=100):
+    print(row["method"], row["success_rate"], row["suboptimality"])
+```
+
+It follows the **PettingZoo Parallel API** without importing PettingZoo, so it
+runs in a bare environment and still drops into any MARL library
+(`env.to_pettingzoo()` when you want the real base class). Observations,
+rewards and algorithms are registries like everything else:
+
+```python
+from pymapf.rl import register_observation, LocalWindow
+
+@register_observation("my_encoding")
+class MyEncoder(LocalWindow):
+    ...
+```
+
+Three things it gets from living inside the library:
+
+- **exact reward shaping.** `ShapedReward` uses the backward-Dijkstra distance
+  oracle the solvers already use, so the potential is the true remaining cost
+  rather than a Manhattan guess — and being potential-based, it is
+  policy-invariant (Ng et al. 1999).
+- **conflict-freedom by construction.** Vertex, edge and cascading conflicts are
+  resolved with MAPF's rules, so *any* rollout is a valid plan. Validity is
+  100% in the table below because it cannot be otherwise.
+- **true suboptimality.** CBS is optimal, so the ratio is measured against
+  ground truth, not against another heuristic.
+
+Measured on `empty_room`, 2 agents, 400k steps of IPPO — and this is the result
+worth knowing about:
+
+| method | solved | cost | vs optimal |
+|---|---|---|---|
+| IPPO, greedy (argmax) | 47% | 10.7 | **1.10x** |
+| IPPO, sampled | **100%** | 29.5 | 3.05x |
+| CBS (optimal) | 100% | 9.6 | 1.00x |
+
+The same weights, evaluated two ways. Taking the argmax makes the policy
+deterministic, and two deterministic agents that both want the same cell are
+refused, revert, and choose exactly the same thing again — a livelock, and the
+direct analogue of the one PIBT suffers. Sampling breaks the symmetry so it
+always eventually solves, but it also wanders, hence 3x the cost. Reporting
+either number alone would be reporting half the result, so `compare()` reports
+both by default.
 
 ### Reactive planners 🔎
 
