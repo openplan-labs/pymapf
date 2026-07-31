@@ -23,6 +23,7 @@ at the end.
 - [Decentralized coverage](#decentralized-coverage)
 - [Swarm distribution control](#swarm-distribution-control)
 - [Reactive collision avoidance](#reactive-collision-avoidance)
+- [Reinforcement learning](#reinforcement-learning)
 - [Implementation notes](#implementation-notes)
 
 ---
@@ -197,6 +198,22 @@ Implemented in `pymapf/decentralized/` (pre-existing modules).
 | Reciprocal velocity obstacles | *related* | van den Berg, J.; Lin, M.; and Manocha, D. 2008. *Reciprocal velocity obstacles for real-time multi-agent navigation.* ICRA 2008: 1928–1935. |
 | ORCA | *related* | van den Berg, J.; Guy, S. J.; Lin, M.; and Manocha, D. 2011. *Reciprocal n-body collision avoidance.* Robotics Research (ISRR 2009), Springer: 3–19. |
 | Nonlinear MPC for multi-robot motion | `decentralized.nmpc` | Kamel, M.; Alonso-Mora, J.; Siegwart, R.; and Nieto, J. 2017. *Robust collision avoidance for multiple micro aerial vehicles using nonlinear model predictive control.* IROS 2017: 236–243. |
+
+## Reinforcement learning
+
+Implemented in `pymapf/rl/`. The environment follows the PettingZoo Parallel
+API; the algorithms are PPO with parameters shared across agents.
+
+| Method | Class | Reference |
+|---|---|---|
+| PPO | `PPOTrainer` | Schulman, J.; Wolski, F.; Dhariwal, P.; Radford, A.; and Klimov, O. 2017. *Proximal Policy Optimization Algorithms.* arXiv:1707.06347. |
+| Generalized advantage estimation | `compute_gae` | Schulman, J.; Moritz, P.; Levine, S.; Jordan, M.; and Abbeel, P. 2016. *High-Dimensional Continuous Control Using Generalized Advantage Estimation.* ICLR 2016. |
+| **Independent PPO** | `IPPO` | de Witt, C. S.; Gupta, T.; Makoviichuk, D.; Makoviychuk, V.; Torr, P. H. S.; Sun, M.; and Whiteson, S. 2020. *Is Independent Learning All You Need in the StarCraft Multi-Agent Challenge?* arXiv:2011.09533. |
+| **Multi-Agent PPO (centralized critic)** | `MAPPO` | Yu, C.; Velu, A.; Vinitsky, E.; Gao, J.; Wang, Y.; Bayen, A.; and Wu, Y. 2022. *The Surprising Effectiveness of PPO in Cooperative Multi-Agent Games.* NeurIPS 2022 Datasets and Benchmarks. |
+| **Potential-based reward shaping** | `ShapedReward` | Ng, A. Y.; Harada, D.; and Russell, S. 1999. *Policy invariance under reward transformations: theory and application to reward shaping.* ICML 1999: 278–287. |
+| Egocentric observation stack | `LocalWindow` | Sartoretti, G.; Kerr, J.; Shi, Y.; Wagner, G.; Kumar, T. K. S.; Koenig, S.; and Choset, H. 2019. *PRIMAL: Pathfinding via Reinforcement and Imitation Multi-Agent Learning.* IEEE RA-L 4(3): 2378–2385. |
+| Adam | `Adam` | Kingma, D. P.; and Ba, J. 2015. *Adam: A Method for Stochastic Optimization.* ICLR 2015. |
+| Parallel multi-agent API | `MAPFEnv` | Terry, J. K.; et al. 2021. *PettingZoo: Gym for Multi-Agent Reinforcement Learning.* NeurIPS 2021. |
 
 ---
 
@@ -388,3 +405,35 @@ Lennard-Jones potential and silently ignored it; it now raises. And
 where there is no vertical axis to compensate for — so it differed from plain
 proximal control for no reason, contradicting the documentation. The term is now
 conditioned on `dimension >= 3`, and the two are byte-identical in the plane.
+
+**The RL layer** implements PPO, IPPO and MAPPO faithfully but at small scale,
+and three choices are ours rather than the papers'.
+
+The default network backend is numpy with hand-written backpropagation and
+Adam, not a deep-learning framework. That is what lets the learning code be
+*tested* in CI rather than merely shipped, and the gradients are checked against
+finite differences in `tests/test_rl_learning.py` — the only honest way to claim
+hand-derived gradients are correct. It also found a real bug: orthogonal
+initialisation was returning a non-contiguous array, so `param.reshape(-1)`
+handed back a copy and any write through that view was silently discarded. A
+torch backend implements the same objective for when the numpy one runs out.
+
+`ShapedReward` applies potential-based shaping with `Phi(s) = -true_distance(s)`
+using the library's own backward Dijkstra. This is not an approximation of the
+papers' shaping — Ng et al.'s invariance result holds for *any* potential — but
+it is a stronger potential than a learned-MAPF paper would normally have
+available, and it is available only because the exact oracle is already here.
+
+The **suboptimality ratios** in `docs/survey.md` are against CBS, which is
+optimal, so they are true ratios rather than gaps against another heuristic.
+Instances CBS cannot close inside its time limit are excluded from the ratio
+rather than counted as learned-policy wins.
+
+Two negative results are worth recording rather than tuning away. KL-based
+early stopping (`target_kl`) is off by default because it measurably does
+nothing here: per-update KL stays between 0.0004 and 0.014, so the conventional
+0.02 threshold never fires, and runs with and without it are bit-identical.
+Raising the entropy coefficient does not help either — 0.01, 0.03 and 0.05 give
+52%, 53% and 53% final solve rate. What does explain the training curve peaking
+near 100% and settling near 50% is the *evaluation mode*, not the training: see
+the greedy-versus-sampled result in `docs/survey.md` § 7.7.

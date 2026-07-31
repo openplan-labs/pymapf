@@ -1,0 +1,2395 @@
+{
+  "settings": [
+    {
+      "family": "empty_room",
+      "kwargs": {
+        "height": 8,
+        "width": 8,
+        "n_agents": 2
+      },
+      "rows": [
+        {
+          "method": "random (greedy)",
+          "instances": 100,
+          "success_rate": 0.04,
+          "validity_rate": 1.0,
+          "mean_cost": 78.25,
+          "mean_makespan": 39.5,
+          "mean_collisions": 2.19,
+          "mean_runtime": 0.007535969179989479,
+          "suboptimality": 6.954273504273504
+        },
+        {
+          "method": "random (sampled)",
+          "instances": 100,
+          "success_rate": 0.05,
+          "validity_rate": 1.0,
+          "mean_cost": 82.2,
+          "mean_makespan": 41.4,
+          "mean_collisions": 2.49,
+          "mean_runtime": 0.007980289719953362,
+          "suboptimality": 8.012478632478633
+        },
+        {
+          "method": "ippo (greedy)",
+          "instances": 100,
+          "success_rate": 0.45,
+          "validity_rate": 1.0,
+          "mean_cost": 10.488888888888889,
+          "mean_makespan": 5.2444444444444445,
+          "mean_collisions": 17.28,
+          "mean_runtime": 0.008642216810021636,
+          "suboptimality": 1.1100529100529104
+        },
+        {
+          "method": "ippo (sampled)",
+          "instances": 100,
+          "success_rate": 1.0,
+          "validity_rate": 1.0,
+          "mean_cost": 27.34,
+          "mean_makespan": 13.86,
+          "mean_collisions": 1.01,
+          "mean_runtime": 0.0035040932400215753,
+          "suboptimality": 2.943903735153735
+        },
+        {
+          "method": "mappo (greedy)",
+          "instances": 100,
+          "success_rate": 0.44,
+          "validity_rate": 1.0,
+          "mean_cost": 10.545454545454545,
+          "mean_makespan": 5.2727272727272725,
+          "mean_collisions": 21.06,
+          "mean_runtime": 0.00858412316002159,
+          "suboptimality": 1.1125541125541127
+        },
+        {
+          "method": "mappo (sampled)",
+          "instances": 100,
+          "success_rate": 1.0,
+          "validity_rate": 1.0,
+          "mean_cost": 27.44,
+          "mean_makespan": 13.94,
+          "mean_collisions": 0.77,
+          "mean_runtime": 0.0035258417200020632,
+          "suboptimality": 2.9666552891552893
+        },
+        {
+          "method": "cbs",
+          "instances": 100,
+          "success_rate": 1.0,
+          "validity_rate": 1.0,
+          "mean_cost": 9.6,
+          "mean_makespan": 5.58,
+          "mean_collisions": 0.0,
+          "mean_runtime": 0.0002065001599748939,
+          "suboptimality": 1.0
+        },
+        {
+          "method": "pibt",
+          "instances": 100,
+          "success_rate": 1.0,
+          "validity_rate": 1.0,
+          "mean_cost": 9.86,
+          "mean_makespan": 5.7,
+          "mean_collisions": 0.0,
+          "mean_runtime": 0.0003269929100133595,
+          "suboptimality": 1.0305021367521368
+        }
+      ],
+      "curves": {
+        "ippo": [
+          {
+            "steps": 4096,
+            "solved": 0.0625
+          },
+          {
+            "steps": 8192,
+            "solved": 0.03125
+          },
+          {
+            "steps": 12288,
+            "solved": 0.020833333333333332
+          },
+          {
+            "steps": 16384,
+            "solved": 0.0234375
+          },
+          {
+            "steps": 20480,
+            "solved": 0.04375
+          },
+          {
+            "steps": 24576,
+            "solved": 0.04145077720207254
+          },
+          {
+            "steps": 28672,
+            "solved": 0.035
+          },
+          {
+            "steps": 32768,
+            "solved": 0.055
+          },
+          {
+            "steps": 36864,
+            "solved": 0.08
+          },
+          {
+            "steps": 40960,
+            "solved": 0.135
+          },
+          {
+            "steps": 45056,
+            "solved": 0.225
+          },
+          {
+            "steps": 49152,
+            "solved": 0.425
+          },
+          {
+            "steps": 53248,
+            "solved": 0.735
+          },
+          {
+            "steps": 57344,
+            "solved": 0.925
+          },
+          {
+            "steps": 61440,
+            "solved": 0.99
+          },
+          {
+            "steps": 65536,
+            "solved": 1.0
+          },
+          {
+            "steps": 69632,
+            "solved": 1.0
+          },
+          {
+            "steps": 73728,
+            "solved": 0.995
+          },
+          {
+            "steps": 77824,
+            "solved": 1.0
+          },
+          {
+            "steps": 81920,
+            "solved": 1.0
+          },
+          {
+            "steps": 86016,
+            "solved": 1.0
+          },
+          {
+            "steps": 90112,
+            "solved": 1.0
+          },
+          {
+            "steps": 94208,
+            "solved": 1.0
+          },
+          {
+            "steps": 98304,
+            "solved": 1.0
+          },
+          {
+            "steps": 102400,
+            "solved": 0.995
+          },
+          {
+            "steps": 106496,
+            "solved": 0.995
+          },
+          {
+            "steps": 110592,
+            "solved": 0.995
+          },
+          {
+            "steps": 114688,
+            "solved": 0.98
+          },
+          {
+            "steps": 118784,
+            "solved": 0.965
+          },
+          {
+            "steps": 122880,
+            "solved": 0.97
+          },
+          {
+            "steps": 126976,
+            "solved": 0.945
+          },
+          {
+            "steps": 131072,
+            "solved": 0.94
+          },
+          {
+            "steps": 135168,
+            "solved": 0.93
+          },
+          {
+            "steps": 139264,
+            "solved": 0.92
+          },
+          {
+            "steps": 143360,
+            "solved": 0.885
+          },
+          {
+            "steps": 147456,
+            "solved": 0.855
+          },
+          {
+            "steps": 151552,
+            "solved": 0.86
+          },
+          {
+            "steps": 155648,
+            "solved": 0.845
+          },
+          {
+            "steps": 159744,
+            "solved": 0.83
+          },
+          {
+            "steps": 163840,
+            "solved": 0.82
+          },
+          {
+            "steps": 167936,
+            "solved": 0.78
+          },
+          {
+            "steps": 172032,
+            "solved": 0.765
+          },
+          {
+            "steps": 176128,
+            "solved": 0.77
+          },
+          {
+            "steps": 180224,
+            "solved": 0.795
+          },
+          {
+            "steps": 184320,
+            "solved": 0.75
+          },
+          {
+            "steps": 188416,
+            "solved": 0.73
+          },
+          {
+            "steps": 192512,
+            "solved": 0.7
+          },
+          {
+            "steps": 196608,
+            "solved": 0.65
+          },
+          {
+            "steps": 200704,
+            "solved": 0.64
+          },
+          {
+            "steps": 204800,
+            "solved": 0.66
+          },
+          {
+            "steps": 208896,
+            "solved": 0.7
+          },
+          {
+            "steps": 212992,
+            "solved": 0.695
+          },
+          {
+            "steps": 217088,
+            "solved": 0.665
+          },
+          {
+            "steps": 221184,
+            "solved": 0.635
+          },
+          {
+            "steps": 225280,
+            "solved": 0.625
+          },
+          {
+            "steps": 229376,
+            "solved": 0.645
+          },
+          {
+            "steps": 233472,
+            "solved": 0.645
+          },
+          {
+            "steps": 237568,
+            "solved": 0.67
+          },
+          {
+            "steps": 241664,
+            "solved": 0.65
+          },
+          {
+            "steps": 245760,
+            "solved": 0.6
+          },
+          {
+            "steps": 249856,
+            "solved": 0.59
+          },
+          {
+            "steps": 253952,
+            "solved": 0.595
+          },
+          {
+            "steps": 258048,
+            "solved": 0.625
+          },
+          {
+            "steps": 262144,
+            "solved": 0.66
+          },
+          {
+            "steps": 266240,
+            "solved": 0.645
+          },
+          {
+            "steps": 270336,
+            "solved": 0.65
+          },
+          {
+            "steps": 274432,
+            "solved": 0.62
+          },
+          {
+            "steps": 278528,
+            "solved": 0.615
+          },
+          {
+            "steps": 282624,
+            "solved": 0.615
+          },
+          {
+            "steps": 286720,
+            "solved": 0.58
+          },
+          {
+            "steps": 290816,
+            "solved": 0.585
+          },
+          {
+            "steps": 294912,
+            "solved": 0.56
+          },
+          {
+            "steps": 299008,
+            "solved": 0.585
+          },
+          {
+            "steps": 303104,
+            "solved": 0.56
+          },
+          {
+            "steps": 307200,
+            "solved": 0.59
+          },
+          {
+            "steps": 311296,
+            "solved": 0.51
+          },
+          {
+            "steps": 315392,
+            "solved": 0.51
+          },
+          {
+            "steps": 319488,
+            "solved": 0.49
+          },
+          {
+            "steps": 323584,
+            "solved": 0.545
+          },
+          {
+            "steps": 327680,
+            "solved": 0.56
+          },
+          {
+            "steps": 331776,
+            "solved": 0.555
+          },
+          {
+            "steps": 335872,
+            "solved": 0.565
+          },
+          {
+            "steps": 339968,
+            "solved": 0.54
+          },
+          {
+            "steps": 344064,
+            "solved": 0.61
+          },
+          {
+            "steps": 348160,
+            "solved": 0.605
+          },
+          {
+            "steps": 352256,
+            "solved": 0.6
+          },
+          {
+            "steps": 356352,
+            "solved": 0.565
+          },
+          {
+            "steps": 360448,
+            "solved": 0.58
+          },
+          {
+            "steps": 364544,
+            "solved": 0.54
+          },
+          {
+            "steps": 368640,
+            "solved": 0.615
+          },
+          {
+            "steps": 372736,
+            "solved": 0.65
+          },
+          {
+            "steps": 376832,
+            "solved": 0.64
+          },
+          {
+            "steps": 380928,
+            "solved": 0.61
+          },
+          {
+            "steps": 385024,
+            "solved": 0.555
+          },
+          {
+            "steps": 389120,
+            "solved": 0.54
+          },
+          {
+            "steps": 393216,
+            "solved": 0.56
+          },
+          {
+            "steps": 397312,
+            "solved": 0.575
+          },
+          {
+            "steps": 401408,
+            "solved": 0.59
+          }
+        ],
+        "mappo": [
+          {
+            "steps": 4096,
+            "solved": 0.0625
+          },
+          {
+            "steps": 8192,
+            "solved": 0.03125
+          },
+          {
+            "steps": 12288,
+            "solved": 0.020833333333333332
+          },
+          {
+            "steps": 16384,
+            "solved": 0.0234375
+          },
+          {
+            "steps": 20480,
+            "solved": 0.037267080745341616
+          },
+          {
+            "steps": 24576,
+            "solved": 0.05181347150259067
+          },
+          {
+            "steps": 28672,
+            "solved": 0.055
+          },
+          {
+            "steps": 32768,
+            "solved": 0.08
+          },
+          {
+            "steps": 36864,
+            "solved": 0.125
+          },
+          {
+            "steps": 40960,
+            "solved": 0.15
+          },
+          {
+            "steps": 45056,
+            "solved": 0.19
+          },
+          {
+            "steps": 49152,
+            "solved": 0.35
+          },
+          {
+            "steps": 53248,
+            "solved": 0.49
+          },
+          {
+            "steps": 57344,
+            "solved": 0.815
+          },
+          {
+            "steps": 61440,
+            "solved": 0.955
+          },
+          {
+            "steps": 65536,
+            "solved": 0.99
+          },
+          {
+            "steps": 69632,
+            "solved": 1.0
+          },
+          {
+            "steps": 73728,
+            "solved": 1.0
+          },
+          {
+            "steps": 77824,
+            "solved": 1.0
+          },
+          {
+            "steps": 81920,
+            "solved": 1.0
+          },
+          {
+            "steps": 86016,
+            "solved": 1.0
+          },
+          {
+            "steps": 90112,
+            "solved": 1.0
+          },
+          {
+            "steps": 94208,
+            "solved": 1.0
+          },
+          {
+            "steps": 98304,
+            "solved": 1.0
+          },
+          {
+            "steps": 102400,
+            "solved": 1.0
+          },
+          {
+            "steps": 106496,
+            "solved": 1.0
+          },
+          {
+            "steps": 110592,
+            "solved": 1.0
+          },
+          {
+            "steps": 114688,
+            "solved": 0.99
+          },
+          {
+            "steps": 118784,
+            "solved": 0.975
+          },
+          {
+            "steps": 122880,
+            "solved": 0.99
+          },
+          {
+            "steps": 126976,
+            "solved": 0.98
+          },
+          {
+            "steps": 131072,
+            "solved": 0.94
+          },
+          {
+            "steps": 135168,
+            "solved": 0.93
+          },
+          {
+            "steps": 139264,
+            "solved": 0.925
+          },
+          {
+            "steps": 143360,
+            "solved": 0.905
+          },
+          {
+            "steps": 147456,
+            "solved": 0.865
+          },
+          {
+            "steps": 151552,
+            "solved": 0.845
+          },
+          {
+            "steps": 155648,
+            "solved": 0.825
+          },
+          {
+            "steps": 159744,
+            "solved": 0.825
+          },
+          {
+            "steps": 163840,
+            "solved": 0.785
+          },
+          {
+            "steps": 167936,
+            "solved": 0.81
+          },
+          {
+            "steps": 172032,
+            "solved": 0.76
+          },
+          {
+            "steps": 176128,
+            "solved": 0.78
+          },
+          {
+            "steps": 180224,
+            "solved": 0.78
+          },
+          {
+            "steps": 184320,
+            "solved": 0.785
+          },
+          {
+            "steps": 188416,
+            "solved": 0.74
+          },
+          {
+            "steps": 192512,
+            "solved": 0.7
+          },
+          {
+            "steps": 196608,
+            "solved": 0.675
+          },
+          {
+            "steps": 200704,
+            "solved": 0.66
+          },
+          {
+            "steps": 204800,
+            "solved": 0.685
+          },
+          {
+            "steps": 208896,
+            "solved": 0.705
+          },
+          {
+            "steps": 212992,
+            "solved": 0.68
+          },
+          {
+            "steps": 217088,
+            "solved": 0.68
+          },
+          {
+            "steps": 221184,
+            "solved": 0.685
+          },
+          {
+            "steps": 225280,
+            "solved": 0.655
+          },
+          {
+            "steps": 229376,
+            "solved": 0.635
+          },
+          {
+            "steps": 233472,
+            "solved": 0.585
+          },
+          {
+            "steps": 237568,
+            "solved": 0.64
+          },
+          {
+            "steps": 241664,
+            "solved": 0.605
+          },
+          {
+            "steps": 245760,
+            "solved": 0.615
+          },
+          {
+            "steps": 249856,
+            "solved": 0.59
+          },
+          {
+            "steps": 253952,
+            "solved": 0.65
+          },
+          {
+            "steps": 258048,
+            "solved": 0.71
+          },
+          {
+            "steps": 262144,
+            "solved": 0.7
+          },
+          {
+            "steps": 266240,
+            "solved": 0.64
+          },
+          {
+            "steps": 270336,
+            "solved": 0.61
+          },
+          {
+            "steps": 274432,
+            "solved": 0.63
+          },
+          {
+            "steps": 278528,
+            "solved": 0.615
+          },
+          {
+            "steps": 282624,
+            "solved": 0.59
+          },
+          {
+            "steps": 286720,
+            "solved": 0.58
+          },
+          {
+            "steps": 290816,
+            "solved": 0.515
+          },
+          {
+            "steps": 294912,
+            "solved": 0.545
+          },
+          {
+            "steps": 299008,
+            "solved": 0.55
+          },
+          {
+            "steps": 303104,
+            "solved": 0.535
+          },
+          {
+            "steps": 307200,
+            "solved": 0.535
+          },
+          {
+            "steps": 311296,
+            "solved": 0.52
+          },
+          {
+            "steps": 315392,
+            "solved": 0.54
+          },
+          {
+            "steps": 319488,
+            "solved": 0.565
+          },
+          {
+            "steps": 323584,
+            "solved": 0.57
+          },
+          {
+            "steps": 327680,
+            "solved": 0.575
+          },
+          {
+            "steps": 331776,
+            "solved": 0.545
+          },
+          {
+            "steps": 335872,
+            "solved": 0.535
+          },
+          {
+            "steps": 339968,
+            "solved": 0.58
+          },
+          {
+            "steps": 344064,
+            "solved": 0.59
+          },
+          {
+            "steps": 348160,
+            "solved": 0.6
+          },
+          {
+            "steps": 352256,
+            "solved": 0.585
+          },
+          {
+            "steps": 356352,
+            "solved": 0.605
+          },
+          {
+            "steps": 360448,
+            "solved": 0.57
+          },
+          {
+            "steps": 364544,
+            "solved": 0.625
+          },
+          {
+            "steps": 368640,
+            "solved": 0.66
+          },
+          {
+            "steps": 372736,
+            "solved": 0.61
+          },
+          {
+            "steps": 376832,
+            "solved": 0.585
+          },
+          {
+            "steps": 380928,
+            "solved": 0.54
+          },
+          {
+            "steps": 385024,
+            "solved": 0.54
+          },
+          {
+            "steps": 389120,
+            "solved": 0.555
+          },
+          {
+            "steps": 393216,
+            "solved": 0.55
+          },
+          {
+            "steps": 397312,
+            "solved": 0.555
+          },
+          {
+            "steps": 401408,
+            "solved": 0.555
+          }
+        ]
+      }
+    },
+    {
+      "family": "empty_room",
+      "kwargs": {
+        "height": 10,
+        "width": 10,
+        "n_agents": 4
+      },
+      "rows": [
+        {
+          "method": "random (greedy)",
+          "instances": 100,
+          "success_rate": 0.0,
+          "validity_rate": 1.0,
+          "mean_cost": NaN,
+          "mean_makespan": NaN,
+          "mean_collisions": 10.4,
+          "mean_runtime": 0.02598751471000469,
+          "suboptimality": NaN
+        },
+        {
+          "method": "random (sampled)",
+          "instances": 100,
+          "success_rate": 0.0,
+          "validity_rate": 1.0,
+          "mean_cost": NaN,
+          "mean_makespan": NaN,
+          "mean_collisions": 9.88,
+          "mean_runtime": 0.024609016269992026,
+          "suboptimality": NaN
+        },
+        {
+          "method": "ippo (greedy)",
+          "instances": 100,
+          "success_rate": 0.1,
+          "validity_rate": 1.0,
+          "mean_cost": 30.6,
+          "mean_makespan": 7.7,
+          "mean_collisions": 74.25,
+          "mean_runtime": 0.034096182629996294,
+          "suboptimality": 1.3781585081585082
+        },
+        {
+          "method": "ippo (sampled)",
+          "instances": 100,
+          "success_rate": 0.94,
+          "validity_rate": 1.0,
+          "mean_cost": 128.31914893617022,
+          "mean_makespan": 32.329787234042556,
+          "mean_collisions": 6.08,
+          "mean_runtime": 0.0169808843599958,
+          "suboptimality": 5.333105430721506
+        },
+        {
+          "method": "mappo (greedy)",
+          "instances": 100,
+          "success_rate": 0.13,
+          "validity_rate": 1.0,
+          "mean_cost": 33.53846153846154,
+          "mean_makespan": 8.384615384615385,
+          "mean_collisions": 50.21,
+          "mean_runtime": 0.029862305669998934,
+          "suboptimality": 1.3999238898443143
+        },
+        {
+          "method": "mappo (sampled)",
+          "instances": 100,
+          "success_rate": 0.94,
+          "validity_rate": 1.0,
+          "mean_cost": 122.2127659574468,
+          "mean_makespan": 30.840425531914892,
+          "mean_collisions": 5.43,
+          "mean_runtime": 0.015193701540028996,
+          "suboptimality": 5.235557207238857
+        },
+        {
+          "method": "cbs",
+          "instances": 100,
+          "success_rate": 1.0,
+          "validity_rate": 1.0,
+          "mean_cost": 24.13,
+          "mean_makespan": 8.5,
+          "mean_collisions": 0.0,
+          "mean_runtime": 0.001448133229978339,
+          "suboptimality": 1.0
+        },
+        {
+          "method": "pibt",
+          "instances": 100,
+          "success_rate": 1.0,
+          "validity_rate": 1.0,
+          "mean_cost": 25.6,
+          "mean_makespan": 8.72,
+          "mean_collisions": 0.0,
+          "mean_runtime": 0.00169585133999135,
+          "suboptimality": 1.0592675407129402
+        }
+      ],
+      "curves": {
+        "ippo": [
+          {
+            "steps": 8192,
+            "solved": 0.0
+          },
+          {
+            "steps": 16384,
+            "solved": 0.0
+          },
+          {
+            "steps": 24576,
+            "solved": 0.0
+          },
+          {
+            "steps": 32768,
+            "solved": 0.0
+          },
+          {
+            "steps": 40960,
+            "solved": 0.0
+          },
+          {
+            "steps": 49152,
+            "solved": 0.0
+          },
+          {
+            "steps": 57344,
+            "solved": 0.0
+          },
+          {
+            "steps": 65536,
+            "solved": 0.0
+          },
+          {
+            "steps": 73728,
+            "solved": 0.0
+          },
+          {
+            "steps": 81920,
+            "solved": 0.0
+          },
+          {
+            "steps": 90112,
+            "solved": 0.015
+          },
+          {
+            "steps": 98304,
+            "solved": 0.035
+          },
+          {
+            "steps": 106496,
+            "solved": 0.11
+          },
+          {
+            "steps": 114688,
+            "solved": 0.245
+          },
+          {
+            "steps": 122880,
+            "solved": 0.465
+          },
+          {
+            "steps": 131072,
+            "solved": 0.7
+          },
+          {
+            "steps": 139264,
+            "solved": 0.835
+          },
+          {
+            "steps": 147456,
+            "solved": 0.9
+          },
+          {
+            "steps": 155648,
+            "solved": 0.91
+          },
+          {
+            "steps": 163840,
+            "solved": 0.92
+          },
+          {
+            "steps": 172032,
+            "solved": 0.915
+          },
+          {
+            "steps": 180224,
+            "solved": 0.925
+          },
+          {
+            "steps": 188416,
+            "solved": 0.93
+          },
+          {
+            "steps": 196608,
+            "solved": 0.905
+          },
+          {
+            "steps": 204800,
+            "solved": 0.92
+          },
+          {
+            "steps": 212992,
+            "solved": 0.905
+          },
+          {
+            "steps": 221184,
+            "solved": 0.91
+          },
+          {
+            "steps": 229376,
+            "solved": 0.91
+          },
+          {
+            "steps": 237568,
+            "solved": 0.9
+          },
+          {
+            "steps": 245760,
+            "solved": 0.855
+          },
+          {
+            "steps": 253952,
+            "solved": 0.845
+          },
+          {
+            "steps": 262144,
+            "solved": 0.795
+          },
+          {
+            "steps": 270336,
+            "solved": 0.76
+          },
+          {
+            "steps": 278528,
+            "solved": 0.73
+          },
+          {
+            "steps": 286720,
+            "solved": 0.745
+          },
+          {
+            "steps": 294912,
+            "solved": 0.72
+          },
+          {
+            "steps": 303104,
+            "solved": 0.73
+          },
+          {
+            "steps": 311296,
+            "solved": 0.72
+          },
+          {
+            "steps": 319488,
+            "solved": 0.685
+          },
+          {
+            "steps": 327680,
+            "solved": 0.65
+          },
+          {
+            "steps": 335872,
+            "solved": 0.655
+          },
+          {
+            "steps": 344064,
+            "solved": 0.63
+          },
+          {
+            "steps": 352256,
+            "solved": 0.63
+          },
+          {
+            "steps": 360448,
+            "solved": 0.625
+          },
+          {
+            "steps": 368640,
+            "solved": 0.63
+          },
+          {
+            "steps": 376832,
+            "solved": 0.625
+          },
+          {
+            "steps": 385024,
+            "solved": 0.62
+          },
+          {
+            "steps": 393216,
+            "solved": 0.595
+          },
+          {
+            "steps": 401408,
+            "solved": 0.54
+          }
+        ],
+        "mappo": [
+          {
+            "steps": 8192,
+            "solved": 0.0
+          },
+          {
+            "steps": 16384,
+            "solved": 0.0
+          },
+          {
+            "steps": 24576,
+            "solved": 0.0
+          },
+          {
+            "steps": 32768,
+            "solved": 0.0
+          },
+          {
+            "steps": 40960,
+            "solved": 0.0
+          },
+          {
+            "steps": 49152,
+            "solved": 0.0
+          },
+          {
+            "steps": 57344,
+            "solved": 0.0
+          },
+          {
+            "steps": 65536,
+            "solved": 0.0
+          },
+          {
+            "steps": 73728,
+            "solved": 0.0
+          },
+          {
+            "steps": 81920,
+            "solved": 0.0
+          },
+          {
+            "steps": 90112,
+            "solved": 0.0
+          },
+          {
+            "steps": 98304,
+            "solved": 0.02
+          },
+          {
+            "steps": 106496,
+            "solved": 0.1
+          },
+          {
+            "steps": 114688,
+            "solved": 0.215
+          },
+          {
+            "steps": 122880,
+            "solved": 0.405
+          },
+          {
+            "steps": 131072,
+            "solved": 0.605
+          },
+          {
+            "steps": 139264,
+            "solved": 0.785
+          },
+          {
+            "steps": 147456,
+            "solved": 0.845
+          },
+          {
+            "steps": 155648,
+            "solved": 0.88
+          },
+          {
+            "steps": 163840,
+            "solved": 0.89
+          },
+          {
+            "steps": 172032,
+            "solved": 0.925
+          },
+          {
+            "steps": 180224,
+            "solved": 0.94
+          },
+          {
+            "steps": 188416,
+            "solved": 0.93
+          },
+          {
+            "steps": 196608,
+            "solved": 0.925
+          },
+          {
+            "steps": 204800,
+            "solved": 0.92
+          },
+          {
+            "steps": 212992,
+            "solved": 0.925
+          },
+          {
+            "steps": 221184,
+            "solved": 0.9
+          },
+          {
+            "steps": 229376,
+            "solved": 0.89
+          },
+          {
+            "steps": 237568,
+            "solved": 0.86
+          },
+          {
+            "steps": 245760,
+            "solved": 0.825
+          },
+          {
+            "steps": 253952,
+            "solved": 0.79
+          },
+          {
+            "steps": 262144,
+            "solved": 0.765
+          },
+          {
+            "steps": 270336,
+            "solved": 0.745
+          },
+          {
+            "steps": 278528,
+            "solved": 0.725
+          },
+          {
+            "steps": 286720,
+            "solved": 0.74
+          },
+          {
+            "steps": 294912,
+            "solved": 0.755
+          },
+          {
+            "steps": 303104,
+            "solved": 0.76
+          },
+          {
+            "steps": 311296,
+            "solved": 0.78
+          },
+          {
+            "steps": 319488,
+            "solved": 0.765
+          },
+          {
+            "steps": 327680,
+            "solved": 0.715
+          },
+          {
+            "steps": 335872,
+            "solved": 0.69
+          },
+          {
+            "steps": 344064,
+            "solved": 0.655
+          },
+          {
+            "steps": 352256,
+            "solved": 0.61
+          },
+          {
+            "steps": 360448,
+            "solved": 0.59
+          },
+          {
+            "steps": 368640,
+            "solved": 0.59
+          },
+          {
+            "steps": 376832,
+            "solved": 0.545
+          },
+          {
+            "steps": 385024,
+            "solved": 0.55
+          },
+          {
+            "steps": 393216,
+            "solved": 0.575
+          },
+          {
+            "steps": 401408,
+            "solved": 0.56
+          }
+        ]
+      }
+    },
+    {
+      "family": "random_obstacles",
+      "kwargs": {
+        "height": 10,
+        "width": 10,
+        "n_agents": 4,
+        "density": 0.15
+      },
+      "rows": [
+        {
+          "method": "random (greedy)",
+          "instances": 100,
+          "success_rate": 0.0,
+          "validity_rate": 1.0,
+          "mean_cost": NaN,
+          "mean_makespan": NaN,
+          "mean_collisions": 10.44,
+          "mean_runtime": 0.019379411980025907,
+          "suboptimality": NaN
+        },
+        {
+          "method": "random (sampled)",
+          "instances": 100,
+          "success_rate": 0.0,
+          "validity_rate": 1.0,
+          "mean_cost": NaN,
+          "mean_makespan": NaN,
+          "mean_collisions": 10.9,
+          "mean_runtime": 0.019250772940013122,
+          "suboptimality": NaN
+        },
+        {
+          "method": "ippo (greedy)",
+          "instances": 100,
+          "success_rate": 0.01,
+          "validity_rate": 1.0,
+          "mean_cost": 28.0,
+          "mean_makespan": 7.0,
+          "mean_collisions": 58.99,
+          "mean_runtime": 0.030212262809968707,
+          "suboptimality": 1.037037037037037
+        },
+        {
+          "method": "ippo (sampled)",
+          "instances": 100,
+          "success_rate": 0.65,
+          "validity_rate": 1.0,
+          "mean_cost": 164.55384615384617,
+          "mean_makespan": 41.46153846153846,
+          "mean_collisions": 8.66,
+          "mean_runtime": 0.024628291150047516,
+          "suboptimality": 6.679892744051167
+        },
+        {
+          "method": "mappo (greedy)",
+          "instances": 100,
+          "success_rate": 0.01,
+          "validity_rate": 1.0,
+          "mean_cost": 44.0,
+          "mean_makespan": 11.0,
+          "mean_collisions": 68.06,
+          "mean_runtime": 0.030059683309978026,
+          "suboptimality": 1.6296296296296295
+        },
+        {
+          "method": "mappo (sampled)",
+          "instances": 100,
+          "success_rate": 0.67,
+          "validity_rate": 1.0,
+          "mean_cost": 166.23880597014926,
+          "mean_makespan": 41.92537313432836,
+          "mean_collisions": 7.65,
+          "mean_runtime": 0.021066818310005148,
+          "suboptimality": 6.8420892389026315
+        },
+        {
+          "method": "cbs",
+          "instances": 100,
+          "success_rate": 1.0,
+          "validity_rate": 1.0,
+          "mean_cost": 26.68,
+          "mean_makespan": 9.38,
+          "mean_collisions": 0.0,
+          "mean_runtime": 0.0021393317900538023,
+          "suboptimality": 1.0
+        },
+        {
+          "method": "pibt",
+          "instances": 100,
+          "success_rate": 0.97,
+          "validity_rate": 0.97,
+          "mean_cost": 29.371134020618555,
+          "mean_makespan": 10.010309278350515,
+          "mean_collisions": 0.0,
+          "mean_runtime": 0.0009845919200142817,
+          "suboptimality": 1.1059561442074899
+        }
+      ],
+      "curves": {
+        "ippo": [
+          {
+            "steps": 8192,
+            "solved": 0.0
+          },
+          {
+            "steps": 16384,
+            "solved": 0.0
+          },
+          {
+            "steps": 24576,
+            "solved": 0.0
+          },
+          {
+            "steps": 32768,
+            "solved": 0.0
+          },
+          {
+            "steps": 40960,
+            "solved": 0.0
+          },
+          {
+            "steps": 49152,
+            "solved": 0.0
+          },
+          {
+            "steps": 57344,
+            "solved": 0.0
+          },
+          {
+            "steps": 65536,
+            "solved": 0.0
+          },
+          {
+            "steps": 73728,
+            "solved": 0.0
+          },
+          {
+            "steps": 81920,
+            "solved": 0.0
+          },
+          {
+            "steps": 90112,
+            "solved": 0.0
+          },
+          {
+            "steps": 98304,
+            "solved": 0.005
+          },
+          {
+            "steps": 106496,
+            "solved": 0.02
+          },
+          {
+            "steps": 114688,
+            "solved": 0.06
+          },
+          {
+            "steps": 122880,
+            "solved": 0.135
+          },
+          {
+            "steps": 131072,
+            "solved": 0.225
+          },
+          {
+            "steps": 139264,
+            "solved": 0.335
+          },
+          {
+            "steps": 147456,
+            "solved": 0.455
+          },
+          {
+            "steps": 155648,
+            "solved": 0.58
+          },
+          {
+            "steps": 163840,
+            "solved": 0.63
+          },
+          {
+            "steps": 172032,
+            "solved": 0.68
+          },
+          {
+            "steps": 180224,
+            "solved": 0.71
+          },
+          {
+            "steps": 188416,
+            "solved": 0.715
+          },
+          {
+            "steps": 196608,
+            "solved": 0.715
+          },
+          {
+            "steps": 204800,
+            "solved": 0.72
+          },
+          {
+            "steps": 212992,
+            "solved": 0.69
+          },
+          {
+            "steps": 221184,
+            "solved": 0.69
+          },
+          {
+            "steps": 229376,
+            "solved": 0.67
+          },
+          {
+            "steps": 237568,
+            "solved": 0.66
+          },
+          {
+            "steps": 245760,
+            "solved": 0.65
+          },
+          {
+            "steps": 253952,
+            "solved": 0.7
+          },
+          {
+            "steps": 262144,
+            "solved": 0.66
+          },
+          {
+            "steps": 270336,
+            "solved": 0.65
+          },
+          {
+            "steps": 278528,
+            "solved": 0.645
+          },
+          {
+            "steps": 286720,
+            "solved": 0.63
+          },
+          {
+            "steps": 294912,
+            "solved": 0.635
+          },
+          {
+            "steps": 303104,
+            "solved": 0.625
+          },
+          {
+            "steps": 311296,
+            "solved": 0.63
+          },
+          {
+            "steps": 319488,
+            "solved": 0.63
+          },
+          {
+            "steps": 327680,
+            "solved": 0.63
+          },
+          {
+            "steps": 335872,
+            "solved": 0.62
+          },
+          {
+            "steps": 344064,
+            "solved": 0.615
+          },
+          {
+            "steps": 352256,
+            "solved": 0.6
+          },
+          {
+            "steps": 360448,
+            "solved": 0.6
+          },
+          {
+            "steps": 368640,
+            "solved": 0.585
+          },
+          {
+            "steps": 376832,
+            "solved": 0.575
+          },
+          {
+            "steps": 385024,
+            "solved": 0.57
+          },
+          {
+            "steps": 393216,
+            "solved": 0.56
+          },
+          {
+            "steps": 401408,
+            "solved": 0.565
+          }
+        ],
+        "mappo": [
+          {
+            "steps": 8192,
+            "solved": 0.0
+          },
+          {
+            "steps": 16384,
+            "solved": 0.0
+          },
+          {
+            "steps": 24576,
+            "solved": 0.0
+          },
+          {
+            "steps": 32768,
+            "solved": 0.0
+          },
+          {
+            "steps": 40960,
+            "solved": 0.0
+          },
+          {
+            "steps": 49152,
+            "solved": 0.0
+          },
+          {
+            "steps": 57344,
+            "solved": 0.0
+          },
+          {
+            "steps": 65536,
+            "solved": 0.0
+          },
+          {
+            "steps": 73728,
+            "solved": 0.0
+          },
+          {
+            "steps": 81920,
+            "solved": 0.0
+          },
+          {
+            "steps": 90112,
+            "solved": 0.005
+          },
+          {
+            "steps": 98304,
+            "solved": 0.005
+          },
+          {
+            "steps": 106496,
+            "solved": 0.02
+          },
+          {
+            "steps": 114688,
+            "solved": 0.065
+          },
+          {
+            "steps": 122880,
+            "solved": 0.11
+          },
+          {
+            "steps": 131072,
+            "solved": 0.195
+          },
+          {
+            "steps": 139264,
+            "solved": 0.32
+          },
+          {
+            "steps": 147456,
+            "solved": 0.43
+          },
+          {
+            "steps": 155648,
+            "solved": 0.525
+          },
+          {
+            "steps": 163840,
+            "solved": 0.575
+          },
+          {
+            "steps": 172032,
+            "solved": 0.62
+          },
+          {
+            "steps": 180224,
+            "solved": 0.635
+          },
+          {
+            "steps": 188416,
+            "solved": 0.67
+          },
+          {
+            "steps": 196608,
+            "solved": 0.675
+          },
+          {
+            "steps": 204800,
+            "solved": 0.71
+          },
+          {
+            "steps": 212992,
+            "solved": 0.68
+          },
+          {
+            "steps": 221184,
+            "solved": 0.675
+          },
+          {
+            "steps": 229376,
+            "solved": 0.635
+          },
+          {
+            "steps": 237568,
+            "solved": 0.615
+          },
+          {
+            "steps": 245760,
+            "solved": 0.615
+          },
+          {
+            "steps": 253952,
+            "solved": 0.61
+          },
+          {
+            "steps": 262144,
+            "solved": 0.6
+          },
+          {
+            "steps": 270336,
+            "solved": 0.61
+          },
+          {
+            "steps": 278528,
+            "solved": 0.625
+          },
+          {
+            "steps": 286720,
+            "solved": 0.6
+          },
+          {
+            "steps": 294912,
+            "solved": 0.625
+          },
+          {
+            "steps": 303104,
+            "solved": 0.635
+          },
+          {
+            "steps": 311296,
+            "solved": 0.625
+          },
+          {
+            "steps": 319488,
+            "solved": 0.63
+          },
+          {
+            "steps": 327680,
+            "solved": 0.65
+          },
+          {
+            "steps": 335872,
+            "solved": 0.63
+          },
+          {
+            "steps": 344064,
+            "solved": 0.655
+          },
+          {
+            "steps": 352256,
+            "solved": 0.675
+          },
+          {
+            "steps": 360448,
+            "solved": 0.675
+          },
+          {
+            "steps": 368640,
+            "solved": 0.655
+          },
+          {
+            "steps": 376832,
+            "solved": 0.655
+          },
+          {
+            "steps": 385024,
+            "solved": 0.625
+          },
+          {
+            "steps": 393216,
+            "solved": 0.635
+          },
+          {
+            "steps": 401408,
+            "solved": 0.605
+          }
+        ]
+      }
+    },
+    {
+      "family": "bottleneck",
+      "kwargs": {
+        "n_agents": 4
+      },
+      "rows": [
+        {
+          "method": "random (greedy)",
+          "instances": 100,
+          "success_rate": 0.0,
+          "validity_rate": 1.0,
+          "mean_cost": NaN,
+          "mean_makespan": NaN,
+          "mean_collisions": 6.53,
+          "mean_runtime": 0.029312940170011643,
+          "suboptimality": NaN
+        },
+        {
+          "method": "random (sampled)",
+          "instances": 100,
+          "success_rate": 0.0,
+          "validity_rate": 1.0,
+          "mean_cost": NaN,
+          "mean_makespan": NaN,
+          "mean_collisions": 6.94,
+          "mean_runtime": 0.028926563650011304,
+          "suboptimality": NaN
+        },
+        {
+          "method": "ippo (greedy)",
+          "instances": 100,
+          "success_rate": 0.0,
+          "validity_rate": 1.0,
+          "mean_cost": NaN,
+          "mean_makespan": NaN,
+          "mean_collisions": 242.45,
+          "mean_runtime": 0.045136551360033084,
+          "suboptimality": NaN
+        },
+        {
+          "method": "ippo (sampled)",
+          "instances": 100,
+          "success_rate": 0.58,
+          "validity_rate": 1.0,
+          "mean_cost": 299.1034482758621,
+          "mean_makespan": 74.91379310344827,
+          "mean_collisions": 31.27,
+          "mean_runtime": 0.036740258899976654,
+          "suboptimality": 7.431034482758621
+        },
+        {
+          "method": "mappo (greedy)",
+          "instances": 100,
+          "success_rate": 0.0,
+          "validity_rate": 1.0,
+          "mean_cost": NaN,
+          "mean_makespan": NaN,
+          "mean_collisions": 236.05,
+          "mean_runtime": 0.04243275886001356,
+          "suboptimality": NaN
+        },
+        {
+          "method": "mappo (sampled)",
+          "instances": 100,
+          "success_rate": 0.0,
+          "validity_rate": 1.0,
+          "mean_cost": NaN,
+          "mean_makespan": NaN,
+          "mean_collisions": 14.85,
+          "mean_runtime": 0.04390549727000234,
+          "suboptimality": NaN
+        },
+        {
+          "method": "cbs",
+          "instances": 100,
+          "success_rate": 0.01,
+          "validity_rate": 0.01,
+          "mean_cost": 58.0,
+          "mean_makespan": 19.0,
+          "mean_collisions": 0.0,
+          "mean_runtime": 4.982240246779993,
+          "suboptimality": 1.0
+        },
+        {
+          "method": "pibt",
+          "instances": 100,
+          "success_rate": 1.0,
+          "validity_rate": 1.0,
+          "mean_cost": 77.67,
+          "mean_makespan": 24.89,
+          "mean_collisions": 0.0,
+          "mean_runtime": 0.0018369659300151399,
+          "suboptimality": 1.0689655172413792
+        }
+      ],
+      "curves": {
+        "ippo": [
+          {
+            "steps": 8192,
+            "solved": 0.0
+          },
+          {
+            "steps": 16384,
+            "solved": 0.0
+          },
+          {
+            "steps": 24576,
+            "solved": 0.0
+          },
+          {
+            "steps": 32768,
+            "solved": 0.0
+          },
+          {
+            "steps": 40960,
+            "solved": 0.0
+          },
+          {
+            "steps": 49152,
+            "solved": 0.0
+          },
+          {
+            "steps": 57344,
+            "solved": 0.0
+          },
+          {
+            "steps": 65536,
+            "solved": 0.0
+          },
+          {
+            "steps": 73728,
+            "solved": 0.0
+          },
+          {
+            "steps": 81920,
+            "solved": 0.0
+          },
+          {
+            "steps": 90112,
+            "solved": 0.0
+          },
+          {
+            "steps": 98304,
+            "solved": 0.0
+          },
+          {
+            "steps": 106496,
+            "solved": 0.0
+          },
+          {
+            "steps": 114688,
+            "solved": 0.0
+          },
+          {
+            "steps": 122880,
+            "solved": 0.0
+          },
+          {
+            "steps": 131072,
+            "solved": 0.0
+          },
+          {
+            "steps": 139264,
+            "solved": 0.0
+          },
+          {
+            "steps": 147456,
+            "solved": 0.0
+          },
+          {
+            "steps": 155648,
+            "solved": 0.0
+          },
+          {
+            "steps": 163840,
+            "solved": 0.0
+          },
+          {
+            "steps": 172032,
+            "solved": 0.0
+          },
+          {
+            "steps": 180224,
+            "solved": 0.005
+          },
+          {
+            "steps": 188416,
+            "solved": 0.01
+          },
+          {
+            "steps": 196608,
+            "solved": 0.02
+          },
+          {
+            "steps": 204800,
+            "solved": 0.03
+          },
+          {
+            "steps": 212992,
+            "solved": 0.07
+          },
+          {
+            "steps": 221184,
+            "solved": 0.11
+          },
+          {
+            "steps": 229376,
+            "solved": 0.145
+          },
+          {
+            "steps": 237568,
+            "solved": 0.175
+          },
+          {
+            "steps": 245760,
+            "solved": 0.23
+          },
+          {
+            "steps": 253952,
+            "solved": 0.29
+          },
+          {
+            "steps": 262144,
+            "solved": 0.37
+          },
+          {
+            "steps": 270336,
+            "solved": 0.415
+          },
+          {
+            "steps": 278528,
+            "solved": 0.475
+          },
+          {
+            "steps": 286720,
+            "solved": 0.515
+          },
+          {
+            "steps": 294912,
+            "solved": 0.525
+          },
+          {
+            "steps": 303104,
+            "solved": 0.555
+          },
+          {
+            "steps": 311296,
+            "solved": 0.61
+          },
+          {
+            "steps": 319488,
+            "solved": 0.625
+          },
+          {
+            "steps": 327680,
+            "solved": 0.65
+          },
+          {
+            "steps": 335872,
+            "solved": 0.64
+          },
+          {
+            "steps": 344064,
+            "solved": 0.655
+          },
+          {
+            "steps": 352256,
+            "solved": 0.655
+          },
+          {
+            "steps": 360448,
+            "solved": 0.67
+          },
+          {
+            "steps": 368640,
+            "solved": 0.67
+          },
+          {
+            "steps": 376832,
+            "solved": 0.675
+          },
+          {
+            "steps": 385024,
+            "solved": 0.7
+          },
+          {
+            "steps": 393216,
+            "solved": 0.685
+          },
+          {
+            "steps": 401408,
+            "solved": 0.685
+          }
+        ],
+        "mappo": [
+          {
+            "steps": 8192,
+            "solved": 0.0
+          },
+          {
+            "steps": 16384,
+            "solved": 0.0
+          },
+          {
+            "steps": 24576,
+            "solved": 0.0
+          },
+          {
+            "steps": 32768,
+            "solved": 0.0
+          },
+          {
+            "steps": 40960,
+            "solved": 0.0
+          },
+          {
+            "steps": 49152,
+            "solved": 0.0
+          },
+          {
+            "steps": 57344,
+            "solved": 0.0
+          },
+          {
+            "steps": 65536,
+            "solved": 0.0
+          },
+          {
+            "steps": 73728,
+            "solved": 0.0
+          },
+          {
+            "steps": 81920,
+            "solved": 0.0
+          },
+          {
+            "steps": 90112,
+            "solved": 0.0
+          },
+          {
+            "steps": 98304,
+            "solved": 0.0
+          },
+          {
+            "steps": 106496,
+            "solved": 0.0
+          },
+          {
+            "steps": 114688,
+            "solved": 0.0
+          },
+          {
+            "steps": 122880,
+            "solved": 0.0
+          },
+          {
+            "steps": 131072,
+            "solved": 0.0
+          },
+          {
+            "steps": 139264,
+            "solved": 0.0
+          },
+          {
+            "steps": 147456,
+            "solved": 0.0
+          },
+          {
+            "steps": 155648,
+            "solved": 0.0
+          },
+          {
+            "steps": 163840,
+            "solved": 0.0
+          },
+          {
+            "steps": 172032,
+            "solved": 0.0
+          },
+          {
+            "steps": 180224,
+            "solved": 0.0
+          },
+          {
+            "steps": 188416,
+            "solved": 0.0
+          },
+          {
+            "steps": 196608,
+            "solved": 0.0
+          },
+          {
+            "steps": 204800,
+            "solved": 0.0
+          },
+          {
+            "steps": 212992,
+            "solved": 0.0
+          },
+          {
+            "steps": 221184,
+            "solved": 0.0
+          },
+          {
+            "steps": 229376,
+            "solved": 0.0
+          },
+          {
+            "steps": 237568,
+            "solved": 0.0
+          },
+          {
+            "steps": 245760,
+            "solved": 0.0
+          },
+          {
+            "steps": 253952,
+            "solved": 0.0
+          },
+          {
+            "steps": 262144,
+            "solved": 0.0
+          },
+          {
+            "steps": 270336,
+            "solved": 0.0
+          },
+          {
+            "steps": 278528,
+            "solved": 0.0
+          },
+          {
+            "steps": 286720,
+            "solved": 0.0
+          },
+          {
+            "steps": 294912,
+            "solved": 0.0
+          },
+          {
+            "steps": 303104,
+            "solved": 0.0
+          },
+          {
+            "steps": 311296,
+            "solved": 0.0
+          },
+          {
+            "steps": 319488,
+            "solved": 0.0
+          },
+          {
+            "steps": 327680,
+            "solved": 0.0
+          },
+          {
+            "steps": 335872,
+            "solved": 0.0
+          },
+          {
+            "steps": 344064,
+            "solved": 0.0
+          },
+          {
+            "steps": 352256,
+            "solved": 0.0
+          },
+          {
+            "steps": 360448,
+            "solved": 0.0
+          },
+          {
+            "steps": 368640,
+            "solved": 0.0
+          },
+          {
+            "steps": 376832,
+            "solved": 0.0
+          },
+          {
+            "steps": 385024,
+            "solved": 0.0
+          },
+          {
+            "steps": 393216,
+            "solved": 0.0
+          },
+          {
+            "steps": 401408,
+            "solved": 0.0
+          }
+        ]
+      }
+    }
+  ],
+  "config": {
+    "steps": 400000,
+    "episodes": 100,
+    "backend": "numpy",
+    "n_envs": 16,
+    "rollout_steps": 128,
+    "radius": 4,
+    "lr": 0.0003,
+    "seed": 0,
+    "eval_seed": 10000,
+    "time_limit": 5.0,
+    "log_every": 40,
+    "output": "/home/user/pymapf/docs/assets/rl-benchmark.json",
+    "only": null
+  },
+  "version": "0.7.0"
+}

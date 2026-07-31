@@ -4,6 +4,77 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0]
+
+Multi-agent reinforcement learning on the library's own MAPF instances,
+benchmarked against its own optimal planner.
+
+### Added
+
+- **`pymapf.rl`** -- the MAPF instances as a multi-agent RL environment, built
+  so the learned side and the planning side are directly comparable rather than
+  merely adjacent.
+  - `MAPFEnv` follows the **PettingZoo Parallel API** without importing
+    PettingZoo, so it runs in a bare CI job; `to_pettingzoo()` wraps it in the
+    real `ParallelEnv` when that is installed, and `SingleAgentGym` gives a
+    Gymnasium-style view for single-agent algorithms.
+  - Transition semantics are MAPF's, not a gridworld's approximation: vertex
+    conflicts, **edge (swap) conflicts**, and refusals that **cascade** to a
+    fixed point. A rollout is therefore a valid plan by construction -- validity
+    is 100% in the benchmark even for a random policy, because it cannot be
+    otherwise.
+  - `MAPFEnv.solution()` returns a `pymapf.Solution`, so a learned policy is
+    scored by the same `sum_of_costs` and the same `is_valid()` as CBS.
+  - `IPPO` and `MAPPO`, shared-parameter PPO with GAE. They differ by one class
+    attribute -- whether the critic sees the global state -- because that is the
+    entire difference between the two algorithms.
+  - **No dependency beyond numpy.** The default backend is an MLP with
+    hand-written backpropagation and Adam, gradient-checked against finite
+    differences, so the learning code is tested in CI rather than only shipped.
+    A torch backend implements the same objective for scale.
+  - Registries throughout: `register_observation`, `register_reward`,
+    `register_algorithm`, matching the solvers and the swarm layer.
+  - `ShapedReward` uses the library's exact backward-Dijkstra distance oracle as
+    a potential, so the shaping is policy-invariant (Ng et al. 1999) *and* routes
+    around walls -- a stronger potential than a learned-MAPF paper normally has.
+  - `compare()` scores policies and planners on identical seeded instances and
+    reports true suboptimality against the optimum.
+- `scripts/train_rl.py` reproduces every number in `docs/survey.md` § 7.6.
+- `scripts/make_rl_promo.py` renders a 62-second film for the learning layer.
+  The policy is trained while the film renders, the split-screen scene is that
+  policy acting on one shared instance in both action modes, and the 70/30
+  failure split is measured over 80 instances during the render -- so the film
+  cannot drift from the library's behaviour.
+- New extras: `rl` (numpy only), `rl-torch`, `rl-ecosystem`.
+
+### Findings
+
+- **How a policy is sampled matters more than which algorithm trained it.** The
+  same weights score 45% solved at 1.11x optimal under argmax, and 100% at 2.94x
+  when sampled. Over 80 instances the 33 greedy failures split into two modes:
+  70% are collision-free period-2 orbits where the agents never touch, and 30%
+  are period-1 freezes colliding every step -- a genuine livelock. None involves
+  a wall, and in every case both agents solve the instance alone. `compare()`
+  reports both action modes by default because either alone is half the result.
+- **IPPO and MAPPO are indistinguishable here** (45% vs 44%, 1.11x vs 1.11x),
+  matching the MAPPO paper's own conclusion.
+- **On the hardest setting the optimal planner is the one that fails**: CBS
+  closed 1% of bottleneck instances in five seconds; PIBT closed 100% at 1.07x.
+- Two non-fixes, recorded so they are not retried: KL early stopping never fires
+  (measured KL 0.0004-0.014 against a 0.02 threshold, runs bit-identical), and
+  the entropy coefficient moves the final solve rate by one point across
+  0.01/0.03/0.05.
+
+### Fixed
+
+- Orthogonal initialisation returned a **non-contiguous** array, so
+  `param.reshape(-1)` handed back a copy and anything writing through that view
+  updated nothing -- which is how a finite-difference gradient check reports a
+  zero gradient for a weight that is fine. Found by writing the gradient check.
+- The same routine mishandled non-square shapes outright: `np.linalg.qr` returns
+  the reduced factorisation, so a wide layer got a square weight matrix and
+  failed to broadcast on the first forward pass.
+
 ## [0.6.0]
 
 Formation control, and the post-2020 flocking models from the Albani / Ferrante
