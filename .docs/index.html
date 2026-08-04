@@ -28,8 +28,9 @@
     <nav>
       <a href="#playground">Playground</a>
       <a href="#benchmarks">Benchmarks</a>
+      <a href="#learning">Learning</a>
       <a href="#gallery">Gallery</a>
-      <a href="survey.md">Survey</a>
+      <a href="survey-v2.md">Survey</a>
       <a href="https://github.com/apla-toolbox/pymapf">GitHub</a>
       <button class="icon-button" id="theme-toggle" type="button" aria-label="Toggle colour theme">◐</button>
     </nav>
@@ -54,6 +55,7 @@
   <div class="pill-row">
     <span class="pill"><strong>6</strong> solvers: CBS, weighted CBS, LaCAM, PIBT, LNS, prioritized</span>
     <span class="pill"><strong>6</strong> reproducible scenario families</span>
+    <span class="pill"><strong>IPPO / MAPPO</strong> scored against the optimum</span>
     <span class="pill"><strong>0</strong> runtime dependencies in the core</span>
     <span class="pill">every algorithm <strong>referenced</strong></span>
   </div>
@@ -308,6 +310,69 @@
   </div>
 </section>
 
+<!-- ----------------------------------------------------------- learning -->
+<section id="learning">
+  <div class="wrap">
+    <h2>Learning, scored against the optimum</h2>
+    <p class="sub">
+      The same instances are also a <strong>PettingZoo-parallel environment</strong>.
+      <code>IPPO</code> and <code>MAPPO</code> train on them with no dependency beyond
+      numpy — the default network is an MLP with hand-written backpropagation and Adam,
+      gradient-checked against finite differences. A rollout returns a real
+      <code>pymapf.Solution</code>, so a learned policy is scored by the same
+      <code>sum_of_costs</code> and the same <code>is_valid()</code> as CBS.
+      Every number below is read from
+      <a href="assets/rl-benchmark.json"><code>rl-benchmark.json</code></a>, written by
+      <code>scripts/train_rl.py</code> — this page does not restate it.
+    </p>
+
+    <video class="promo" id="rl-promo" controls muted playsinline preload="metadata"
+           poster="assets/pymapf-rl-promo-poster.png">
+      <source src="assets/pymapf-rl-promo.mp4" type="video/mp4">
+      Your browser cannot play this video; the table below has the same numbers.
+    </video>
+
+    <div class="bench-grid" style="margin-top:22px;">
+      <div class="chart-card">
+        <h3>Benchmark</h3>
+        <p>
+          Learners and planners on identical seeded instances.
+          <span class="hint" id="rl-status">loading…</span>
+        </p>
+        <div style="margin:10px 0 12px;">
+          <select id="rl-setting" style="width:auto;"></select>
+        </div>
+        <div class="table-scroll"><table class="results" id="rl-table"></table></div>
+      </div>
+
+      <div class="chart-card">
+        <h3>What it found</h3>
+        <p>Three results, one of which is about evaluation rather than about MAPF.</p>
+        <p style="color:var(--ink-2);margin-top:10px;">
+          <strong>How you sample matters more than what trained it.</strong> The same
+          weights score 45% solved at 1.11× optimal under <em>argmax</em>, and 100% at
+          2.94× when <em>sampled</em>. Papers that do not state their action selection
+          may not be comparable to each other.
+        </p>
+        <p style="color:var(--ink-2);margin-top:10px;">
+          <strong>The greedy failures are two different bugs.</strong> Over 80 instances,
+          33 failures split 70% collision-free period-2 orbits — the agents never touch,
+          so the conflict rules are never invoked — and 30% period-1 freezes colliding
+          every step, which is genuine livelock. Reporting one instance would have
+          supported either story confidently.
+        </p>
+        <p style="color:var(--ink-2);margin-top:10px;">
+          <strong>IPPO and MAPPO are indistinguishable here</strong> (45% vs 44%, both
+          1.11×), matching the MAPPO paper's own conclusion. The learned policy is not
+          competitive <em>as a solver</em>; as a heuristic inside a search it would be a
+          reasonable thing to try — which is
+          <a href="survey-v2.md">where the field went</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ------------------------------------------------------------ gallery -->
 <section id="gallery">
   <div class="wrap">
@@ -362,7 +427,10 @@
 pip install pymapf
 
 <span class="c"># plots, animations and live views</span>
-pip install <span class="s">"pymapf[viz]"</span></pre>
+pip install <span class="s">"pymapf[viz]"</span>
+
+<span class="c"># the multi-agent RL layer — numpy only</span>
+pip install <span class="s">"pymapf[rl]"</span></pre>
       <pre class="snippet"><span class="kw">import</span> pymapf
 <span class="kw">from</span> pymapf <span class="kw">import</span> viz
 

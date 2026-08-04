@@ -41,7 +41,7 @@ jobs:
       matrix:
         python-version: ['3.8', '3.9', '3.10']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
@@ -59,7 +59,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
@@ -215,14 +215,21 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
 
   # --------------------------------------------------------------- release ---
+  # Gated on `verify`, not on `publish-pypi`. The GitHub Release describes the
+  # repository and carries artifacts this workflow has already installed and
+  # run; whether the index accepted them is a separate system with its own
+  # failure modes -- an unregistered trusted publisher, a name taken since the
+  # build. Making the release depend on PyPI means one of those erases the
+  # release too, and a tag cannot be cleanly re-pushed to try again. So the
+  # release is published either way, and says which happened.
   github-release:
-    needs: [build, publish-pypi]
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build, verify, publish-pypi]
+    if: always() && startsWith(github.ref, 'refs/tags/') && needs.verify.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           name: dist
@@ -234,6 +241,7 @@ jobs:
           python - <<'PY' > notes.md
           import re
           version = "${{ needs.build.outputs.version }}"
+          published = "${{ needs.publish-pypi.result }}"
           text = open("CHANGELOG.md").read()
           # The section for this version, up to the next version heading.
           match = re.search(r"^## \[%s\][^\n]*\n(.*?)(?=^## \[)" % re.escape(version),
@@ -245,7 +253,14 @@ jobs:
           print()
           print("---")
           print()
-          print("Install: `pip install pymapf==%s`" % version)
+          # Never claim an install command that does not work yet. If PyPI did
+          # not accept the upload, the artifacts attached below are still the
+          # verified ones, and saying so is more use than a broken `pip install`.
+          if published == "success":
+              print("Install: `pip install pymapf==%s`" % version)
+          else:
+              print("**Not on PyPI** (publish `%s`). Install from the wheel "
+                    "attached below, or from source." % (published or "skipped"))
           print()
           print("The core has no runtime dependencies. Extras: "
                 "`pymapf[viz]`, `pymapf[rl]`, `pymapf[rl-torch]`, "

@@ -131,6 +131,24 @@ def print_table(result) -> None:
         )
 
 
+def json_safe(value):
+    """Replace non-finite floats with None, recursively.
+
+    A method that solved nothing has no mean cost and no suboptimality ratio, and
+    those arrive here as NaN. Python's json.dump writes a bare ``NaN`` token,
+    which is *not* JSON -- ``JSON.parse`` rejects it outright, so the published
+    file was unreadable by the very page that displays it. ``null`` is valid,
+    round-trips back to None, and still means "not measured".
+    """
+    if isinstance(value, dict):
+        return {key: json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(item) for item in value]
+    if isinstance(value, float) and not np.isfinite(value):
+        return None
+    return value
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=300_000)
@@ -166,13 +184,18 @@ def main() -> int:
         os.makedirs(os.path.dirname(args.output), exist_ok=True)
         with open(args.output, "w") as handle:
             json.dump(
-                {
-                    "settings": results,
-                    "config": vars(args),
-                    "version": pymapf.__version__,
-                },
+                json_safe(
+                    {
+                        "settings": results,
+                        "config": vars(args),
+                        "version": pymapf.__version__,
+                    }
+                ),
                 handle,
                 indent=2,
+                # Belt and braces: if a non-finite value ever escapes json_safe,
+                # fail here rather than publish a file no browser can read.
+                allow_nan=False,
             )
         print("\nwrote %s" % args.output)
     return 0
