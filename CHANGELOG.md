@@ -6,6 +6,70 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.0]
+
+The learning layer reaches the published site, and the artifact it reads becomes
+readable.
+
+**The importable package is byte-identical to 0.7.0** -- `git diff v0.7.0..v0.8.0
+-- pymapf/` is empty. Nothing here requires an upgrade for code reasons. What
+changed is the documentation site, the published benchmark data, the release
+pipeline and a README table that was wrong.
+
+### Fixed
+
+- **`.docs/assets/rl-benchmark.json` was not valid JSON.** A method that solves
+  nothing has no mean cost, and `json.dump` writes a bare `NaN` for it -- 27
+  times in that file. Python's own loader accepts `NaN`, so a round-trip in
+  Python looks clean; it is not JSON, `JSON.parse` rejects the *entire*
+  document, and the file had therefore been unreadable by the page meant to
+  display it since the day it was written. `scripts/train_rl.py` now maps
+  non-finite floats to `null` and passes `allow_nan=False` so it cannot regress
+  silently.
+- **The README's RL table had drifted from the run that produced it**, claiming
+  47% / 1.10x / 3.05x where the artifact said 45% / 1.11x / 2.94x. Corrected,
+  and the table now says where its numbers come from. The new site section
+  renders from the artifact rather than restating it, because transcription is
+  what caused the drift.
+- **A `.gitignore` rule of `*.gif` was swallowing the two gallery animations.**
+  Both are published artifacts -- the README embeds one, the playground embeds
+  both, and Pages uploads the checked-out `.docs/` tree -- so an ignored GIF was
+  a broken image on the live site rather than a missing local file.
+- **A failed PyPI upload used to cancel the GitHub Release.** `github-release`
+  needed `publish-pypi`, so an unregistered trusted publisher would have taken
+  the release down with it, and a tag cannot cleanly be re-pushed to try again.
+  It is gated on `verify` now and runs either way, with notes that state whether
+  the upload succeeded instead of printing a `pip install` line that would not
+  work.
+
+### Added
+
+- **A Learning section on the playground site.** The page previously contained
+  no occurrence of `rl`, `ippo`, `mappo`, `reinforcement` or `learning`, while
+  shipping the RL film, its poster and the benchmark JSON with nothing linking
+  any of them. The section carries the film, a table across all four benchmark
+  settings, and the findings. `survey-v2.md` and `research-notes.md` were
+  orphaned the same way and are now linked from the nav and the README.
+- `tests/test_docs_assets.py` -- every `.json` under `.docs/` must parse with
+  `NaN`/`Infinity` **refused** (via `parse_constant`; `strict=False` is the
+  opposite of what is wanted), the benchmark must contain both a learner and
+  CBS, and every asset `index.html` references must exist or it would 404 on
+  Pages.
+
+### Changed
+
+- `actions/checkout` is on v7 across all five workflows, `actions/setup-python`
+  on v7, `codecov/codecov-action` on v7, `stefanzweifel/git-auto-commit-action`
+  on v7. `pip-tests.yml` had pinned **`actions/checkout@master`** -- a floating
+  ref, resolved at run time, from a third-party repository, running with the
+  workflow's token. Renovate does not rewrite floating refs, so it would have
+  survived the bot's own upgrade PR.
+- The pinned CI `numpy` moves to 1.22.0, clearing
+  [CVE-2021-34141](https://nvd.nist.gov/vuln/detail/CVE-2021-34141). That is the
+  last numpy supporting Python 3.8, which is the floor of the test matrix;
+  scipy 1.18, matplotlib 3.11 and termcolor 3 were all declined for requiring
+  3.12, 3.11 and 3.9 respectively.
+
 ## [0.7.0]
 
 Multi-agent reinforcement learning on the library's own MAPF instances,
