@@ -17,14 +17,9 @@ pull_request_rules:
     actions:
       merge:
         method: merge
-  - name: Delete head branch after merge
-    conditions:
-      - merged
-    actions:
-      delete_head_branch: {}
   - name: Ask to resolve conflict
     conditions:
       - conflict
     actions:
-        comment:
-          message: This pull request is now in conflicts. Could you fix it @{{author}}? 🙏
+      comment:
+        message: This pull request is now in conflicts. Could you fix it @{{author}}? 🙏
