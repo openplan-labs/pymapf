@@ -15,7 +15,9 @@ import os
 
 import pytest
 
-DOCS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".docs")
+DOCS = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".docs"
+)
 ASSETS = os.path.join(DOCS, "assets")
 
 
