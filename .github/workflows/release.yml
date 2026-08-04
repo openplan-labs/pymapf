@@ -1,0 +1,261 @@
+name: release
+
+# Builds, verifies and publishes the package, then opens a GitHub Release.
+#
+# Triggered by pushing a tag like `v0.7.0`. The tag is the single instruction:
+# the version is *read from the package*, and the job fails if the tag disagrees
+# with it, so a mislabelled artifact cannot be published by accident.
+#
+# Publishing uses PyPI Trusted Publishing (OIDC). There is no API token in this
+# repository's secrets and there does not need to be -- see `verify` below for
+# what has to be configured on PyPI once, by hand.
+#
+#   Dry run:  gh workflow run release.yml -f target=testpypi
+#   Real:     git tag v0.7.0 && git push origin v0.7.0
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Where to publish'
+        required: true
+        default: testpypi
+        type: choice
+        options: [testpypi, pypi, none]
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------- tests ---
+  # The package is published only if it passes on every Python it claims to
+  # support. This duplicates tests.yml on purpose: a tag is the one moment
+  # where "CI was green on some earlier commit" is not good enough.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ['3.8', '3.9', '3.10']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+      - name: Test
+        run: pytest -q
+
+  # ---------------------------------------------------------------- build ---
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Read the version from the package
+        id: version
+        run: |
+          VERSION=$(python -c "import re; print(re.search(r'__version__ = \"([^\"]+)\"', open('pymapf/__init__.py').read()).group(1))")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "package version: $VERSION"
+
+      - name: Refuse to publish if the tag disagrees with the package
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          VERSION="${{ steps.version.outputs.version }}"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "::error::tag v$TAG does not match pymapf.__version__ ($VERSION)."
+            echo "Bump pymapf/__init__.py or retag; publishing a mislabelled"
+            echo "artifact to PyPI cannot be undone."
+            exit 1
+          fi
+          echo "tag v$TAG matches the package version"
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Check metadata renders on PyPI
+        run: python -m twine check --strict dist/*
+
+      - name: Nothing large or generated should be in the artifact
+        run: |
+          python - <<'PY'
+          import os, tarfile, zipfile
+          for name in sorted(os.listdir("dist")):
+              path = os.path.join("dist", name)
+              entries = (tarfile.open(path).getnames() if name.endswith(".tar.gz")
+                         else zipfile.ZipFile(path).namelist())
+              leaked = [e for e in entries if e.endswith((".mp4", ".gif", ".ipynb"))]
+              assert not leaked, "media leaked into %s: %s" % (name, leaked[:5])
+              size = os.path.getsize(path) / 1e6
+              assert size < 5, "%s is %.1f MB -- something is being bundled" % (name, size)
+              print("%-40s %5.2f MB  %d entries" % (name, size, len(entries)))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  # --------------------------------------------------------------- verify ---
+  # Install the built wheel the way a user would -- clean interpreter, no
+  # source tree, no dev dependencies -- and check it actually works. This is
+  # the step that catches a broken release while it is still fixable: a version
+  # number on PyPI can never be reused, so "publish and see" is not available.
+  verify:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.12']
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Install the wheel on its own
+        run: python -m pip install dist/*.whl
+
+      - name: The core must work with no third-party dependency at all
+        run: |
+          cd "$(mktemp -d)"    # away from the source tree, so this imports the install
+          python - <<'PY'
+          # Ask the metadata rather than parsing `pip freeze`: a wheel installed
+          # from a path is frozen as `pymapf @ file:///...`, which any
+          # whitespace-splitting check reads as three unknown packages.
+          from importlib.metadata import distributions
+          seen = sorted({d.metadata["Name"].lower() for d in distributions()})
+          extra = [n for n in seen if n not in ("pymapf", "pip", "setuptools", "wheel")]
+          assert not extra, "the core pulled in dependencies: %s" % extra
+
+          import pymapf
+          scenario = pymapf.build_scenario("warehouse", n_agents=6, seed=1)
+          solution = pymapf.solve(scenario.to_problem(), "cbs")
+          assert solution is not None and solution.is_valid(), "CBS produced no valid plan"
+          assert set(pymapf.available_solvers()) >= {"cbs", "wcbs", "pibt", "lacam", "lns"}
+          print("pymapf", pymapf.__version__, "- CBS cost", solution.sum_of_costs,
+                "- solvers", pymapf.available_solvers())
+          PY
+
+      - name: The extras must install and import
+        run: |
+          # Extras on a local wheel go in brackets *after the path*. The PEP 508
+          # direct-reference spelling (`pymapf[rl] @ <path>`) needs a URL and is
+          # rejected outright for a bare path, so this must not be "fixed" into
+          # that form.
+          python -m pip install "$(ls dist/*.whl)[rl]"
+          cd "$(mktemp -d)"
+          python -c "
+          from pymapf.rl import MAPFEnv, make_trainer
+          env = MAPFEnv('empty_room', height=6, width=6, n_agents=2, randomise=False)
+          trainer = make_trainer('ippo', env, n_envs=2, rollout_steps=8, seed=0)
+          trainer.learn(total_steps=200)
+          print('pymapf.rl trains from a clean install')
+          "
+
+  # -------------------------------------------------------------- publish ---
+  # Trusted Publishing: PyPI trusts this workflow by name, so no API token is
+  # stored here. It must be registered once, by a project owner, at
+  #   https://pypi.org/manage/project/pymapf/settings/publishing/
+  # with owner `apla-toolbox`, repository `pymapf`, workflow `release.yml`,
+  # and environment `pypi` (or `testpypi` for the dry-run target below).
+  publish-testpypi:
+    needs: verify
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/pymapf
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  publish-pypi:
+    needs: verify
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi')
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pymapf
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # --------------------------------------------------------------- release ---
+  github-release:
+    needs: [build, publish-pypi]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Take the release notes from the changelog
+        id: notes
+        run: |
+          python - <<'PY' > notes.md
+          import re
+          version = "${{ needs.build.outputs.version }}"
+          text = open("CHANGELOG.md").read()
+          # The section for this version, up to the next version heading.
+          match = re.search(r"^## \[%s\][^\n]*\n(.*?)(?=^## \[)" % re.escape(version),
+                            text, re.S | re.M)
+          body = match.group(1).strip() if match else ""
+          if not body:
+              body = "See [CHANGELOG.md](CHANGELOG.md)."
+          print(body)
+          print()
+          print("---")
+          print()
+          print("Install: `pip install pymapf==%s`" % version)
+          print()
+          print("The core has no runtime dependencies. Extras: "
+                "`pymapf[viz]`, `pymapf[rl]`, `pymapf[rl-torch]`, "
+                "`pymapf[decentralized]`, `pymapf[all]`.")
+          PY
+          echo "wrote $(wc -l < notes.md) lines of release notes"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: notes.md
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

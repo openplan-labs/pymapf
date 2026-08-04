@@ -6,32 +6,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Changed
-
-- `docs/` is now **`.docs/`**. Every reference moved with it, including the Pages
-  workflow's path filter, bundle check and upload path. Publishing is unaffected
-  because this repository deploys through `actions/upload-pages-artifact` rather
-  than the "deploy from a branch, /docs folder" setting, which offers only `/`
-  or `/docs` and could not have followed the move.
-
-### Added
-
-- **`.docs/survey-v2.md`** -- a second edition of the survey. It revises the
-  framing rather than the measurements: lifelong MAPF has replaced one-shot MAPF
-  as the objective the field optimises (throughput, not sum-of-costs);
-  guidance-graph optimisation is a third lever that improves the *environment*
-  rather than the solver, and is orthogonal to everything already implemented
-  here; and learning has settled into supplying heuristics, priorities and
-  neighbourhoods *inside* a sound search rather than replacing it -- which our
-  own RL numbers support from the negative side.
-- **`.docs/research-notes.md`** -- the annotated literature scan behind it,
-  recording for each citation how far it was actually read. Nothing in it is
-  reproduced here unless marked [impl].
-
 ## [0.7.0]
 
 Multi-agent reinforcement learning on the library's own MAPF instances,
-benchmarked against its own optimal planner.
+benchmarked against its own optimal planner. First release published from CI.
 
 ### Added
 
@@ -70,6 +48,36 @@ benchmarked against its own optimal planner.
   failure split is measured over 80 instances during the render -- so the film
   cannot drift from the library's behaviour.
 - New extras: `rl` (numpy only), `rl-torch`, `rl-ecosystem`.
+- **`.docs/survey-v2.md`** -- a second edition of the survey. It revises the
+  framing rather than the measurements: lifelong MAPF has replaced one-shot MAPF
+  as the objective the field optimises (throughput, not sum-of-costs);
+  guidance-graph optimisation is a third lever that improves the *environment*
+  rather than the solver, and is orthogonal to everything already implemented
+  here; and learning has settled into supplying heuristics, priorities and
+  neighbourhoods *inside* a sound search rather than replacing it -- which our
+  own RL numbers support from the negative side.
+- **`.docs/research-notes.md`** -- the annotated literature scan behind it,
+  recording for each citation how far it was actually read. Nothing in it is
+  reproduced here unless marked [impl].
+- **`.github/workflows/release.yml`** -- pushing a `v*` tag now tests on 3.8-3.10,
+  builds, installs the built wheel into a clean interpreter on 3.8 and 3.12 and
+  solves a real instance with it, publishes to PyPI through Trusted Publishing
+  (OIDC -- no API token in this repository), and opens a GitHub Release with the
+  artifacts attached and this changelog's section as the notes. The build fails
+  if the tag disagrees with `pymapf.__version__`, because a version number on
+  PyPI can never be reused. `workflow_dispatch` offers TestPyPI as a dry run.
+
+### Changed
+
+- **Packaging moved from `setup.py` to `pyproject.toml`** (PEP 621). The version
+  had lived in two places and had already drifted apart once -- `setup.py` said
+  0.3.0 while the package reported 0.5.0 -- so it is now read from
+  `pymapf.__version__` alone. `pip install pymapf` remains dependency-free.
+- `docs/` is now **`.docs/`**. Every reference moved with it, including the Pages
+  workflow's path filter, bundle check and upload path. Publishing is unaffected
+  because this repository deploys through `actions/upload-pages-artifact` rather
+  than the "deploy from a branch, /docs folder" setting, which offers only `/`
+  or `/docs` and could not have followed the move.
 
 ### Findings
 
