@@ -11,7 +11,7 @@ jobs:
           ref: ${{ github.head_ref }}
       - uses: actions/checkout@v2
       - name: Set up Python 3.12
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v7
         with:
           python-version: 3.14
       - name: Install formatter dependencies
