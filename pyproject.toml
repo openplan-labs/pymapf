@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymapf"
+description = "Multi-agent path finding: solvers (CBS, weighted CBS, PIBT, LaCAM, LNS), decentralized swarm control, and a multi-agent RL environment benchmarked against the optimal planner"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [{ name = "Erwin Lejeune", email = "erwinlejeune.pro@gmail.com" }]
+keywords = [
+    "multi-agent",
+    "path-finding",
+    "mapf",
+    "planning",
+    "cbs",
+    "robotics",
+    "swarm",
+    "reinforcement-learning",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Framework :: Pytest",
+]
+
+# The centralized framework (core, algorithms, scenarios, benchmark) is pure
+# standard library on purpose: that is what lets the solvers run in CI, on a
+# robot, and in the browser under Pyodide with nothing to build. Everything
+# needing a third-party package is an extra, and `pip install pymapf` stays
+# dependency-free.
+dependencies = []
+
+# Single source of truth. The version lived in both setup.py and
+# pymapf/__init__.py and had already drifted apart once -- setup.py said 0.3.0
+# while the package reported 0.5.0 -- which is exactly the kind of mistake that
+# ships a mislabelled artifact. setuptools reads the literal statically, so this
+# does not import the package at build time.
+dynamic = ["version"]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.4"]
+decentralized = ["numpy>=1.20", "scipy>=1.6"]
+rl = ["numpy>=1.20"]
+rl-torch = ["numpy>=1.20", "torch>=1.13"]
+rl-ecosystem = ["numpy>=1.20", "gymnasium>=0.29", "pettingzoo>=1.24"]
+legacy = [
+    "numpy>=1.20",
+    "scipy>=1.6",
+    "matplotlib>=3.4",
+    "coloredlogs>=15.0",
+    "termcolor>=1.1",
+]
+all = [
+    "matplotlib>=3.4",
+    "numpy>=1.20",
+    "scipy>=1.6",
+    "coloredlogs>=15.0",
+    "termcolor>=1.1",
+]
+dev = ["pytest>=6.0", "pytest-cov", "build", "twine"]
+
+[project.urls]
+Homepage = "https://github.com/apla-toolbox/pymapf"
+Playground = "https://apla-toolbox.github.io/pymapf/"
+Source = "https://github.com/apla-toolbox/pymapf"
+Changelog = "https://github.com/apla-toolbox/pymapf/blob/main/CHANGELOG.md"
+Survey = "https://github.com/apla-toolbox/pymapf/blob/main/.docs/survey-v2.md"
+
+[tool.setuptools.dynamic]
+version = { attr = "pymapf.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["pymapf*"]
+exclude = ["tests*", "scripts*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

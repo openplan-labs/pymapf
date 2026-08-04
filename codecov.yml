@@ -15,7 +15,6 @@ parsers:
       macro: no
 
 ignore:
-  - "setup.py"
   - scripts/*
 
 comment:

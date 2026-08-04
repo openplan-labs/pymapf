@@ -129,4 +129,10 @@ dmypy.json
 .pyre/
 
 *.gif
+# ...except the gallery animations. These are *published* artifacts: the README
+# and the Pages site both link to them, and Pages uploads the checked-out
+# `.docs/` tree, so an ignored GIF is a broken image on the live site rather
+# than a missing local file. Regenerate with scripts/generate_gallery.py.
+!.docs/assets/*.gif
+
 .vscode/*
