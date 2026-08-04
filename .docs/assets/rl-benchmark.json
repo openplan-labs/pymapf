@@ -901,22 +901,22 @@
           "instances": 100,
           "success_rate": 0.0,
           "validity_rate": 1.0,
-          "mean_cost": NaN,
-          "mean_makespan": NaN,
+          "mean_cost": null,
+          "mean_makespan": null,
           "mean_collisions": 10.4,
           "mean_runtime": 0.02598751471000469,
-          "suboptimality": NaN
+          "suboptimality": null
         },
         {
           "method": "random (sampled)",
           "instances": 100,
           "success_rate": 0.0,
           "validity_rate": 1.0,
-          "mean_cost": NaN,
-          "mean_makespan": NaN,
+          "mean_cost": null,
+          "mean_makespan": null,
           "mean_collisions": 9.88,
           "mean_runtime": 0.024609016269992026,
-          "suboptimality": NaN
+          "suboptimality": null
         },
         {
           "method": "ippo (greedy)",
@@ -1398,22 +1398,22 @@
           "instances": 100,
           "success_rate": 0.0,
           "validity_rate": 1.0,
-          "mean_cost": NaN,
-          "mean_makespan": NaN,
+          "mean_cost": null,
+          "mean_makespan": null,
           "mean_collisions": 10.44,
           "mean_runtime": 0.019379411980025907,
-          "suboptimality": NaN
+          "suboptimality": null
         },
         {
           "method": "random (sampled)",
           "instances": 100,
           "success_rate": 0.0,
           "validity_rate": 1.0,
-          "mean_cost": NaN,
-          "mean_makespan": NaN,
+          "mean_cost": null,
+          "mean_makespan": null,
           "mean_collisions": 10.9,
           "mean_runtime": 0.019250772940013122,
-          "suboptimality": NaN
+          "suboptimality": null
         },
         {
           "method": "ippo (greedy)",
@@ -1892,33 +1892,33 @@
           "instances": 100,
           "success_rate": 0.0,
           "validity_rate": 1.0,
-          "mean_cost": NaN,
-          "mean_makespan": NaN,
+          "mean_cost": null,
+          "mean_makespan": null,
           "mean_collisions": 6.53,
           "mean_runtime": 0.029312940170011643,
-          "suboptimality": NaN
+          "suboptimality": null
         },
         {
           "method": "random (sampled)",
           "instances": 100,
           "success_rate": 0.0,
           "validity_rate": 1.0,
-          "mean_cost": NaN,
-          "mean_makespan": NaN,
+          "mean_cost": null,
+          "mean_makespan": null,
           "mean_collisions": 6.94,
           "mean_runtime": 0.028926563650011304,
-          "suboptimality": NaN
+          "suboptimality": null
         },
         {
           "method": "ippo (greedy)",
           "instances": 100,
           "success_rate": 0.0,
           "validity_rate": 1.0,
-          "mean_cost": NaN,
-          "mean_makespan": NaN,
+          "mean_cost": null,
+          "mean_makespan": null,
           "mean_collisions": 242.45,
           "mean_runtime": 0.045136551360033084,
-          "suboptimality": NaN
+          "suboptimality": null
         },
         {
           "method": "ippo (sampled)",
@@ -1936,22 +1936,22 @@
           "instances": 100,
           "success_rate": 0.0,
           "validity_rate": 1.0,
-          "mean_cost": NaN,
-          "mean_makespan": NaN,
+          "mean_cost": null,
+          "mean_makespan": null,
           "mean_collisions": 236.05,
           "mean_runtime": 0.04243275886001356,
-          "suboptimality": NaN
+          "suboptimality": null
         },
         {
           "method": "mappo (sampled)",
           "instances": 100,
           "success_rate": 0.0,
           "validity_rate": 1.0,
-          "mean_cost": NaN,
-          "mean_makespan": NaN,
+          "mean_cost": null,
+          "mean_makespan": null,
           "mean_collisions": 14.85,
           "mean_runtime": 0.04390549727000234,
-          "suboptimality": NaN
+          "suboptimality": null
         },
         {
           "method": "cbs",

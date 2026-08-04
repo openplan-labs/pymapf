@@ -1034,6 +1034,75 @@ function wire() {
   });
 }
 
+/* ------------------------------------------------------------ learning --- */
+
+/**
+ * Render the RL benchmark from assets/rl-benchmark.json.
+ *
+ * The file is the artifact scripts/train_rl.py writes, shipped verbatim. Reading
+ * it here rather than hard-coding the table is the whole point: retrain, drop in
+ * the new JSON, and the page cannot disagree with the run that produced it.
+ */
+async function initLearning() {
+  const status = $('rl-status');
+  const select = $('rl-setting');
+  const table = $('rl-table');
+  if (!status || !select || !table) return;
+
+  let report;
+  try {
+    const response = await fetch('assets/rl-benchmark.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    report = await response.json();
+  } catch (error) {
+    status.textContent = `benchmark unavailable (${error.message})`;
+    return;
+  }
+
+  const settings = report.settings ?? [];
+  if (!settings.length) { status.textContent = 'benchmark is empty'; return; }
+
+  const label = (setting) => {
+    const { n_agents: agents, height, width, density } = setting.kwargs ?? {};
+    const size = height && width ? `${height}×${width}` : 'fixed map';
+    return `${setting.family.replace(/_/g, ' ')} — ${size}, ${agents} agents`
+      + (density ? `, ${Math.round(density * 100)}% obstacles` : '');
+  };
+
+  select.innerHTML = settings
+    .map((setting, i) => `<option value="${i}">${label(setting)}</option>`).join('');
+
+  const render = () => {
+    const setting = settings[Number(select.value)];
+    // A method that solved nothing has no cost and no ratio; those are null in
+    // the artifact and render as an em dash. Suboptimality is against CBS, which
+    // is optimal, so the ratio is true suboptimality rather than a gap against
+    // another heuristic.
+    const cell = (value, digits, suffix, fail) => (Number.isFinite(value)
+      ? `<td${fail ? ' class="fail"' : ''}>${value.toFixed(digits)}${suffix}</td>`
+      : '<td>—</td>');
+    const rows = setting.rows.map((row) => {
+      const solved = 100 * row.success_rate;
+      const planner = !row.method.includes('(');
+      return `<tr>
+        <td${planner ? ' style="font-weight:600"' : ''}>${row.method}</td>
+        ${cell(solved, 0, '%', solved < 50)}
+        ${cell(row.mean_cost, 1, '', false)}
+        ${cell(row.suboptimality, 2, '×', false)}
+        <td>${fmtMs(row.mean_runtime)}</td>
+      </tr>`;
+    }).join('');
+    table.innerHTML = `<thead><tr>
+        <th>method</th><th>solved</th><th>cost</th><th>vs optimal</th><th>runtime</th>
+      </tr></thead><tbody>${rows}</tbody>`;
+  };
+
+  select.addEventListener('change', render);
+  status.textContent = `pymapf ${report.version} · ${report.config?.steps?.toLocaleString() ?? '?'} `
+    + `steps per algorithm · ${report.config?.episodes ?? '?'} eval episodes`;
+  render();
+}
+
 function boot() {
   try {
     const stored = localStorage.getItem('pymapf-theme');
@@ -1044,6 +1113,7 @@ function boot() {
   $('algorithm-blurb').textContent = ALGORITHM_BLURBS[state.algorithm];
   regenerate();
   bootWorker();
+  initLearning();
 }
 
 boot();

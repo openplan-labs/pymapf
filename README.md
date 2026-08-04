@@ -42,7 +42,7 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 - 🐦 **Decentralized swarm control**, all object-oriented and registry-based: 10 flocking models (boids, Vicsek, Cucker–Smale, Olfati-Saber, proximal, active-elastic, acceleration-based, Gaussian-kernel, minimalistic, distributed-3D), 5 coverage controllers over 6 pluggable domains, and Gaussian-mixture distribution control
 - 📐 **Formation control** on the displacement / distance / bearing taxonomy, with exact Hungarian slot assignment and a rigidity test that tells you when a target shape is holdable at all
 - 🧠 **Multi-agent RL** (`pymapf.rl`): the MAPF instances as a PettingZoo-parallel environment, IPPO and MAPPO that train with **no dependency beyond numpy**, and a benchmark scored against the *optimal* CBS solution rather than another heuristic
-- 🔬 **[Extended survey](.docs/survey.md)** of MAPF 2021→2026 plus an experimental section with measured (and negative) results
+- 🔬 **[Extended survey](.docs/survey.md)** of MAPF 2021→2026 plus an experimental section with measured (and negative) results — and a [second edition](.docs/survey-v2.md) that revises the framing around lifelong MAPF, guidance-graph optimisation and learning-inside-search, with the [literature scan](.docs/research-notes.md) behind it
 - 🧩 Pluggable solver framework with a name-based registry, pluggable heuristics and deterministic maps
 - 🔭 **Observable search**: every solver streams `SearchEvent`s — record them, animate them, or watch them live
 - 🗺️ **Six reproducible scenario families** (empty room, random obstacles, warehouse, maze, bottleneck, corner swap) plus ASCII maps
@@ -385,9 +385,13 @@ worth knowing about:
 
 | method | solved | cost | vs optimal |
 |---|---|---|---|
-| IPPO, greedy (argmax) | 47% | 10.7 | **1.10x** |
-| IPPO, sampled | **100%** | 29.5 | 3.05x |
+| IPPO, greedy (argmax) | 45% | 10.5 | **1.11x** |
+| IPPO, sampled | **100%** | 27.3 | 2.94x |
 | CBS (optimal) | 100% | 9.6 | 1.00x |
+
+<sub>Read from [`.docs/assets/rl-benchmark.json`](.docs/assets/rl-benchmark.json),
+which `scripts/train_rl.py` writes. The [playground](https://apla-toolbox.github.io/pymapf/#learning)
+renders all four settings from that same file.</sub>
 
 The same weights, evaluated two ways — and the gap has **two** causes, measured
 over 80 instances (33 greedy failures, no wall contacts, and in every case both
