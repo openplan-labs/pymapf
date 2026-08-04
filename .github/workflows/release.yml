@@ -140,11 +140,12 @@ jobs:
         run: |
           cd "$(mktemp -d)"    # away from the source tree, so this imports the install
           python - <<'PY'
-          import subprocess, sys
-          installed = subprocess.run([sys.executable, "-m", "pip", "freeze"],
-                                     capture_output=True, text=True).stdout.split()
-          extra = [line for line in installed
-                   if not line.lower().startswith(("pymapf", "pip", "setuptools", "wheel"))]
+          # Ask the metadata rather than parsing `pip freeze`: a wheel installed
+          # from a path is frozen as `pymapf @ file:///...`, which any
+          # whitespace-splitting check reads as three unknown packages.
+          from importlib.metadata import distributions
+          seen = sorted({d.metadata["Name"].lower() for d in distributions()})
+          extra = [n for n in seen if n not in ("pymapf", "pip", "setuptools", "wheel")]
           assert not extra, "the core pulled in dependencies: %s" % extra
 
           import pymapf
@@ -158,7 +159,11 @@ jobs:
 
       - name: The extras must install and import
         run: |
-          python -m pip install "pymapf[rl] @ $(ls dist/*.whl)" || python -m pip install numpy
+          # Extras on a local wheel go in brackets *after the path*. The PEP 508
+          # direct-reference spelling (`pymapf[rl] @ <path>`) needs a URL and is
+          # rejected outright for a bare path, so this must not be "fixed" into
+          # that form.
+          python -m pip install "$(ls dist/*.whl)[rl]"
           cd "$(mktemp -d)"
           python -c "
           from pymapf.rl import MAPFEnv, make_trainer
