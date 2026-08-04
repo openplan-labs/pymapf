@@ -2,7 +2,7 @@
 # legacy decentralized planners. The published package declares no required
 # dependencies -- the solver framework is pure standard library -- and puts
 # these behind extras instead (see pyproject.toml: viz, decentralized, legacy).
-numpy==1.21.4
+numpy==1.22.0
 scipy==1.7.2
 coloredlogs==15.0.1
 matplotlib==3.5.0
