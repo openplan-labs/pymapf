@@ -72,11 +72,11 @@ all = [
 dev = ["pytest>=6.0", "pytest-cov", "build", "twine"]
 
 [project.urls]
-Homepage = "https://github.com/apla-toolbox/pymapf"
-Playground = "https://apla-toolbox.github.io/pymapf/"
-Source = "https://github.com/apla-toolbox/pymapf"
-Changelog = "https://github.com/apla-toolbox/pymapf/blob/main/CHANGELOG.md"
-Survey = "https://github.com/apla-toolbox/pymapf/blob/main/.docs/survey-v2.md"
+Homepage = "https://github.com/openplan-labs/pymapf"
+Playground = "https://openplan-labs.github.io/pymapf/"
+Source = "https://github.com/openplan-labs/pymapf"
+Changelog = "https://github.com/openplan-labs/pymapf/blob/main/CHANGELOG.md"
+Survey = "https://github.com/openplan-labs/pymapf/blob/main/.docs/survey-v2.md"
 
 [tool.setuptools.dynamic]
 version = { attr = "pymapf.__version__" }

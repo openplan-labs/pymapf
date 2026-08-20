@@ -177,7 +177,7 @@ jobs:
   # Trusted Publishing: PyPI trusts this workflow by name, so no API token is
   # stored here. It must be registered once, by a project owner, at
   #   https://pypi.org/manage/project/pymapf/settings/publishing/
-  # with owner `apla-toolbox`, repository `pymapf`, workflow `release.yml`,
+  # with owner `openplan-labs`, repository `pymapf`, workflow `release.yml`,
   # and environment `pypi` (or `testpypi` for the dry-run target below).
   publish-testpypi:
     needs: verify

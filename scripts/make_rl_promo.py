@@ -966,7 +966,7 @@ def scene_outro(ax, t, content):
         ax,
         0.5,
         0.42,
-        "github.com/apla-toolbox/pymapf",
+        "github.com/openplan-labs/pymapf",
         size=16,
         color=THEME.agent_color(0),
         ha="center",

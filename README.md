@@ -14,20 +14,20 @@
 
 <div align="center">
     
-[![tests](https://github.com/APLA-Toolbox/pymapf/actions/workflows/tests.yml/badge.svg)](https://github.com/APLA-Toolbox/pymapf/actions/workflows/tests.yml)
-[![codecov](https://codecov.io/gh/APLA-Toolbox/pymapf/branch/main/graph/badge.svg?token=63GHA9JUND)](https://codecov.io/gh/APLA-Toolbox/pymapf)
-[![CodeFactor](https://www.codefactor.io/repository/github/apla-toolbox/pymapf/badge)](https://www.codefactor.io/repository/github/apla-toolbox/pymapf)
-[![Percentage of issues still open](http://isitmaintained.com/badge/open/APLA-Toolbox/pymapf.svg)](http://isitmaintained.com/project/APLA-Toolbox/pymapf "Percentage of issues still open")
+[![tests](https://github.com/openplan-labs/pymapf/actions/workflows/tests.yml/badge.svg)](https://github.com/openplan-labs/pymapf/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/openplan-labs/pymapf/branch/main/graph/badge.svg?token=63GHA9JUND)](https://codecov.io/gh/openplan-labs/pymapf)
+[![CodeFactor](https://www.codefactor.io/repository/github/openplan-labs/pymapf/badge)](https://www.codefactor.io/repository/github/openplan-labs/pymapf)
+[![Percentage of issues still open](http://isitmaintained.com/badge/open/openplan-labs/pymapf.svg)](http://isitmaintained.com/project/openplan-labs/pymapf "Percentage of issues still open")
 ![PipPerMonths](https://img.shields.io/pypi/dm/pymapf.svg)
 [![Pip version fury.io](https://badge.fury.io/py/pymapf.svg)](https://pypi.python.org/pypi/pymapf/)
-[![GitHub license](https://img.shields.io/github/license/Apla-Toolbox/pymapf.svg)](https://github.com/Apla-Toolbox/pymapf/blob/master/LICENSE)
-[![GitHub contributors](https://img.shields.io/github/contributors/Apla-Toolbox/pymapf.svg)](https://GitHub.com/Apla-Toolbox/pymapf/graphs/contributors/)
+[![GitHub license](https://img.shields.io/github/license/openplan-labs/pymapf.svg)](https://github.com/openplan-labs/pymapf/blob/master/LICENSE)
+[![GitHub contributors](https://img.shields.io/github/contributors/openplan-labs/pymapf.svg)](https://GitHub.com/openplan-labs/pymapf/graphs/contributors/)
 
 </div>
 
 <div align="center">
     
-[Report Bug](https://github.com/APLA-Toolbox/pymapf/issues) · [Request Feature](https://github.com/APLA-Toolbox/pymapf/issues)
+[Report Bug](https://github.com/openplan-labs/pymapf/issues) · [Request Feature](https://github.com/openplan-labs/pymapf/issues)
 
 Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01aOE) to help it improve!
 
@@ -35,7 +35,7 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 
 ## Features 🌱
 
-- 🎮 **[Interactive playground](https://apla-toolbox.github.io/pymapf/)** — run the solvers in your browser, watch the search resolve conflicts live
+- 🎮 **[Interactive playground](https://openplan-labs.github.io/pymapf/)** — run the solvers in your browser, watch the search resolve conflicts live
 - 🧭 Centralized planners: **CBS**, **Weighted CBS**, Prioritized Planning, **PIBT**, **LaCAM**, **MAPF-LNS** — every one referenced in [REFERENCES.md](REFERENCES.md)
 - 🕸️ Works on **arbitrary graphs**, not just grids (roadmaps, warehouse topologies, PRMs)
 - 🐦 **Decentralized swarm control**, all object-oriented and registry-based: 10 flocking models (boids, Vicsek, Cucker–Smale, Olfati-Saber, proximal, active-elastic, acceleration-based, Gaussian-kernel, minimalistic, distributed-3D), 5 coverage controllers over 6 pluggable domains, and Gaussian-mixture distribution control
@@ -69,7 +69,7 @@ pip install "pymapf[all]"          # + the decentralized/legacy planners
 From a clone:
 
 ```bash
-git clone https://github.com/apla-toolbox/pymapf && cd pymapf
+git clone https://github.com/openplan-labs/pymapf && cd pymapf
 pip install -e ".[all,dev]"
 pytest
 ```
@@ -389,7 +389,7 @@ worth knowing about:
 | CBS (optimal) | 100% | 9.6 | 1.00x |
 
 <sub>Read from [`.docs/assets/rl-benchmark.json`](.docs/assets/rl-benchmark.json),
-which `scripts/train_rl.py` writes. The [playground](https://apla-toolbox.github.io/pymapf/#learning)
+which `scripts/train_rl.py` writes. The [playground](https://openplan-labs.github.io/pymapf/#learning)
 renders all four settings from that same file.</sub>
 
 The same weights, evaluated two ways — and the gap has **two** causes, measured
