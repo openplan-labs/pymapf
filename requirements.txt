@@ -2,8 +2,17 @@
 # legacy decentralized planners. The published package declares no required
 # dependencies -- the solver framework is pure standard library -- and puts
 # these behind extras instead (see pyproject.toml: viz, decentralized, legacy).
-numpy==1.22.0
-scipy==1.7.2
+#
+# Three pin sets, because NumPy and SciPy drop interpreters aggressively:
+# NumPy 2.5 / SciPy 1.18 require Python 3.12, NumPy 2.3 / SciPy 1.16 require
+# 3.11, so each floor gets the last release that still supports it.
+numpy==2.2.6; python_version < "3.11"
+numpy==2.4.6; python_version == "3.11"
+numpy==2.5.2; python_version >= "3.12"
+scipy==1.15.3; python_version < "3.11"
+scipy==1.17.1; python_version == "3.11"
+scipy==1.18.0; python_version >= "3.12"
+matplotlib==3.10.7; python_version < "3.11"
+matplotlib==3.11.1; python_version >= "3.11"
 coloredlogs==15.0.1
-matplotlib==3.5.0
-termcolor==1.1.0
+termcolor==3.3.0
