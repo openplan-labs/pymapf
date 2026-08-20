@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "pymapf"
 description = "Multi-agent path finding: solvers (CBS, weighted CBS, PIBT, LaCAM, LNS), decentralized swarm control, and a multi-agent RL environment benchmarked against the optimal planner"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "Erwin Lejeune", email = "erwinlejeune.pro@gmail.com" }]
 keywords = [
@@ -23,11 +23,10 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",

@@ -164,7 +164,9 @@ class VelocityAgent:
     def __create_constraints(self, translation, angle, side):
         # create line
         origin = np.array([0, 0, 1])
-        point = np.array([np.cos(angle), np.sin(angle)])
+        # NumPy 2.0 removed np.cross support for 2-dimensional vectors, so pad
+        # the direction with an explicit z=0 (the 1.x behaviour, spelled out).
+        point = np.array([np.cos(angle), np.sin(angle), 0.0])
         line = np.cross(origin, point)
         line = self.__translate_line(line, translation)
 
