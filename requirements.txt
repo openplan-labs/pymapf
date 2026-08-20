@@ -3,12 +3,15 @@
 # dependencies -- the solver framework is pure standard library -- and puts
 # these behind extras instead (see pyproject.toml: viz, decentralized, legacy).
 #
-# Two pin sets: NumPy >= 2.3 and SciPy >= 1.16 require Python 3.11, so
-# Python 3.10 gets the last releases that still support it.
+# Three pin sets, because NumPy and SciPy drop interpreters aggressively:
+# NumPy 2.5 / SciPy 1.18 require Python 3.12, NumPy 2.3 / SciPy 1.16 require
+# 3.11, so each floor gets the last release that still supports it.
 numpy==2.2.6; python_version < "3.11"
-numpy==2.5.2; python_version >= "3.11"
+numpy==2.4.6; python_version == "3.11"
+numpy==2.5.2; python_version >= "3.12"
 scipy==1.15.3; python_version < "3.11"
-scipy==1.18.0; python_version >= "3.11"
+scipy==1.17.1; python_version == "3.11"
+scipy==1.18.0; python_version >= "3.12"
 matplotlib==3.10.7; python_version < "3.11"
 matplotlib==3.11.1; python_version >= "3.11"
 coloredlogs==15.0.1
