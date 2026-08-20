@@ -1,6 +1,9 @@
 <div align="center">
     
-<img src="https://svgshare.com/i/TFJ.svg" alt="Logo" width="300">     
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/openplan-labs/branding/main/assets/logo/mark-dark.svg">
+  <img src="https://raw.githubusercontent.com/openplan-labs/branding/main/assets/logo/mark-accent.svg" width="72" alt="OpenPlan Labs">
+</picture>
     
 </div>
 
