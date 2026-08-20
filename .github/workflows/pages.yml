@@ -47,7 +47,7 @@ jobs:
           print("bundle: %d modules, pymapf %s" % (len(bundle["files"]), bundle["version"]))
           PY
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
       - uses: actions/upload-pages-artifact@v3
         with:
