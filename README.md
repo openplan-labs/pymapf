@@ -23,7 +23,7 @@
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/openplan-labs/pymapf.svg)](http://isitmaintained.com/project/openplan-labs/pymapf "Percentage of issues still open")
 ![PipPerMonths](https://img.shields.io/pypi/dm/pymapf.svg)
 [![Pip version fury.io](https://badge.fury.io/py/pymapf.svg)](https://pypi.python.org/pypi/pymapf/)
-[![GitHub license](https://img.shields.io/github/license/openplan-labs/pymapf.svg)](https://github.com/openplan-labs/pymapf/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/github/license/openplan-labs/pymapf.svg)](https://github.com/openplan-labs/pymapf/blob/main/LICENSE)
 [![GitHub contributors](https://img.shields.io/github/contributors/openplan-labs/pymapf.svg)](https://GitHub.com/openplan-labs/pymapf/graphs/contributors/)
 
 </div>
@@ -96,7 +96,8 @@ problem = pymapf.MAPFProblem(grid, [
     pymapf.Agent("b", start=(2, 0), goal=(0, 2)),
 ])
 
-print(pymapf.available_solvers())          # ['cbs', 'prioritized', 'wcbs']
+print(pymapf.available_solvers())
+# ['cbs', 'lacam', 'lns', 'pibt', 'prioritized', 'wcbs']
 
 solution = pymapf.solve(problem, "cbs")
 print(solution.sum_of_costs, solution.makespan, solution.is_valid())
@@ -115,9 +116,19 @@ for name, path in solution.paths.items():
 | Prioritized Planning | `"prioritized"` | none (incomplete) | the classic baseline |
 | **MAPF-LNS** | `"lns"` | anytime, never worse than its initial plan | you have a deadline and want the best plan by then |
 
-Measured on the 8-agent warehouse instance: CBS spends 6 470 expansions and
-5.3 s for cost 100; weighted CBS reaches 104 in 23 expansions and 18 ms; LaCAM
-returns a valid plan in 4 ms; LNS takes PIBT's 175 down to 113 in two seconds.
+Measured on `build_scenario("warehouse", n_agents=8, seed=3)`, one run each,
+Python 3.10 on an 11th-gen Intel Core i7-11850H. The seed is load-bearing: at
+the default `seed=0` the same instance is easy and CBS finishes in 9 ms, and at
+`seed=2` CBS exhausts its 10 000-expansion budget and returns nothing.
+
+| Solver | Cost | Wall clock |
+| :--- | ---: | ---: |
+| CBS | 100 | 4.6 s (6 470 expansions) |
+| Weighted CBS | 104 | 18 ms (23 expansions) |
+| LaCAM | 136 | 3 ms |
+| PIBT | 168 | 3 ms |
+| LNS | 100 | 5.0 s — its default `time_limit`, not a time-to-solution |
+
 The full picture, including where each one fails, is in
 [`.docs/survey.md`](.docs/survey.md).
 
@@ -178,7 +189,8 @@ trace = pymapf.SearchTrace()
 solution = pymapf.solve(scenario.to_problem(), "cbs", observer=trace)
 
 print(trace.summary())
-# {'events': 67, 'expansions': 16, 'conflicts': 15, 'solved': True, 'cost': 48, ...}
+# {'events': 5, 'expansions': 1, 'conflicts': 0, 'branches': 0,
+#  'solved': True, 'cost': 14, 'duration': 0.00012}
 ```
 
 Live, while it runs — in a window, or in the terminal over SSH:
@@ -255,7 +267,12 @@ registry, swappable strategy objects.
 ```python
 from pymapf.swarm import SwarmSimulator, available_behaviors
 
-for name in available_behaviors():          # 10 flocking + 4 formation + 2 distribution
+# Seventeen names: 10 flocking, 5 formation, 2 distribution. The two
+# distribution behaviours need a target to match, so they are constructed
+# directly rather than through this loop.
+for name in available_behaviors():
+    if name in ("density_matching", "mixture_assignment"):
+        continue
     result = SwarmSimulator(name, n_agents=20).run(steps=300)
     print(name, result.metrics.summary())
 ```
@@ -418,7 +435,7 @@ is measured over 80 instances during the render rather than quoted.
 ### Reactive planners 🔎
 
 ```python
-from pymapf.decentralized import MultiAgentNMPC
+from pymapf.decentralized.nmpc.nmpc import MultiAgentNMPC
 from pymapf.decentralized.position import Position
 import numpy as np
 
@@ -432,7 +449,7 @@ sim.visualize("filename_test", 10, 10)
 ```
 
 ```python
-from pymapf.decentralized.velocity_obstacle import MultiAgentVelocityObstacle
+from pymapf.decentralized.velocity_obstacle.velocity_obstacle import MultiAgentVelocityObstacle
 from pymapf.decentralized.position import Position
 
 sim = MultiAgentVelocityObstacle(simulation_time=8.0)
@@ -461,7 +478,7 @@ same source files, loaded into a WebAssembly interpreter, with a JavaScript port
 of the solvers as an instant-response fallback. Serve it locally with:
 
 ```bash
-python -m http.server -d docs 8000
+python -m http.server -d .docs 8000
 ```
 
 ## Cite 📰

@@ -16,11 +16,12 @@ Layout:
 - `.docs/` — the static playground (see below).
 
 ### Environment / interpreter
-- The pinned deps (`numpy==1.21.4`, `scipy==1.7.2`, `matplotlib==3.5.0`) only ship wheels
-  for Python <= 3.10. System Python is 3.12, so the project runs in a **Python 3.10 uv venv
-  at `.venv`** (created by the startup update script). Activate with `source .venv/bin/activate`
-  (or prefix commands with `.venv/bin/`). Do not install into system Python 3.12 — the pins
-  fail to build there.
+- `requires-python` is `>=3.10`, and CI tests 3.10 through 3.13. `requirements.txt`
+  carries three pin sets selected by `python_version` marker, precisely so every
+  interpreter in that range gets a NumPy/SciPy/matplotlib release that still supports
+  it — there is no longer a single pinned version that constrains you to 3.10.
+- A `.venv` at the repository root is the convention here; any interpreter in the
+  supported range will do.
 
 ### Headless gotchas (important)
 - Always run with `MPLBACKEND=Agg` (no display in the VM).
@@ -28,10 +29,10 @@ Layout:
   which **blocks indefinitely headless**. The A* planner itself is fast (~seconds). To render
   the centralized planner without hanging, save via the animator directly and skip `.show()`:
   `Animator(world, paths, agents, max(sim.searches_sim_times)).save("out")`.
-- Because of the above, `tests/test_cooperative_astar_manager.py` hangs: `test_cooperative_astar_sim`
-  passes, but `test_cooperative_astar_sim_diagonals` and `test_cooperative_astar_viz` call
-  `visualize()` and block on `plt.show()`. Deselect them when running the suite headless, e.g.
-  `pytest --deselect tests/test_cooperative_astar_manager.py::test_cooperative_astar_sim_diagonals --deselect tests/test_cooperative_astar_manager.py::test_cooperative_astar_viz`.
+- Under `MPLBACKEND=Agg` this is no longer a problem for the test suite:
+  `plt.show()` becomes a no-op that warns `FigureCanvasAgg is non-interactive`, and
+  all three tests in `tests/test_cooperative_astar_manager.py` pass in about ten
+  seconds. No deselection is needed. It still matters for interactive scripts.
 - The decentralized NMPC/Velocity-Obstacle `visualize()` do NOT call `plt.show()` and work
   headless (they use a `plt.pause` loop + `FuncAnimation.save`). `ffmpeg` is required for
   `.gif` output and is available in the VM.
@@ -41,7 +42,7 @@ Layout:
   `tests/test_nmpc.py` takes ~3 min. Velocity-Obstacle tests take ~20s. Use generous timeouts.
 
 ### The playground (`.docs/`)
-- Static site, no build step. Serve it with `python -m http.server -d docs 8000`.
+- Static site, no build step. Serve it with `python -m http.server -d .docs 8000`.
 - `.docs/pymapf-bundle.json` is generated — **re-run `python scripts/build_web_bundle.py` after
   touching `pymapf/core`, `pymapf/algorithms`, `pymapf/scenarios.py` or `pymapf/benchmark.py`**,
   or the page will run stale code. CI regenerates it before deploying.
@@ -53,7 +54,7 @@ Layout:
 
 ### Commands
 - Lint (matches CI): `flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.venv`
-- Tests: `MPLBACKEND=Agg pytest` (deselect the two blocking A* viz tests above).
+- Tests: `MPLBACKEND=Agg pytest`. The full suite is ~2 min; `test_nmpc.py` is most of it.
 - Gallery figures: `MPLBACKEND=Agg python scripts/generate_gallery.py` (add `--fast` to skip GIFs).
 - Promo film: `MPLBACKEND=Agg python scripts/make_promo.py` (~10 min; `--preview 6` while iterating).
 - Run examples: `MPLBACKEND=Agg python scripts/switch_positions_nmpc.py` (NMPC, slow) and the
