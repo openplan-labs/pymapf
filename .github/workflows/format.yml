@@ -1,26 +1,46 @@
 name: format
+
 on:
   push:
     branches: [main]
+
+# This job pushes a commit back to main, so it needs write. It used to get it
+# by inheriting the repository default, which meant every other workflow here
+# inherited it too. Asking for it explicitly is what lets that default be
+# turned down to read-only.
+permissions:
+  contents: write
+
+concurrency:
+  group: format-main
+  cancel-in-progress: false
+
 jobs:
   format:
     runs-on: ubuntu-latest
     steps:
+      # `github.head_ref` is empty on a push event, so the old `ref:` here was
+      # a no-op that read as if it did something -- and the second, bare
+      # checkout that followed it silently discarded whatever the first one
+      # did. This workflow only ever runs on main; check that out and say so.
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.head_ref }}
-      - uses: actions/checkout@v7
-      - name: Set up Python 3.12
+          ref: main
+
+      - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: 3.14
+          python-version: '3.14'
+
       - name: Install formatter dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install black
+
       - name: Format with black
         run: |
           black .
+
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v7.2.0
         with:

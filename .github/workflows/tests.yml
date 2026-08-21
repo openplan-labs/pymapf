@@ -2,6 +2,11 @@ name: tests
 
 on: [push]
 
+# Nothing here writes to the repository. Said explicitly so it stays true
+# even if the repository default is loosened again.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
