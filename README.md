@@ -36,7 +36,7 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 
 </div>
 
-## Features 🌱
+## Features
 
 - 🎮 **[Interactive playground](https://openplan-labs.github.io/pymapf/)** — run the solvers in your browser, watch the search resolve conflicts live
 - 🧭 Centralized planners: **CBS**, **Weighted CBS**, Prioritized Planning, **PIBT**, **LaCAM**, **MAPF-LNS** — every one referenced in [REFERENCES.md](REFERENCES.md)
@@ -61,7 +61,7 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 
 </div>
 
-## Install 🖇️
+## Install
 
 ```bash
 pip install pymapf                 # the solver framework — no dependencies
@@ -77,9 +77,9 @@ pip install -e ".[all,dev]"
 pytest
 ```
 
-## Usage 📑
+## Usage
 
-### Quickstart 🧭
+### Quickstart
 
 Cells are `(row, col)`; a truthy grid value marks an obstacle.
 
@@ -105,7 +105,7 @@ for name, path in solution.paths.items():
     print(name, path)                      # path[t] is the cell at timestep t
 ```
 
-### Choosing a solver 🧠
+### Choosing a solver
 
 | Solver | Name | Guarantee | Use it when |
 |---|---|---|---|
@@ -139,7 +139,7 @@ solution = pymapf.solve(problem, "cbs", time_limit=5.0)      # None if it runs o
 bounded  = pymapf.solve(problem, "wcbs", weight=1.5)         # within 50% of optimal
 ```
 
-### Any graph, not just grids 🕸️
+### Any graph, not just grids
 
 ```python
 from pymapf import ExplicitGraph
@@ -154,7 +154,7 @@ problem = pymapf.MAPFProblem(graph, [
 pymapf.solve(problem, "lacam")      # PIBT and LaCAM use exact graph distances
 ```
 
-### Scenarios 🗺️
+### Scenarios
 
 Reproducible instances, deterministic in their seed:
 
@@ -180,7 +180,7 @@ scenario = from_ascii("""
 """)
 ```
 
-### Watching the search 🔭
+### Watching the search
 
 Solvers push `SearchEvent`s to any callable you pass as `observer`:
 
@@ -202,7 +202,7 @@ with LiveConsoleView(scenario) as view:                    # no display needed
     pymapf.solve(scenario.to_problem(), "cbs", observer=view)
 ```
 
-### Visualisation 🎬
+### Visualisation
 
 ```python
 from pymapf import viz
@@ -221,7 +221,7 @@ viz.save_animation(viz.animate_search(trace, scenario), "search.mp4")
 | ![solution](.docs/assets/solution.png) | ![congestion](.docs/assets/congestion.png) | ![space-time](.docs/assets/spacetime.png) |
 | `plot_solution` | `plot_congestion` | `plot_spacetime` |
 
-### Benchmarking 📊
+### Benchmarking
 
 ```python
 from pymapf.benchmark import compare_algorithms, scaling_study
@@ -237,7 +237,7 @@ viz.dashboard(scaling, report).savefig("dashboard.png")
 
 ![dashboard](.docs/assets/dashboard.png)
 
-### Adding your own solver 🔌
+### Adding your own solver
 
 ```python
 from pymapf.core import MAPFSolver, Solution, register_solver
@@ -259,7 +259,7 @@ class Selfish(MAPFSolver):
 pymapf.solve(problem, "selfish").first_conflict()   # spoiler: there is one
 ```
 
-### Swarms: flocking, coverage and distribution 🐦
+### Swarms: flocking, coverage and distribution
 
 Same conventions as the planners — an abstract base class per family, a name
 registry, swappable strategy objects.
@@ -356,7 +356,7 @@ is_infinitesimally_rigid(line, [(i, j) for i in range(6) for j in range(i + 1, 6
 The functional API in `pymapf.decentralized.flocking` / `.coverage` still works;
 it now delegates to this layer.
 
-### Reinforcement learning 🧠
+### Reinforcement learning
 
 The same instances the planners solve, as a multi-agent environment — and the
 reason to have it here rather than in a separate repo is that a rollout comes
@@ -432,7 +432,7 @@ by `scripts/make_rl_promo.py`. It trains the policy while it renders, so the
 split-screen is that policy acting on one shared instance, and the 70/30 split
 is measured over 80 instances during the render rather than quoted.
 
-### Reactive planners 🔎
+### Reactive planners
 
 ```python
 from pymapf.decentralized.nmpc.nmpc import MultiAgentNMPC
@@ -460,7 +460,7 @@ sim.run_simulation()
 sim.visualize("filename_test_2", 10, 10)
 ```
 
-### Scripts 💨
+### Scripts
 
 ```bash
 python scripts/generate_gallery.py     # every figure in .docs/assets
@@ -471,7 +471,7 @@ python scripts/build_web_bundle.py     # refresh the playground's copy of the li
 python scripts/switch_positions_nmpc.py
 ```
 
-### The playground 🌐
+### The playground
 
 `.docs/` is a static site that runs PyMAPF in the browser under Pyodide — the
 same source files, loaded into a WebAssembly interpreter, with a JavaScript port
@@ -481,7 +481,7 @@ of the solvers as an instant-response fallback. Serve it locally with:
 python -m http.server -d .docs 8000
 ```
 
-## Cite 📰
+## Cite
 
 If you use the project in your work, please consider citing it with:
 ```
@@ -500,11 +500,11 @@ List of publications & preprints using `pymapf` (please open a pull request to a
 
 * [Survey of MAPF solutions](https://www.researchgate.net/publication/348716625_Survey_of_the_Multi-Agent_Pathfinding_Solutions) (January 2021)
 
-## Contribute 🆘
+## Contribute
 
 Open an issue to state clearly the contribution you want to make. Upon aproval send in a PR with the Issue referenced. (Implement Issue #No / Fix Issue #No).
 
-## Maintainers Ⓜ️
+## Maintainers
 
 - Erwin Lejeune
 - Sampreet Sarkar
