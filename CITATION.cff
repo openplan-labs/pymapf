@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+title: pymapf
+message: >-
+  If you use pymapf in your work, please cite the survey below, which is the
+  published record behind this library.
+type: software
+authors:
+  - family-names: Lejeune
+    given-names: Erwin
+  - family-names: Sarkar
+    given-names: Sampreet
+repository-code: "https://github.com/openplan-labs/pymapf"
+url: "https://openplan-labs.github.io/pymapf/"
+abstract: >-
+  A Python library for multi-agent planning and pathfinding. Centralized
+  solvers include conflict-based search, weighted CBS, PIBT, LaCAM, large
+  neighbourhood search, SIPP and space-time A*; decentralized control includes
+  nonlinear model predictive control, velocity obstacles and swarm behaviours.
+license: MIT
+version: 0.9.0
+keywords:
+  - multi-agent pathfinding
+  - motion planning
+  - robotics
+  - conflict-based search
+  - swarm
+preferred-citation:
+  type: article
+  title: "Survey of the Multi-Agent Pathfinding Solutions"
+  authors:
+    - family-names: Lejeune
+      given-names: Erwin
+    - family-names: Sarkar
+      given-names: Sampreet
+  year: 2021
+  doi: 10.13140/RG.2.2.14030.28486
+  url: "https://doi.org/10.13140/RG.2.2.14030.28486"
