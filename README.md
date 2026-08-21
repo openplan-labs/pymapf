@@ -11,7 +11,7 @@
 
 # PyMAPF
 
-✨ A Python toolbox for Multi-Agents Planning (Centralized and Decentralized) ✨
+A Python toolbox for Multi-Agents Planning (Centralized and Decentralized)
 
 </div>
 
