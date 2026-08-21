@@ -517,9 +517,18 @@ warehouse instance the effect is cost 175 → 114. Shipping the version that won
 0 of 28 would have been shipping a placebo.
 
 **D. True-distance heuristic in the CBS low level.** Exact goal distances (one
-backward Dijkstra per goal) instead of Manhattan, 33 instances:
-**runtime ratio 0.955** (19 wins / 14 losses), **expansion ratio 1.022** with 28
-of 33 instances tied exactly.
+backward Dijkstra per goal) instead of Manhattan, 17 instances:
+**runtime ratio 1.075** (5 wins / 12 losses), **expansion ratio 0.984** with 15
+of 17 instances tied exactly.
+
+> **Erratum (2026-08-21).** This paragraph previously read "33 instances,
+> runtime ratio 0.955 (19 wins / 14 losses), expansion ratio 1.022, 28 of 33
+> tied". Those numbers are not in any committed artifact: they appear to come
+> from a `--scale full` run that was never committed, while the committed
+> `assets/experiments.json` is `--scale quick`. The figures above are read
+> from that artifact. The direction of the runtime result **reverses** —
+> the true-distance heuristic is slightly *slower* here, not slightly faster.
+> The conclusion below is unchanged, and is in fact better supported.
 
 Essentially no effect, and worth understanding why: on these map sizes
 Manhattan is already close to exact, and CBS's cost is dominated by *high-level*

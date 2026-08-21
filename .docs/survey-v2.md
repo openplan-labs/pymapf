@@ -183,6 +183,17 @@ Unchanged in substance from the [first edition](survey.md), where the full
 tables, methodology and reproduction instructions live. Reframed here against
 the three shifts above.
 
+> **Erratum (2026-08-21).** The CBS, weighted-CBS, LNS, LaCAM and SIPP figures
+> in this section were carried forward from the first edition and **do not
+> reproduce at pymapf 0.9.0**. Re-measuring gives 12 expansions / 9.8 ms /
+> cost 98 for plain CBS, against the 6,470 / 5.3 s / cost 100 quoted below.
+> The likely cause is the `(cost, conflicts)` tie-break introduced in 0.3.0,
+> after these numbers were taken. The qualitative claim — that optimal MAPF
+> has a ceiling and suboptimal methods are the working answer — is unaffected,
+> but **no number in this section should be quoted** until the study is re-run
+> at `--scale full` and its artifact committed. The audit is in the third
+> edition; the re-measurement script is committed with it.
+
 **Optimal MAPF has a ceiling, and we hit it.** Plain CBS needs 6,470 expansions
 and 5.3 s for cost 100 on an 8-agent warehouse instance; weighted CBS reaches
 104 in 23 expansions and 18 ms. On the bottleneck instances CBS closed **1%**
