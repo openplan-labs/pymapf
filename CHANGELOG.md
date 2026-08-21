@@ -6,6 +6,39 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.0]
+
+NumPy 2 support, and the end of the Python versions that were holding it back.
+
+### Fixed
+
+- **pymapf works on NumPy 2.** `velocity_obstacle` built a 2-element direction
+  vector and passed it to `np.cross`, which NumPy 2.0 removed support for; the
+  vector is now padded with an explicit `z = 0.0`, spelling out the behaviour
+  1.x supplied silently. Anyone on NumPy 2 was hitting this on every velocity
+  obstacle step.
+
+### Changed
+
+- **Python 3.10 is the new floor**, and the matrix runs 3.10 through 3.13.
+  3.8 and 3.9 are past end of life, and the pinned scientific stack no longer
+  ships wheels for them. `requires-python` and the classifiers moved with it.
+- Pinned dependencies are now declared per interpreter, because NumPy and SciPy
+  drop interpreters faster than this project does: each floor gets the last
+  release that still supports it, rather than one pin that forces the whole
+  matrix down to the oldest.
+- The logo is served from the `branding` repository rather than a third-party
+  SVG host, and all URLs follow the organisation's rename to `openplan-labs`.
+
+### Removed
+
+- `pip-tests.yml`, a workflow that targeted a `master` branch this repository
+  does not have and pinned interpreters it no longer supports. It had not run
+  successfully in years.
+- Mergify. Its auto-merge rule required an approving review that a
+  single-maintainer project does not produce, so every recent pull request was
+  merged by hand while the check reported neutral.
+
 ## [0.8.0]
 
 The learning layer reaches the published site, and the artifact it reads becomes
