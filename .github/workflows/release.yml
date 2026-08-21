@@ -33,13 +33,16 @@ jobs:
   # ---------------------------------------------------------------- tests ---
   # The package is published only if it passes on every Python it claims to
   # support. This duplicates tests.yml on purpose: a tag is the one moment
-  # where "CI was green on some earlier commit" is not good enough.
+  # where "CI was green on some earlier commit" is not good enough. Duplication
+  # has a cost, though -- this matrix kept testing 3.8 and 3.9 for a whole
+  # release after tests.yml and `requires-python` had moved to 3.10, and the
+  # v0.9.0 tag failed here rather than in CI. Both matrices move together.
   test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
-        python-version: ['3.8', '3.9', '3.10']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -179,6 +182,12 @@ jobs:
   #   https://pypi.org/manage/project/pymapf/settings/publishing/
   # with owner `openplan-labs`, repository `pymapf`, workflow `release.yml`,
   # and environment `pypi` (or `testpypi` for the dry-run target below).
+  #
+  # The owner is part of what PyPI matches on, so renaming the GitHub
+  # organisation invalidates a publisher registered under the old name: the
+  # token is valid and the upload still fails, with `invalid-publisher`. This
+  # project was registered while the organisation was APLA-Toolbox, so that
+  # entry has to be updated to openplan-labs before a release can publish.
   publish-testpypi:
     needs: verify
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
