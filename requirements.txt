@@ -12,7 +12,7 @@ numpy==2.5.2; python_version >= "3.12"
 scipy==1.15.3; python_version < "3.11"
 scipy==1.17.1; python_version == "3.11"
 scipy==1.18.0; python_version >= "3.12"
-matplotlib==3.10.7; python_version < "3.11"
-matplotlib==3.11.1; python_version >= "3.11"
+matplotlib==3.11.2; python_version < "3.11"
+matplotlib==3.11.2; python_version >= "3.11"
 coloredlogs==15.0.1
 termcolor==3.3.0
