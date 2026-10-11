@@ -6,9 +6,9 @@
 # Three pin sets, because NumPy and SciPy drop interpreters aggressively:
 # NumPy 2.5 / SciPy 1.18 require Python 3.12, NumPy 2.3 / SciPy 1.16 require
 # 3.11, so each floor gets the last release that still supports it.
-numpy==2.2.6; python_version < "3.11"
-numpy==2.4.6; python_version == "3.11"
-numpy==2.5.2; python_version >= "3.12"
+numpy==2.5.4; python_version < "3.11"
+numpy==2.5.4; python_version == "3.11"
+numpy==2.5.4; python_version >= "3.12"
 scipy==1.15.3; python_version < "3.11"
 scipy==1.17.1; python_version == "3.11"
 scipy==1.18.0; python_version >= "3.12"
