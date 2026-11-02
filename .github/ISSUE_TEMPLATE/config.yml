@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Try it in the browser
+    url: https://openplan-labs.github.io/pymapf/
+    about: The interactive playground runs every solver without installing anything.
+  - name: Report a security vulnerability
+    url: https://github.com/openplan-labs/pymapf/security/advisories/new
+    about: Please report security issues privately rather than in a public issue.

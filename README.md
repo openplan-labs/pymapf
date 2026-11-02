@@ -36,6 +36,26 @@ Loved the project? Please consider [donating](https://www.buymeacoffee.com/dq01a
 
 </div>
 
+## Why PyMAPF
+
+Multi-agent planning papers are dense, and their reference code is often
+written for speed, in C++, and for one paper. PyMAPF is the other kind of
+code:
+
+- **A framework to build on.** A new solver is one class and one decorator.
+  It gets the benchmark harness, the scenario families, the visualisation and
+  the browser playground without extra work.
+- **Implementations that explain.** Every algorithm cites its paper
+  ([REFERENCES.md](REFERENCES.md)), states where it deviates, and is tested
+  against the guarantee it claims. You can read the code next to the paper
+  and follow along.
+- **Pure Python where it matters.** The solver core has no dependencies, so it
+  runs in a notebook, on a robot, or in the browser.
+
+It is meant for students learning the field, teachers who want to show an
+algorithm step by step, and researchers who want a readable baseline. See
+[CONTRIBUTING.md](CONTRIBUTING.md) to add your own.
+
 ## Features
 
 - 🎮 **[Interactive playground](https://openplan-labs.github.io/pymapf/)** — run the solvers in your browser, watch the search resolve conflicts live
@@ -779,26 +799,67 @@ python -m http.server -d .docs 8000
 
 ## Cite
 
-If you use the project in your work, please consider citing it with:
-```
-@misc{https://doi.org/10.13140/rg.2.2.14030.28486,
-  doi = {10.13140/RG.2.2.14030.28486},
-  url = {http://rgdoi.net/10.13140/RG.2.2.14030.28486},
-  author = {Erwin Lejeune and Sampreet Sarkar},
-  language = {en},
-  title = {Survey of the Multi-Agent Pathfinding Solutions},
-  publisher = {Unpublished},
-  year = {2021}
+If PyMAPF helps your work, please cite the software. The repository's
+[CITATION.cff](CITATION.cff) feeds GitHub's **"Cite this repository"** button
+(top right of the repository page), which gives APA and BibTeX:
+
+```bibtex
+@software{pymapf,
+  author  = {Lejeune, Erwin and Sarkar, Sampreet},
+  title   = {{PyMAPF}: a Python framework for multi-agent planning and pathfinding},
+  url     = {https://github.com/openplan-labs/pymapf},
+  license = {MIT}
 }
 ```
 
-List of publications & preprints using `pymapf` (please open a pull request to add missing entries):
+The survey the library grew out of can be cited as well:
+
+```bibtex
+@misc{lejeune2021survey,
+  doi       = {10.13140/RG.2.2.14030.28486},
+  url       = {https://doi.org/10.13140/RG.2.2.14030.28486},
+  author    = {Lejeune, Erwin and Sarkar, Sampreet},
+  title     = {Survey of the Multi-Agent Pathfinding Solutions},
+  publisher = {Unpublished},
+  year      = {2021}
+}
+```
+
+Publications, theses and courses that use `pymapf` (please
+[tell us about yours](https://github.com/openplan-labs/pymapf/issues/new?template=used_in_research.md)):
 
 * [Survey of MAPF solutions](https://www.researchgate.net/publication/348716625_Survey_of_the_Multi-Agent_Pathfinding_Solutions) (January 2021)
 
+## Publication
+
+We intend to publish PyMAPF as a peer-reviewed software paper, so it can be
+cited like any other research output. The plan:
+
+1. **Archived releases with a DOI.** Every tagged release will be archived on
+   [Zenodo](https://zenodo.org/), so a specific version can be cited and
+   retrieved.
+2. **A paper in the [Journal of Open Source Software](https://joss.theoj.org/)
+   (JOSS).** JOSS reviews the software itself (its design, tests,
+   documentation and usefulness to research) rather than a new research
+   result, which fits a library like this one.
+3. **Community venues.** A short paper or system demonstration at a
+   combinatorial search or planning venue, aimed at the MAPF community.
+
+JOSS asks for evidence that the software is already used in research. If you
+use PyMAPF in a paper, a thesis, a course or a project, the single most useful
+thing you can do for the project is to
+[tell us](https://github.com/openplan-labs/pymapf/issues/new?template=used_in_research.md).
+
+The software paper will include an AI-usage disclosure: parts of the code base
+were written with AI coding assistants, under human design and review, and the
+git history records which.
+
 ## Contribute
 
-Open an issue to state clearly the contribution you want to make. Upon aproval send in a PR with the Issue referenced. (Implement Issue #No / Fix Issue #No).
+Contributions are welcome, from a typo fix to a whole new algorithm. Start
+with [CONTRIBUTING.md](CONTRIBUTING.md): it covers the development setup, the
+checks CI runs, and what a new algorithm needs to be merged. Everyone taking
+part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Maintainers
 

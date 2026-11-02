@@ -1283,7 +1283,7 @@ def scene_outro(ax, t, content):
         ax,
         0.5,
         0.30,
-        "Apache 2.0 · a university project, rebuilt",
+        "MIT license · a university project, rebuilt",
         size=14,
         color=THEME.muted,
         ha="center",

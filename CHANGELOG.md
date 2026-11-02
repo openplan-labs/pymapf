@@ -147,6 +147,28 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   8-agent warehouse: PIBT 8.5 goals per agent per 100 steps, replanning
   LaCAM 8.4 at six times the cost, random 0.1, all collision-free but the
   last.
+- **Contributor guide and community files.** `CONTRIBUTING.md` (setup, the
+  checks CI runs, and what a new algorithm needs to be merged),
+  `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md`, a pull
+  request template, and issue templates for new algorithms and for reporting
+  use in research or teaching.
+- README: a *Why PyMAPF* section stating the project's two goals (a framework
+  to build on, and implementations that explain), and a *Publication* section
+  with the plan to archive releases on Zenodo and submit a software paper to
+  JOSS.
+
+### Changed
+
+- `CITATION.cff` now describes the software itself, so GitHub's "Cite this
+  repository" button cites PyMAPF rather than the 2021 survey. The survey is
+  kept as a reference.
+- CI runs on pull requests, including those from forks. It used to run on
+  `push` only, which never fires for a fork's branch.
+
+### Fixed
+
+- The playground footer and the promo film said the project was Apache 2.0
+  licensed. It is MIT, as `LICENSE` and `pyproject.toml` say.
 
 ## [0.9.0]
 

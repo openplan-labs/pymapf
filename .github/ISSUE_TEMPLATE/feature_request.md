@@ -1,20 +1,22 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
+about: Suggest an improvement to an existing part of PyMAPF
 title: ''
 labels: 'enhancement'
 assignees: 'guilyx'
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**What you are trying to do**
+The task or experiment, and where PyMAPF gets in the way.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+**What you would like**
+The change you have in mind. A sketch of the API is welcome.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+**Alternatives you considered**
+Other ways around the problem, including other libraries.
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+**Anything else**
+Papers, figures, links.
+
+(Proposing a whole new algorithm? Use the *New algorithm* template instead.)
