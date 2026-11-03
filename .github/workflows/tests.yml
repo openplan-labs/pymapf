@@ -1,6 +1,13 @@
 name: tests
 
-on: [push]
+# Pushes to main, and every pull request -- including ones from forks, which a
+# bare `push` trigger never sees. Branch pushes without a PR are not tested
+# twice that way.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 
 # Nothing here writes to the repository. Said explicitly so it stays true
 # even if the repository default is loosened again.

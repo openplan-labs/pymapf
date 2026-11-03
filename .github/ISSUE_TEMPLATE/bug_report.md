@@ -1,32 +1,36 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Something returns a wrong answer, crashes, or hangs
 title: ''
 labels: 'bug'
 assignees: 'guilyx,sampreets3'
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+**What happened**
+A clear description of the bug.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+**Minimal reproduction**
+The smallest script that shows it, ideally a few lines with a small grid:
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+```python
+import pymapf
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+grid = pymapf.GridMap([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
+problem = pymapf.MAPFProblem(grid, [
+    pymapf.Agent("a", start=(0, 0), goal=(2, 2)),
+])
+print(pymapf.solve(problem, "cbs"))
+```
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+**What you expected**
+For a wrong answer: the cost or path you expected, and why (a paper, another solver, a hand calculation).
 
-**Additional context**
-Add any other context about the problem here.
+**Environment**
+- pymapf version (`python -c "import pymapf; print(pymapf.__version__)"`):
+- Python version:
+- OS:
+- Installed extras (`viz`, `rl`, `decentralized`, ...):
+
+**Anything else**
+Tracebacks, figures, links.

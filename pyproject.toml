@@ -22,6 +22,7 @@ keywords = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -74,6 +75,8 @@ dev = ["pytest>=6.0", "pytest-cov", "build", "twine"]
 Homepage = "https://github.com/openplan-labs/pymapf"
 Playground = "https://openplan-labs.github.io/pymapf/"
 Source = "https://github.com/openplan-labs/pymapf"
+Issues = "https://github.com/openplan-labs/pymapf/issues"
+Contributing = "https://github.com/openplan-labs/pymapf/blob/main/CONTRIBUTING.md"
 Changelog = "https://github.com/openplan-labs/pymapf/blob/main/CHANGELOG.md"
 Survey = "https://github.com/openplan-labs/pymapf/blob/main/.docs/survey-v2.md"
 
