@@ -101,6 +101,23 @@ def test_register_shape_adds_a_shape_to_the_registry():
         SHAPES.pop("test_pair", None)
 
 
+def test_register_shape_rejects_a_duplicate_name():
+    # Like register_behavior; it used to replace the first shape silently.
+    with pytest.raises(ValueError, match="already registered"):
+
+        @register_shape("V")
+        class Impostor(LineFormation):
+            pass
+
+    assert SHAPES["v"] is VFormation
+
+
+def test_spacing_is_honoured_whatever_the_case_of_the_shape_name():
+    from pymapf.swarm.formation import DisplacementFormation
+
+    assert DisplacementFormation(shape="V", spacing=6.0).shape.spacing == 6.0
+
+
 def test_line_spacing_is_the_gap_between_adjacent_agents():
     offsets = LineFormation(spacing=2.5).offsets(5, 2)
     gaps = np.linalg.norm(np.diff(offsets, axis=0), axis=1)

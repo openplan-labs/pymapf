@@ -388,6 +388,28 @@ def test_annulus_rejects_inverted_radii():
         AnnulusDomain(inner=10.0, outer=5.0)
 
 
+def test_annulus_pushes_its_centre_out_of_the_hole():
+    projected = AnnulusDomain(inner=6, outer=10).project(np.array([[0.0, 0.0]]))
+    assert np.linalg.norm(projected[0]) == pytest.approx(6.0)
+
+
+def test_package_docstring_example_runs():
+    # Its loop used to run every registered behaviour, two of which cannot be
+    # built without a target density (TypeError).
+    import textwrap
+
+    import pymapf.swarm
+
+    lines = []
+    for line in pymapf.swarm.__doc__.split("::\n\n", 1)[1].splitlines():
+        if line.strip() and not line.startswith("    "):
+            break  # the end of the indented code block
+        lines.append(line)
+    code = textwrap.dedent("\n".join(lines)).replace("steps=300", "steps=2")
+    assert "SwarmSimulator(" in code
+    exec(code, {})
+
+
 def test_mesh_domain_snaps_to_its_points():
     points = np.array([[0.0, 0.0], [5.0, 0.0], [0.0, 5.0]])
     domain = MeshDomain(points)

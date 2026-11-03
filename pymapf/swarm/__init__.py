@@ -7,11 +7,16 @@ abstract base class per algorithm family, a name registry, and swappable
 strategy objects -- so a controller is chosen with a string and compared with a
 loop::
 
-    from pymapf.swarm import SwarmSimulator, available_behaviors
+    from pymapf.swarm import SwarmSimulator
 
-    for name in available_behaviors():
+    for name in ["boids", "vicsek", "cucker_smale", "olfati_saber", "acceleration"]:
         result = SwarmSimulator(name, n_agents=20).run(steps=300)
         print(name, result.metrics.summary())
+
+(:func:`~pymapf.swarm.base.available_behaviors` lists every registered name;
+most run with no arguments, but the distribution controllers need the target
+density they are asked to match, e.g. ``SwarmSimulator("density_matching",
+target=...)``.)
 
 Four families:
 

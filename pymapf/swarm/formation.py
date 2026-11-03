@@ -336,11 +336,15 @@ def register_shape(name: str):
 
     The same pattern as :func:`~pymapf.swarm.base.register_behavior`: a shape
     defined outside the library becomes available to :func:`get_shape`, and so
-    to every controller, without touching this module.
+    to every controller, without touching this module. Like it, registering a
+    name twice is an error rather than a silent replacement of the first shape.
     """
 
     def decorator(cls: Type[FormationShape]) -> Type[FormationShape]:
-        SHAPES[name.lower()] = cls
+        key = name.lower()
+        if key in SHAPES:
+            raise ValueError("formation shape %r already registered" % name)
+        SHAPES[key] = cls
         return cls
 
     return decorator
@@ -669,7 +673,9 @@ class _FormationBase(Behavior):
     ):
         super().__init__(**kwargs)
         shape_kwargs = {}
-        if spacing is not None and isinstance(shape, str) and shape in SHAPES:
+        # Names are case-insensitive (``get_shape`` lower-cases them), so test
+        # the lower-cased name too, or ``shape="V"`` silently drops ``spacing``.
+        if spacing is not None and isinstance(shape, str) and shape.lower() in SHAPES:
             shape_kwargs["spacing"] = spacing
         self.shape = get_shape(shape, **shape_kwargs)
         self.reassign_every = reassign_every
