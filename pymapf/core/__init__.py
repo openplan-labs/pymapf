@@ -3,7 +3,13 @@
 from .graph import ExplicitGraph, Node, roadmap
 from .grid import Cell, GridMap
 from .voxel import VoxelGrid
-from .heuristics import HEURISTICS, get_heuristic, true_distance
+from .heuristics import (
+    HEURISTICS,
+    default_heuristic,
+    get_heuristic,
+    resolve_heuristic,
+    true_distance,
+)
 from .trace import Observer, SearchEvent, SearchTrace
 from .solver import (
     Agent,
@@ -28,6 +34,8 @@ __all__ = [
     "true_distance",
     "HEURISTICS",
     "get_heuristic",
+    "default_heuristic",
+    "resolve_heuristic",
     "Agent",
     "Conflict",
     "Constraints",

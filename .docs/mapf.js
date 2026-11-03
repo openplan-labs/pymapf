@@ -72,6 +72,17 @@ export const HEURISTICS = {
   },
 };
 
+/**
+ * Mirrors pymapf.core.heuristics.resolve_heuristic: no heuristic means the
+ * admissible one for the move set. Every move costs one step, diagonal or not,
+ * so Manhattan overestimates with diagonals and Chebyshev is the tight bound.
+ */
+export function resolveHeuristic(heuristic, allowDiagonals = false) {
+  if (typeof heuristic === 'function') return heuristic;
+  if (heuristic == null) return allowDiagonals ? HEURISTICS.chebyshev : HEURISTICS.manhattan;
+  return HEURISTICS[heuristic];
+}
+
 /* --------------------------------------------------------- constraints --- */
 
 export function newConstraints() {
@@ -143,9 +154,10 @@ const byFirst = (a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]);
 /* ------------------------------------------------- space-time A* (low) --- */
 
 export function spaceTimeAStar(grid, start, goal, constraints = null, options = {}) {
-  const { heuristic = 'manhattan', allowDiagonals = false } = options;
-  const h = typeof heuristic === 'function' ? heuristic : HEURISTICS[heuristic];
+  const { heuristic = null, allowDiagonals = false } = options;
+  const h = resolveHeuristic(heuristic, allowDiagonals);
   const cons = constraints || newConstraints();
+  if (blocksVertex(cons, start, 0)) return null; // forbidden start, as in Python
 
   const settleTime = cons.lastVertex.get(key(goal[0], goal[1])) ?? -1;
   let lastConstraintT = 0;
@@ -303,7 +315,8 @@ export function* prioritizedPlanning(problem, options = {}) {
 
 /**
  * Conflict-based search. `weight === 1` is optimal CBS; a larger weight runs
- * the focal (ECBS) variant, whose cost is bounded by weight × optimal.
+ * the focal variant (BCBS(w, 1): focal high level, optimal low level), whose
+ * cost is bounded by weight × optimal.
  */
 export function* conflictBasedSearch(problem, options = {}) {
   const started = performance.now();

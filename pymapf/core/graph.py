@@ -10,12 +10,14 @@ level and the benchmark harness accept one with no changes.
 
     graph = ExplicitGraph({"a": ["b", "c"], "b": ["a", "d"], "c": ["d"], "d": []})
     problem = MAPFProblem(graph, [Agent("r1", "a", "d")])
-    solution = pymapf.solve(problem, "cbs", heuristic=zero_heuristic)
+    solution = pymapf.solve(problem, "cbs")
 
 Because a general graph has no geometry, the usual grid heuristics
-(``manhattan`` and friends) do not apply; use
-:func:`~pymapf.core.heuristics.true_distance` (a backward Dijkstra, exact and
-admissible on any graph) or supply coordinates via ``positions``.
+(``manhattan`` and friends) do not apply. The solvers' default
+(``heuristic=None``) therefore uses
+:func:`~pymapf.core.heuristics.true_distance` here -- a backward Dijkstra per
+goal, exact and admissible on any graph, cached per graph -- and any callable
+``(node, goal) -> float`` can be passed instead.
 """
 
 from __future__ import annotations
@@ -106,8 +108,13 @@ class ExplicitGraph:
 
     @property
     def free_cells(self) -> int:
-        """Number of traversable nodes (the solvers' horizon bound)."""
-        return len(self._adjacency) - len(self._blocked)
+        """Number of traversable nodes (the solvers' horizon bound).
+
+        Only blocked nodes that exist count against it: ``blocked`` may name
+        nodes the adjacency never mentions, and those must not drive the
+        horizon down (or negative, which made every search give up).
+        """
+        return len(self._adjacency) - len(self._blocked & self._adjacency.keys())
 
     # -- extras -------------------------------------------------------------
     @property

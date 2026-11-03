@@ -156,6 +156,24 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   to build on, and implementations that explain), and a *Publication* section
   with the plan to archive releases on Zenodo and submit a software paper to
   JOSS.
+- `Solution.violations(problem)` and `Solution.is_valid(problem)`: check a
+  plan against the whole MAPF definition -- one path per agent, starting on
+  its start and ending on its goal, every step a wait or a move to a free
+  neighbour (diagonals only when the problem allows them), and no vertex or
+  swap conflict -- and return readable messages. `is_valid()` with no
+  argument keeps its old, conflicts-only meaning.
+- `heuristics.default_heuristic` and `resolve_heuristic`, exported from
+  `pymapf.core`; `true_distance(graph)` without a goal serves every goal,
+  running one Dijkstra per distinct goal and caching it.
+- `register_solver(name, replace=True)` to override a registered solver
+  deliberately.
+- `scripts/build_web_bundle.py --check` unpacks the bundle and imports it
+  under `python -I -S` (standard library only, as in Pyodide), then solves a
+  tiny instance with every registered solver. The Pages workflow runs it.
+- `tests/test_optimality.py`: CBS against an independent brute-force
+  joint-state Dijkstra on 80 tiny instances (4-connected and diagonal), with
+  WCBS(1.5) checked against the same optimum. The WCBS bound tests used CBS
+  as their reference, so a CBS bug would have hidden in both.
 
 ### Changed
 
@@ -170,6 +188,38 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   average of their values (three agents with rewards -0.01, -0.12 and -0.48
   all got -0.1755). This is the agent-specific global state of Yu et al.
   (2022). Checkpoints saved by an earlier MAPPO do not load into this one.
+- Every search entry point (`space_time_astar`, `sipp`, `astar`,
+  `weighted_astar`, `focal_astar`) and solver (CBS, WCBS, prioritized, LNS)
+  now defaults to `heuristic=None`, resolved to the admissible heuristic for
+  the map and move set: Manhattan on a 4/6-connected lattice, Chebyshev with
+  diagonals, and cached exact distances on a general graph. Passing a name or
+  callable works as before. LNS gained a `heuristic` argument for its SIPP
+  repairs.
+- `MAPFProblem` rejects two agents sharing a start or a goal with a
+  `ValueError` naming both; such an instance is unsolvable from the outset.
+  `Agent` stores list cells (as JSON hands them over) as tuples.
+- `benchmark.run_once` counts a run as solved (and valid) only if the plan
+  passes `Solution.violations`; an invalid plan is reported with
+  `solved=False` and its first violation in `note`.
+- `benchmark._supported` still drops an option the chosen solver lacks (a
+  benchmark is configured once for every algorithm), but raises for an option
+  *no* registered solver accepts, so `time_limt=5` no longer runs silently
+  with the default. It follows `**kwargs` up the MRO, so a subclass that
+  forwards to its base is checked against the base's parameters.
+- `register_solver` accepts re-registering the *same* class (same module and
+  qualified name), which is what re-running a notebook cell does; a different
+  class under a taken name still raises, now naming the existing one.
+- The bundle builder derives its module list from the import graph of
+  `pymapf` and `pymapf.benchmark` (function-level imports and parent packages
+  included) and refuses any reachable non-stdlib import, instead of a
+  hand-kept list. `.docs/pymapf-bundle.json` regenerated: 0.7.0 -> 0.9.0,
+  19 -> 26 modules.
+- Documentation: WeightedCBS is BCBS(w, 1) in Barer et al. (2014) -- focal
+  high level bounded by the cheapest OPEN node, optimal low level -- not the
+  ECBS high level (module docstring, REFERENCES.md, README, JS comment). The
+  LNS docstring now says a repair is accepted only on a strict improvement,
+  as the code does. `find_first_conflict` documents that with diagonals two
+  agents crossing through one 2x2 block are not a conflict in this model.
 
 ### Fixed
 
@@ -201,6 +251,54 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Visualisation: `plot_separation` on one vehicle, `plot_spacetime` on an
   empty plan, `animate_trajectories` leaving its figure open, and `save()`
   overwriting a user's `animation.ffmpeg_path` unconditionally.
+- **CBS, WCBS, prioritized planning, LNS and A\* were not optimal with
+  `allow_diagonals=True`.** The default heuristic was Manhattan distance,
+  which overestimates once a diagonal (one timestep) covers two Manhattan
+  units: on a 4x5 map the optimum is 5 and CBS returned 6, and space-time A\*
+  was suboptimal on 4 of 378 random diagonal instances. The default is now
+  Chebyshev with diagonals (0 of 378). The JS port resolves its default the
+  same way; on 300 random instances (70% with diagonals) the two engines
+  agree on every CBS, WCBS and prioritized cost, where the old JS disagreed
+  with the fixed Python on 8 of 150.
+- Solvers failed on an `ExplicitGraph` with default arguments: Manhattan
+  distance on string nodes raised `TypeError`. The default there is now a
+  per-goal cached true distance. `distance_table` searched forward from the
+  goal, which overestimates on one-way edges (on the cycle a -> b -> c -> a it
+  put b two moves from c instead of one); it now follows reversed edges on a
+  directed graph. The `ExplicitGraph` docstring no longer refers to a
+  `zero_heuristic` that does not exist.
+- The playground bundle could not `import pymapf`: `pymapf/__init__.py`
+  imports `kinodynamic` and `aerial` and `core/__init__.py` imports `voxel`
+  (and `aerial` needs `core/assignment`), none of which the builder's list
+  carried (`ModuleNotFoundError: pymapf.core.voxel`). The CI "check" only
+  asserted every file name ended in `.py`.
+- `sipp` ignored back-to-back edge constraints: it stepped past the first
+  blocked crossing time once and never re-checked, so with a move forbidden
+  at t = 1 and t = 2 on a 1x2 grid it crossed at t = 2. It now waits while
+  the edge is blocked and both safe intervals allow it.
+- `focal_astar` broke its `w` bound: it never reopened an expanded node
+  reached by a cheaper path (FOCAL expands out of f order, so an expanded
+  node's g need not be optimal) and never admitted to FOCAL the nodes a
+  rising bound newly covered. On a 12x12 map with `w = 1.5` it returned 21
+  steps where the optimum is 13. It is now the textbook focal search: 0
+  violations over 2513 random instances x 3 weights.
+- `space_time_astar` ignored a vertex constraint on the start at t = 0, while
+  `sipp` returned `None`; both now return `None` (and so does the JS port).
+- `ExplicitGraph.free_cells` subtracted blocked names that are not nodes, so
+  it could go negative; the solvers use it as their time horizon, and CBS
+  then found no path on a two-node graph.
+- `PrioritizedPlanning` compared `priority` with the agents as sets, so a
+  repeated name passed and that agent was planned twice; it now requires each
+  name exactly once.
+- `from_ascii` silently kept only the last of two equal start (or goal)
+  letters; it now raises naming both cells.
+- `bottleneck(n_agents=0)` built one agent and `n_agents` above the rooms'
+  capacity (45 for `room=5`) raised `IndexError`; both now raise a
+  `ValueError` stating the range.
+- `Solution.sum_of_costs`' docstring claimed "time before settling at the
+  goal" while the code sums `len(path) - 1`; it now says what it computes and
+  why that equals the standard sum of costs for every built-in solver (LaCAM
+  and PIBT trim trailing goal waits). Reported costs are unchanged.
 
 ## [0.9.0]
 

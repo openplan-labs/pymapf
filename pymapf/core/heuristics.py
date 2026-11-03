@@ -16,12 +16,19 @@ solvers use: ``manhattan`` for face-adjacent moves (4 on a plane, 6 in a
 volume), ``chebyshev`` when diagonals are allowed (8 or 26), ``euclidean``
 always. ``octile`` prices a planar diagonal at ``sqrt 2`` and so overestimates
 under unit cost; it is kept for the classic grid-search convention.
+
+Solvers default to ``heuristic=None``, which :func:`resolve_heuristic` turns
+into the admissible choice for the map and move set (:func:`default_heuristic`)
+-- so ``allow_diagonals=True`` no longer silently pairs diagonal moves with
+Manhattan distance, and a general graph gets exact distances instead of a
+coordinate formula it cannot evaluate.
 """
 
 from __future__ import annotations
 
+import weakref
 from math import sqrt
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 Cell = Tuple[int, ...]
 Heuristic = Callable[[Cell, Cell], float]
@@ -62,7 +69,9 @@ HEURISTICS: Dict[str, Heuristic] = {
 }
 
 
-def true_distance(graph, goal: Cell, allow_diagonals: bool = False) -> Heuristic:
+def true_distance(
+    graph, goal: Optional[Cell] = None, allow_diagonals: bool = False
+) -> Heuristic:
     """An exact, admissible heuristic: the real distance to ``goal``.
 
     Runs one backward Dijkstra from the goal and closes over the resulting
@@ -70,6 +79,10 @@ def true_distance(graph, goal: Cell, allow_diagonals: bool = False) -> Heuristic
     heuristics it accounts for walls, which is what makes it the right default
     on mazes and the *only* option on a graph without coordinates
     (:class:`~pymapf.core.graph.ExplicitGraph`).
+
+    With ``goal=None`` the heuristic serves *every* goal: the first query for
+    a target runs its Dijkstra and caches the table, so one heuristic can be
+    handed to a multi-agent solver whose agents all have different goals.
 
     Nodes from which the goal is unreachable get ``inf``, which prunes them
     from any search that uses this heuristic.
@@ -81,6 +94,19 @@ def true_distance(graph, goal: Cell, allow_diagonals: bool = False) -> Heuristic
         explicit state spaces.* IJCAI 2009: 609-614.
     """
     from ..algorithms.search import distance_table
+
+    if goal is None:
+        tables: Dict[Cell, Dict] = {}
+
+        def any_goal(node: Cell, target: Cell) -> float:
+            table = tables.get(target)
+            if table is None:
+                table = distance_table(graph, target, allow_diagonals=allow_diagonals)
+                tables[target] = table
+            return float(table.get(node, float("inf")))
+
+        any_goal.goal = None
+        return any_goal
 
     table = distance_table(graph, goal, allow_diagonals=allow_diagonals)
 
@@ -95,6 +121,54 @@ def true_distance(graph, goal: Cell, allow_diagonals: bool = False) -> Heuristic
 
     heuristic.goal = goal  # lets callers detect/rebuild a stale table
     return heuristic
+
+
+# One cached all-goals table per graph, so the many low-level searches of one
+# solve (and of repeated solves on the same map) share their Dijkstras. Weak
+# keys: the cache never keeps a graph alive.
+_GRAPH_DEFAULTS: "weakref.WeakKeyDictionary" = weakref.WeakKeyDictionary()
+
+
+def default_heuristic(graph, allow_diagonals: bool = False) -> Heuristic:
+    """The admissible heuristic for ``graph`` and its move set.
+
+    Every move in this library costs one timestep, diagonal or not, so the
+    right geometric bound depends on the moves allowed. Manhattan distance is
+    exact on an open 4-connected grid but *overestimates* once diagonals are
+    allowed -- one diagonal step covers two Manhattan units -- and an
+    overestimating heuristic quietly costs A*, and every solver built on it,
+    its optimality guarantee. Chebyshev distance is the tight admissible bound
+    for 8- (and 26-) connected unit-cost moves.
+
+    A graph that is not a lattice has no geometry to exploit, so it gets the
+    exact distance tables of :func:`true_distance` (one Dijkstra per goal,
+    cached per graph).
+    """
+    from .grid import GridMap
+    from .voxel import VoxelGrid
+
+    if isinstance(graph, (GridMap, VoxelGrid)):
+        return chebyshev if allow_diagonals else manhattan
+    try:
+        per_graph = _GRAPH_DEFAULTS.setdefault(graph, {})
+    except TypeError:  # not weak-referenceable: just build one
+        return true_distance(graph, None, allow_diagonals=allow_diagonals)
+    if allow_diagonals not in per_graph:
+        per_graph[allow_diagonals] = true_distance(
+            graph, None, allow_diagonals=allow_diagonals
+        )
+    return per_graph[allow_diagonals]
+
+
+def resolve_heuristic(heuristic, graph, allow_diagonals: bool = False) -> Heuristic:
+    """:func:`get_heuristic`, except ``None`` means :func:`default_heuristic`.
+
+    This is what every search entry point calls, so ``heuristic=None`` (the
+    default everywhere) is always admissible for the map it runs on.
+    """
+    if heuristic is None:
+        return default_heuristic(graph, allow_diagonals)
+    return get_heuristic(heuristic)
 
 
 def get_heuristic(heuristic) -> Heuristic:

@@ -135,7 +135,7 @@ for name, path in solution.paths.items():
 | Solver | Name | Guarantee | Use it when |
 |---|---|---|---|
 | Conflict-Based Search | `"cbs"` | optimal sum-of-costs | you need the best plan and can pay for it |
-| Weighted CBS (ECBS) | `"wcbs"` | cost ≤ `w` × optimal | you need most of the quality, much faster |
+| Weighted CBS (BCBS) | `"wcbs"` | cost ≤ `w` × optimal | you need most of the quality, much faster |
 | **LaCAM** | `"lacam"` | complete | large fleets, milliseconds, quality refined later |
 | **PIBT** | `"pibt"` | none (incomplete) | thousands of agents, one timestep at a time |
 | Prioritized Planning | `"prioritized"` | none (incomplete) | the classic baseline |

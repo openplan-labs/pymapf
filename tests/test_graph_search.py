@@ -50,6 +50,16 @@ def test_blocked_nodes_are_not_traversable():
     assert graph.free_cells == 2
 
 
+def test_free_cells_ignores_blocked_names_that_are_not_nodes():
+    graph = ExplicitGraph.undirected([("a", "b")], blocked=["b", "x", "y", "z"])
+    assert graph.free_cells == 1
+    # The horizon used to go negative here, and every search gave up.
+    graph = ExplicitGraph.undirected([("a", "b")], blocked=["x", "y", "z"])
+    assert graph.free_cells == 2
+    problem = MAPFProblem(graph, [Agent("r", "a", "b")])
+    assert pymapf.solve(problem, "cbs").paths["r"] == ["a", "b"]
+
+
 def test_graph_rejects_empty_adjacency():
     with pytest.raises(ValueError):
         ExplicitGraph({})
@@ -129,6 +139,54 @@ def test_focal_search_respects_its_bound():
     assert len(focal) - 1 <= 1.5 * (len(optimal) - 1)
 
 
+_FOCAL_TRAP = [
+    ".#.#.##.....",
+    "....##.....#",
+    "#...........",
+    "..##........",
+    "...#.##....#",
+    ".#.#..#...#.",
+    "...#.#......",
+    "..###.#..##.",
+    "....#...#...",
+    ".#....######",
+    "#...#.....#.",
+    "...##.#.....",
+]
+
+
+def test_focal_search_reopens_nodes_to_keep_its_bound():
+    # Optimum 13; without reopening, focal search returned 21 > 1.5 * 13.
+    grid = GridMap([[int(ch == "#") for ch in row] for row in _FOCAL_TRAP])
+    distance, _ = dijkstra(grid, (2, 10))
+    assert distance[(5, 2)] == 13
+    path = focal_astar(grid, (2, 10), (5, 2), weight=1.5)
+    assert len(path) - 1 <= 1.5 * 13
+
+
+def test_focal_search_bound_holds_for_an_adversarial_tie_breaker():
+    # Preferring the *deepest* node drives FOCAL as far from A* as the bound
+    # allows, which is where a missed reopening or a stale FOCAL shows up.
+    import random
+
+    rng = random.Random(7)
+    for _ in range(60):
+        n = rng.choice([6, 9, 12])
+        grid = GridMap([[int(rng.random() < 0.3) for _ in range(n)] for _ in range(n)])
+        free = [(r, c) for r in range(n) for c in range(n) if grid.is_free((r, c))]
+        start, goal = rng.sample(free, 2)
+        distance, _ = dijkstra(grid, start)
+        for weight in (1.0, 1.5, 2.0):
+            path = focal_astar(
+                grid, start, goal, weight=weight, tie_breaker=lambda node, g: -g
+            )
+            if goal not in distance:
+                assert path is None
+                continue
+            assert path[0] == start and path[-1] == goal
+            assert len(path) - 1 <= weight * distance[goal]
+
+
 def test_unreachable_goal_returns_none():
     grid = GridMap([[0, 1, 0], [0, 1, 0], [0, 1, 0]])
     assert astar(grid, (0, 0), (0, 2)) is None
@@ -206,3 +264,72 @@ def test_sipp_returns_none_when_the_start_is_forbidden():
     constraints = Constraints()
     constraints.add_vertex((0, 0), 0)
     assert sipp(grid, (0, 0), (2, 2), constraints=constraints) is None
+
+
+@pytest.mark.parametrize("algorithm", ["cbs", "wcbs", "prioritized", "lns"])
+def test_solvers_default_to_exact_distances_on_a_general_graph(algorithm):
+    # String nodes have no coordinates, so Manhattan distance cannot even be
+    # evaluated; the default must be a per-goal true distance instead.
+    graph = ExplicitGraph.undirected(
+        [("a", "b"), ("b", "c"), ("c", "d"), ("d", "a"), ("b", "e")]
+    )
+    problem = MAPFProblem(graph, [Agent("r1", "a", "c"), Agent("r2", "c", "a")])
+    kwargs = {"time_limit": 0.2} if algorithm == "lns" else {}
+    solution = pymapf.solve(problem, algorithm, **kwargs)
+    assert solution is not None and solution.is_valid()
+    assert solution.sum_of_costs == 4
+
+
+def test_true_distance_without_a_goal_serves_every_goal():
+    h = true_distance(_open(4), None)
+    assert h((0, 0), (3, 3)) == 6
+    assert h((0, 0), (0, 2)) == 2
+
+
+def test_distance_table_follows_one_way_edges_backwards():
+    # a -> b -> c -> a: from b the goal c is one move away, from a two.
+    graph = ExplicitGraph({"a": ["b"], "b": ["c"], "c": ["a"]})
+    assert distance_table(graph, "c") == {"c": 0, "b": 1, "a": 2}
+    solution = pymapf.solve(MAPFProblem(graph, [Agent("r", "b", "c")]), "cbs")
+    assert solution.paths["r"] == ["b", "c"]
+
+
+def test_sipp_waits_out_back_to_back_edge_constraints():
+    # Crossing (0, 1) -> (0, 0) is forbidden at t = 1 *and* t = 2; SIPP used to
+    # step past the first constraint only and cross at t = 2 anyway.
+    grid = GridMap([[0, 0]])
+    constraints = Constraints()
+    constraints.add_edge((0, 1), (0, 0), 1)
+    constraints.add_edge((0, 1), (0, 0), 2)
+    expected = [(0, 1), (0, 1), (0, 1), (0, 0)]
+    assert sipp(grid, (0, 1), (0, 0), constraints=constraints) == expected
+    assert space_time_astar(grid, (0, 1), (0, 0), constraints=constraints) == expected
+
+
+def test_sipp_matches_space_time_astar_under_random_constraints():
+    import random
+
+    rng = random.Random(3)
+    grid = GridMap([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
+    free = [(r, c) for r in range(3) for c in range(3) if grid.is_free((r, c))]
+    for _ in range(300):
+        start, goal = rng.sample(free, 2)
+        constraints = Constraints()
+        for _ in range(rng.randint(0, 8)):
+            u = rng.choice(free)
+            t = rng.randint(1, 6)
+            if rng.random() < 0.5:
+                if (u, t) != (start, 0):
+                    constraints.add_vertex(u, t)
+            else:
+                v = rng.choice(grid.neighbors(u))  # swaps; never a wait
+                constraints.add_edge(u, v, t)
+        reference = space_time_astar(grid, start, goal, constraints=constraints)
+        path = sipp(grid, start, goal, constraints=constraints)
+        assert (path is None) == (reference is None)
+        if path is not None:
+            assert len(path) == len(reference)
+            assert path[0] == start and path[-1] == goal
+            for t in range(1, len(path)):
+                assert not constraints.blocks_vertex(path[t], t)
+                assert not constraints.blocks_edge(path[t - 1], path[t], t)

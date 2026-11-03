@@ -28,7 +28,7 @@ import heapq
 from itertools import count
 from typing import Callable, Dict, List, Optional, Tuple
 
-from ..core.heuristics import get_heuristic
+from ..core.heuristics import resolve_heuristic
 
 __all__ = [
     "dijkstra",
@@ -90,10 +90,14 @@ def astar(
     graph,
     start,
     goal,
-    heuristic="manhattan",
+    heuristic=None,
     allow_diagonals: bool = False,
 ) -> Optional[List]:
-    """A* (Hart, Nilsson and Raphael 1968). Optimal for an admissible heuristic."""
+    """A* (Hart, Nilsson and Raphael 1968). Optimal for an admissible heuristic.
+
+    ``heuristic=None`` picks the admissible default for the map and move set
+    (:func:`~pymapf.core.heuristics.default_heuristic`).
+    """
     return weighted_astar(
         graph,
         start,
@@ -108,7 +112,7 @@ def weighted_astar(
     graph,
     start,
     goal,
-    heuristic="manhattan",
+    heuristic=None,
     weight: float = 1.0,
     allow_diagonals: bool = False,
 ) -> Optional[List]:
@@ -119,7 +123,7 @@ def weighted_astar(
     """
     if weight < 1.0:
         raise ValueError("weight must be >= 1.0")
-    h = get_heuristic(heuristic)
+    h = resolve_heuristic(heuristic, graph, allow_diagonals)
 
     g: Dict = {start: 0}
     parent: Dict = {start: None}
@@ -148,7 +152,7 @@ def focal_astar(
     graph,
     start,
     goal,
-    heuristic="manhattan",
+    heuristic=None,
     weight: float = 1.5,
     tie_breaker: Optional[Callable] = None,
     allow_diagonals: bool = False,
@@ -158,42 +162,66 @@ def focal_astar(
     OPEN keeps the admissible lower bound; FOCAL holds the nodes within
     ``weight`` times that bound and is ordered by ``tie_breaker`` (default:
     fewest expansions to the goal, i.e. plain ``h``). The path is still within
-    ``weight`` of optimal -- this is the single-agent shape of what ECBS and
-    :class:`~pymapf.algorithms.weighted_cbs.WeightedCBS` do on the high level.
+    ``weight`` of optimal -- this is the single-agent shape of the focal search
+    :class:`~pymapf.algorithms.weighted_cbs.WeightedCBS` runs on its high level.
+
+    Two details carry that guarantee. FOCAL must grow whenever the lower bound
+    rises, admitting every open node the new bound now covers. And a node
+    reached again by a cheaper path must be *reopened* even if it was already
+    expanded: FOCAL expands out of ``f`` order, so an expanded node's ``g`` is
+    not necessarily optimal, and the bound needs the optimal path's nodes to
+    come back through OPEN with their true cost.
     """
     if weight < 1.0:
         raise ValueError("weight must be >= 1.0")
-    h = get_heuristic(heuristic)
+    h = resolve_heuristic(heuristic, graph, allow_diagonals)
     secondary = tie_breaker or (lambda node, g_value: h(node, goal))
 
     g: Dict = {start: 0}
     parent: Dict = {start: None}
-    open_heap = [(h(start, goal), next(_TIE), start)]
-    focal = [(secondary(start, 0), h(start, goal), next(_TIE), start)]
     closed = set()
+    # Every entry ``(f, tie, node, g)`` is in OPEN (ordered by f, for the
+    # bound) and in exactly one of PENDING (ordered by f, waiting for the
+    # bound to reach it) or FOCAL (ordered by the secondary key). An entry is
+    # stale once its node is expanded or reached more cheaply; stale entries
+    # are skipped lazily.
+    open_heap: List = []
+    pending: List = []
+    focal: List = []
 
-    while open_heap:
-        while open_heap and open_heap[0][2] in closed:
+    def push(node) -> None:
+        entry = (g[node] + h(node, goal), next(_TIE), node, g[node])
+        heapq.heappush(open_heap, entry)
+        heapq.heappush(pending, entry)
+
+    def live(entry) -> bool:
+        return entry[2] not in closed and g[entry[2]] == entry[3]
+
+    push(start)
+    while True:
+        while open_heap and not live(open_heap[0]):
             heapq.heappop(open_heap)
         if not open_heap:
-            break
+            return None
         bound = weight * open_heap[0][0]
+        while pending and pending[0][0] <= bound:
+            entry = heapq.heappop(pending)
+            if live(entry):
+                heapq.heappush(focal, (secondary(entry[2], entry[3]), entry))
 
         node = None
         while focal:
-            candidate = heapq.heappop(focal)
-            if candidate[3] in closed:
+            _, entry = heapq.heappop(focal)
+            if not live(entry):
                 continue
-            if candidate[1] > bound:  # no longer eligible; put it back for later
-                heapq.heappush(open_heap, (candidate[1], candidate[2], candidate[3]))
+            if entry[0] > bound:  # the bound fell (inconsistent h): wait again
+                heapq.heappush(pending, entry)
                 continue
-            node = candidate[3]
+            node = entry[2]
             break
-        if node is None:
-            node = heapq.heappop(open_heap)[2]
+        if node is None:  # FOCAL always holds OPEN's minimum, barring rounding
+            node = open_heap[0][2]
 
-        if node in closed:
-            continue
         closed.add(node)
         if node == goal:
             return reconstruct(parent, node)
@@ -203,13 +231,8 @@ def focal_astar(
             if ng < g.get(neighbour, float("inf")):
                 g[neighbour] = ng
                 parent[neighbour] = node
-                f = ng + h(neighbour, goal)
-                heapq.heappush(open_heap, (f, next(_TIE), neighbour))
-                if f <= bound:
-                    heapq.heappush(
-                        focal, (secondary(neighbour, ng), f, next(_TIE), neighbour)
-                    )
-    return None
+                closed.discard(neighbour)  # reopen: see the docstring
+                push(neighbour)
 
 
 def distance_table(graph, goal, allow_diagonals: bool = False) -> Dict:
@@ -220,6 +243,26 @@ def distance_table(graph, goal, allow_diagonals: bool = False) -> Dict:
     on a shortest path, and on a maze it is worth orders of magnitude over
     Manhattan distance. It is also the only admissible heuristic available on a
     graph with no geometry.
+
+    "Backward" matters on a directed graph: the distance *to* the goal is a
+    search from the goal along reversed edges. Grids are symmetric, so for them
+    (and for undirected graphs) the forward search is the same thing.
     """
+    if hasattr(graph, "is_undirected") and not graph.is_undirected():
+        graph = _Reversed(graph)
     distance, _ = dijkstra(graph, goal, allow_diagonals=allow_diagonals)
     return distance
+
+
+class _Reversed:
+    """A directed graph's free nodes with every edge flipped (``u -> v`` becomes
+    ``v -> u``), exposing just the ``neighbors`` call :func:`dijkstra` needs."""
+
+    def __init__(self, graph):
+        self._predecessors: Dict = {}
+        for u, v in graph.edges:
+            if graph.is_free(u) and graph.is_free(v):
+                self._predecessors.setdefault(v, []).append(u)
+
+    def neighbors(self, node, allow_diagonals: bool = False) -> List:
+        return self._predecessors.get(node, [])

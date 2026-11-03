@@ -74,7 +74,7 @@ Implemented in `pymapf/algorithms/search.py`, `space_time_astar.py`, `sipp.py`.
 
 | Algorithm | Module | Reference |
 |---|---|---|
-| **ECBS** (focal high level) | `algorithms.weighted_cbs` | Barer, M.; Sharon, G.; Stern, R.; and Felner, A. 2014. *Suboptimal variants of the conflict-based search algorithm for the multi-agent pathfinding problem.* SOCS 2014: 19–27. |
+| **BCBS(w, 1)** (focal high level, optimal low level) | `algorithms.weighted_cbs` | Barer, M.; Sharon, G.; Stern, R.; and Felner, A. 2014. *Suboptimal variants of the conflict-based search algorithm for the multi-agent pathfinding problem.* SOCS 2014: 19–27. |
 | EECBS (online-learned inadmissible h) | *not implemented* | Li, J.; Ruml, W.; and Koenig, S. 2021. *EECBS: A bounded-suboptimal search for multi-agent path finding.* AAAI 2021: 12353–12362. |
 
 ## Fast suboptimal and anytime MAPF
@@ -271,10 +271,11 @@ non-cardinal — is *not* implemented, and neither are bypass, disjoint splittin
 or symmetry reasoning. On corridor-heavy maps this CBS is therefore markedly
 slower than a modern optimal solver.
 
-**Weighted CBS** implements the ECBS *high level* (focal search on the
-constraint tree). It does not implement ECBS's bounded-suboptimal *low level*,
-so the solver's effective focal set is smaller than the reference's; the
-suboptimality bound still holds.
+**Weighted CBS** is BCBS(w, 1) in Barer et al.'s terms: focal search on the
+constraint tree, bounded by the cheapest node in OPEN, over an optimal low
+level. It is *not* ECBS, which adds a focal low level and bounds the high level
+by the sum of the low-level lower bounds; ECBS's focal set is therefore larger
+for the same `w`. The suboptimality bound holds either way.
 
 **LaCAM** implements the AAAI 2023 search: configuration space, lazy constraint
 generation, PIBT as the successor generator. `anytime=True` continues the

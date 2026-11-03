@@ -25,7 +25,7 @@ from itertools import count
 from typing import List, Optional
 
 from ..core.grid import Cell, GridMap
-from ..core.heuristics import get_heuristic
+from ..core.heuristics import resolve_heuristic
 from ..core.solver import Constraints
 
 
@@ -34,7 +34,7 @@ def space_time_astar(
     start: Cell,
     goal: Cell,
     constraints: Optional[Constraints] = None,
-    heuristic="manhattan",
+    heuristic=None,
     allow_diagonals: bool = False,
     max_timestep: Optional[int] = None,
 ) -> Optional[List[Cell]]:
@@ -42,9 +42,16 @@ def space_time_astar(
 
     Returns a list of cells (index ``t`` is the position at time ``t``) ending
     on ``goal``, or ``None`` if no such path exists within the time bound.
+
+    ``heuristic=None`` (the default) picks the admissible heuristic for the map
+    and move set -- Manhattan on a 4-connected grid, Chebyshev once diagonals
+    are allowed, exact distances on a general graph; see
+    :func:`~pymapf.core.heuristics.default_heuristic`. An inadmissible choice
+    (say, Manhattan with diagonals) forfeits optimality, here and in every
+    solver built on this search.
     """
     constraints = constraints or Constraints()
-    h = get_heuristic(heuristic)
+    h = resolve_heuristic(heuristic, grid, allow_diagonals)
 
     # An agent must be able to *stay* on its goal once it arrives, so it may
     # only settle after the last vertex constraint that touches the goal.
@@ -60,6 +67,9 @@ def space_time_astar(
     )
     if max_timestep is None:
         max_timestep = grid.free_cells + last_constraint_t + 1
+
+    if constraints.blocks_vertex(start, 0):
+        return None  # standing somewhere it is forbidden to be (as SIPP does)
 
     counter = count()  # stable tie-breaker for the heap
     start_state = (start, 0)

@@ -33,7 +33,7 @@ from itertools import count
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from ..core.grid import Cell
-from ..core.heuristics import get_heuristic
+from ..core.heuristics import resolve_heuristic
 from ..core.solver import Constraints
 
 __all__ = ["safe_intervals", "sipp"]
@@ -79,7 +79,7 @@ def sipp(
     start: Cell,
     goal: Cell,
     constraints: Optional[Constraints] = None,
-    heuristic="manhattan",
+    heuristic=None,
     allow_diagonals: bool = False,
     max_timestep: Optional[int] = None,
 ) -> Optional[List[Cell]]:
@@ -91,7 +91,7 @@ def sipp(
     small.
     """
     constraints = constraints or Constraints()
-    h = get_heuristic(heuristic)
+    h = resolve_heuristic(heuristic, grid, allow_diagonals)
     horizon_bound = (
         max_timestep
         if max_timestep is not None
@@ -153,13 +153,17 @@ def sipp(
                 departure = arrival - 1
                 if departure >= hi:
                     continue
-                if constraints.blocks_edge(cell, neighbour, arrival):
-                    # An edge constraint only forbids this exact crossing time;
-                    # arriving one step later is still legal if the interval
-                    # allows it.
+                # An edge constraint only forbids this exact crossing time, so
+                # wait one more step and try again -- for as long as there are
+                # back-to-back constraints and both intervals still allow it.
+                while (
+                    constraints.blocks_edge(cell, neighbour, arrival)
+                    and arrival < n_hi
+                    and arrival - 1 < hi
+                ):
                     arrival += 1
-                    if arrival >= n_hi or arrival - 1 >= hi or arrival > horizon_bound:
-                        continue
+                if arrival >= n_hi or arrival - 1 >= hi or arrival > horizon_bound:
+                    continue
                 n_state = (neighbour, n_index)
                 if n_state in closed:
                     continue
