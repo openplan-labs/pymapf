@@ -33,7 +33,9 @@ class CooperativeAStar:
         # A shared start collides at t = 0 and a shared goal can only be held
         # by one agent: neither instance has a conflict-free solution.
         for other in self.agents.values():
-            if tuple(other.init_pos) == tuple(start) or tuple(other.goal_pos) == tuple(goal):
+            if tuple(other.init_pos) == tuple(start) or tuple(other.goal_pos) == tuple(
+                goal
+            ):
                 logger.warning(
                     "Agent %s shares a start or goal with agent %s, ignoring..."
                     % (ident, other.ident)

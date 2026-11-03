@@ -131,7 +131,9 @@ def test_composite_requires_parts():
 def test_composite_rejects_parts_with_different_outputs():
     # A velocity summed into an acceleration is not a command.
     with pytest.raises(ValueError, match="different outputs"):
-        CompositeBehavior([(get_behavior("active_elastic"), 1.0), (get_behavior("boids"), 1.0)])
+        CompositeBehavior(
+            [(get_behavior("active_elastic"), 1.0), (get_behavior("boids"), 1.0)]
+        )
 
 
 def test_composite_of_one_part_flies_like_the_part():
@@ -154,7 +156,9 @@ def test_composite_runs_each_parts_per_step_hook():
 
     params = SwarmParams(seed=0)
     part = DisplacementFormation(shape="v", reassign_every=5, params=params)
-    SwarmSimulator(CompositeBehavior([(part, 1.0)]), n_agents=9, params=params).run(steps=20)
+    SwarmSimulator(CompositeBehavior([(part, 1.0)]), n_agents=9, params=params).run(
+        steps=20
+    )
     assert part._steps == 20
     assert part._assignment_step == 20
 
@@ -193,7 +197,9 @@ def test_simulator_dt_reaches_behaviors_that_use_one():
 
 
 def test_noisy_runs_of_one_simulator_are_identical():
-    simulator = SwarmSimulator("boids", n_agents=8, params=SwarmParams(noise=0.5, seed=1))
+    simulator = SwarmSimulator(
+        "boids", n_agents=8, params=SwarmParams(noise=0.5, seed=1)
+    )
     first = simulator.run(steps=50).final.positions
     second = simulator.run(steps=50).final.positions
     assert np.array_equal(first, second)

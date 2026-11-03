@@ -75,12 +75,12 @@ def test_cooperative_astar_plans_are_conflict_free(allow_diagonals):
         assert len({campf.agents[n].goal_pos for n in names}) == len(names)
         horizon = max(len(p) for p in paths.values()) + 1
         for i, a in enumerate(names):
-            for b in names[i + 1:]:
+            for b in names[i + 1 :]:
                 for t in range(horizon):
                     assert _cell(paths[a], t) != _cell(paths[b], t), (seed, a, b, t)
                     if t:
-                        swapped = _cell(paths[a], t) == _cell(paths[b], t - 1) and _cell(
-                            paths[b], t
-                        ) == _cell(paths[a], t - 1)
+                        swapped = _cell(paths[a], t) == _cell(
+                            paths[b], t - 1
+                        ) and _cell(paths[b], t) == _cell(paths[a], t - 1)
                         moved = _cell(paths[a], t) != _cell(paths[a], t - 1)
                         assert not (swapped and moved), (seed, a, b, t)

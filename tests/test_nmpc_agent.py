@@ -29,11 +29,20 @@ def test_nmpc_agent_predicts_obstacles_at_the_current_step():
     states = []
     for k in range(3):
         xs = np.arange(timesteps, dtype=float)
-        states.append(np.stack([xs, np.full(timesteps, 2.0 + k),
-                                np.ones(timesteps), np.zeros(timesteps)]))
+        states.append(
+            np.stack(
+                [
+                    xs,
+                    np.full(timesteps, 2.0 + k),
+                    np.ones(timesteps),
+                    np.zeros(timesteps),
+                ]
+            )
+        )
     obstacles = _obstacle_stack(states)
-    agent = NMPCAgent("a", Position(0, 0), Position(5, 0), timesteps, 0.3, 0.1,
-                      horizon_length=4)
+    agent = NMPCAgent(
+        "a", Position(0, 0), Position(5, 0), timesteps, 0.3, 0.1, horizon_length=4
+    )
     step = 3
     predictions = agent._NMPCAgent__predict_obstacle_positions(obstacles, step, [])
     assert len(predictions) == 3
