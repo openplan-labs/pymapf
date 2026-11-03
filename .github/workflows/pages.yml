@@ -37,14 +37,16 @@ jobs:
       - name: Rebuild the browser bundle
         run: python scripts/build_web_bundle.py
 
+      # Unpack the bundle and `import pymapf` from it in an interpreter with no
+      # site-packages (python -I -S), then solve a tiny instance with every
+      # registered solver -- the same conditions as Pyodide in the page.
       - name: Check the bundle imports cleanly
         run: |
           python - <<'PY'
-          import json, sys
-          bundle = json.load(open(".docs/pymapf-bundle.json"))
-          missing = [p for p in bundle["files"] if not p.endswith(".py")]
-          assert not missing, missing
-          print("bundle: %d modules, pymapf %s" % (len(bundle["files"]), bundle["version"]))
+          import sys
+          sys.path.insert(0, "scripts")
+          from build_web_bundle import check
+          check(".docs/pymapf-bundle.json")
           PY
 
       - uses: actions/configure-pages@v6
