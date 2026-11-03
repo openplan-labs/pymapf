@@ -148,14 +148,82 @@ class Solution:
 
     @property
     def sum_of_costs(self) -> int:
-        """Sum over agents of the time each spends before settling at its goal."""
+        """Sum over agents of ``len(path) - 1``.
+
+        That is the standard sum of costs -- each agent's arrival time at its
+        goal for good -- because every built-in solver ends a path the moment
+        its agent settles (LaCAM and PIBT trim the trailing waits on the goal).
+        A hand-built path padded with waits on its goal is charged for them.
+        """
         return sum(len(p) - 1 for p in self.paths.values())
 
     def first_conflict(self) -> Optional[Conflict]:
         return find_first_conflict(self.paths)
 
-    def is_valid(self) -> bool:
-        return self.first_conflict() is None
+    def is_valid(self, problem: Optional["MAPFProblem"] = None) -> bool:
+        """Whether this is a valid plan.
+
+        Without ``problem`` this only checks for collisions *between* agents
+        (vertex and swap conflicts), as it always has. With ``problem`` it
+        checks the whole definition; see :meth:`violations`.
+        """
+        if problem is None:
+            return self.first_conflict() is None
+        return not self.violations(problem)
+
+    def violations(self, problem: "MAPFProblem") -> List[str]:
+        """Everything that makes this an invalid plan for ``problem``.
+
+        A plan can be free of collisions and still walk through walls, jump
+        across the map, or never reach a goal; a solver that returned every
+        agent's start cell would pass a conflict check. This checks the whole
+        definition: exactly one path per agent, starting on its start and
+        ending on its goal, every step a wait or a move to a neighbour on free
+        cells (diagonals only when the problem allows them), and no vertex or
+        swap conflict. Returns readable messages; empty means valid.
+        """
+        grid, diagonals = problem.grid, problem.allow_diagonals
+        found: List[str] = []
+        names = {a.name for a in problem.agents}
+        for name in self.paths:
+            if name not in names:
+                found.append("path for unknown agent %r" % (name,))
+        for agent in problem.agents:
+            path = self.paths.get(agent.name)
+            if not path:
+                found.append("agent %r has no path" % agent.name)
+                continue
+            if path[0] != agent.start:
+                found.append(
+                    "agent %r starts at %s, not its start %s"
+                    % (agent.name, path[0], agent.start)
+                )
+            if path[-1] != agent.goal:
+                found.append(
+                    "agent %r ends at %s, not its goal %s"
+                    % (agent.name, path[-1], agent.goal)
+                )
+            for t, cell in enumerate(path):
+                if not grid.is_free(cell):
+                    found.append(
+                        "agent %r is on blocked or missing cell %s at t=%d"
+                        % (agent.name, cell, t)
+                    )
+                    break
+                if t and cell != path[t - 1]:
+                    if cell not in grid.neighbors(path[t - 1], diagonals):
+                        found.append(
+                            "agent %r jumps from %s to %s at t=%d"
+                            % (agent.name, path[t - 1], cell, t)
+                        )
+                        break
+        conflict = find_first_conflict({n: p for n, p in self.paths.items() if p})
+        if conflict is not None:
+            found.append(
+                "%s conflict between %r and %r at t=%d on %s"
+                % (conflict.kind, conflict.a, conflict.b, conflict.t, conflict.cell_a)
+            )
+        return found
 
     def position_at(self, agent: str, t: int) -> Cell:
         """Where ``agent`` is at time ``t`` (it parks on its goal afterwards)."""

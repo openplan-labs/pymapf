@@ -78,3 +78,48 @@ def test_list_cells_become_tuples():
     problem = MAPFProblem(grid, [Agent("a", [0, 0], [0, 2])])
     assert problem.agents[0].start == (0, 0)
     assert pymapf.solve(problem, "cbs").paths["a"] == [(0, 0), (0, 1), (0, 2)]
+
+
+def _corridor_problem():
+    grid = GridMap([[0, 0, 0], [1, 1, 0]])
+    return MAPFProblem(grid, [Agent("a", (0, 0), (0, 2))])
+
+
+def test_is_valid_without_a_problem_still_only_checks_conflicts():
+    from pymapf.core.solver import Solution
+
+    assert Solution({"a": [(0, 0)]}).is_valid()
+
+
+@pytest.mark.parametrize(
+    "path, message",
+    [
+        ([(0, 0)], "not its goal"),
+        ([(0, 1), (0, 2)], "not its start"),
+        ([(0, 0), (0, 2)], "jumps"),
+        ([(0, 0), (1, 1), (0, 2)], "blocked"),
+    ],
+)
+def test_violations_check_the_whole_definition(path, message):
+    from pymapf.core.solver import Solution
+
+    solution = Solution({"a": path})
+    assert not solution.is_valid(_corridor_problem())
+    assert any(message in v for v in solution.violations(_corridor_problem()))
+
+
+def test_a_solver_plan_has_no_violations():
+    problem = _corridor_problem()
+    solution = pymapf.solve(problem, "cbs")
+    assert solution.violations(problem) == []
+    assert solution.is_valid(problem)
+
+
+def test_violations_report_conflicts_and_missing_agents():
+    from pymapf.core.solver import Solution
+
+    grid = GridMap([[0, 0]])
+    problem = MAPFProblem(grid, [Agent("a", (0, 0), (0, 1)), Agent("b", (0, 1), (0, 0))])
+    swap = Solution({"a": [(0, 0), (0, 1)], "b": [(0, 1), (0, 0)]})
+    assert any("edge conflict" in v for v in swap.violations(problem))
+    assert any("'b' has no path" in v for v in Solution({"a": [(0, 0), (0, 1)]}).violations(problem))

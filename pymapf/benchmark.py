@@ -194,6 +194,12 @@ def run_once(
     what you want on a noisy machine (a mean is dragged around by a single
     scheduling hiccup). Solver options that an algorithm does not accept (say
     ``time_limit`` for prioritized planning) are ignored rather than raising.
+
+    A run counts as *solved* only if the returned plan is valid for the
+    problem (:meth:`~pymapf.core.solver.Solution.violations`): reaching every
+    goal, through free cells, by legal moves, without collisions. A plan that
+    is returned but invalid is reported with ``solved=False`` and the first
+    violation in ``note`` -- a benchmark must not score a broken solver.
     """
     problem = scenario.to_problem()
     solver = get_solver(algorithm, **_supported(algorithm, solver_kwargs))
@@ -205,19 +211,26 @@ def run_once(
         solution = solver.solve(problem)
         timings.append(time.perf_counter() - started)
 
+    violations = solution.violations(problem) if solution is not None else []
+    if solution is None:
+        note = "no solution returned"
+    elif violations:
+        note = "invalid plan: " + violations[0]
+    else:
+        note = ""
     return RunResult(
         scenario=scenario.name,
         algorithm=algorithm,
         n_agents=scenario.n_agents,
-        solved=solution is not None,
+        solved=solution is not None and not violations,
         runtime=statistics.median(timings),
         runtime_stdev=statistics.stdev(timings) if len(timings) > 1 else 0.0,
         repeats=len(timings),
         sum_of_costs=solution.sum_of_costs if solution else None,
         makespan=solution.makespan if solution else None,
         expansions=solution.expansions if solution else 0,
-        valid=solution.is_valid() if solution else False,
-        note="" if solution else "no solution returned",
+        valid=solution is not None and not violations,
+        note=note,
     )
 
 

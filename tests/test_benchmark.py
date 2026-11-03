@@ -125,3 +125,21 @@ def test_to_csv_and_json(tmp_path):
     assert lines[0].startswith("scenario,algorithm")
     assert len(lines) == 2
     assert report.to_json()[0]["algorithm"] == "cbs"
+
+
+def test_a_plan_that_never_moves_is_not_scored_as_solved():
+    # A "solver" returning every agent's start cell has no conflicts, so the
+    # old conflict-only validity check counted it as solved.
+    from pymapf.core.solver import _REGISTRY, MAPFSolver, Solution, register_solver
+
+    @register_solver("_stay_put")
+    class StayPut(MAPFSolver):
+        def solve(self, problem, observer=None):
+            return Solution({a.name: [a.start] for a in problem.agents})
+
+    try:
+        row = run_once(pymapf.build_scenario("corner_swap", n_agents=2), "_stay_put")
+    finally:
+        del _REGISTRY["_stay_put"]
+    assert not row.solved and not row.valid
+    assert "not its goal" in row.note
