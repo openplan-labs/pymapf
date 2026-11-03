@@ -39,7 +39,9 @@ the run's departure plus a constant, and every safety constraint is still a
 difference. The hand-over margin is derived from the same simulation, now
 with both agents moving through the vertex rather than starting or stopping
 on it. This is the form a vehicle that can hover or coast wants: a quadrotor
-does not land at every metre of a corridor.
+does not land at every metre of a corridor. A merged run is ordered against
+others at vertices it passes long after it departs, which can close a cycle
+the halted plan does not have; the plan is then scheduled halted instead.
 
 There is one respect in which the margin is *not* a guarantee: it covers each
 pair's hand-over at a shared vertex, not two agents passing on adjacent
@@ -400,7 +402,10 @@ def plan_trajectories(
             profile, passing the vertices between them at speed, instead of
             coming to rest at every vertex. The trajectory then has a stay
             only where the agent turns or waits; the vertices passed through
-            are listed on the segment's ``via``.
+            are listed on the segment's ``via``. If the merged runs order
+            each other into a cycle that the unmerged plan does not have,
+            the plan is scheduled unmerged instead: a slower schedule, not
+            a refusal of a valid plan.
 
     Returns:
         A :class:`TrajectorySet`, earliest-possible under the constraints.
@@ -427,7 +432,24 @@ def plan_trajectories(
         return overrides.get(agent, shared)
 
     coords = _resolve_positions(paths, graph, positions, cell_size)
+    if not merge_straight:
+        return _schedule(paths, coords, limits_for, False)
+    try:
+        return _schedule(paths, coords, limits_for, True)
+    except InfeasibleScheduleError:
+        # Merging can manufacture a cycle the plan does not have. A merged
+        # run is ordered against other runs at vertices it passes long after
+        # it departs, so it can be made to wait for a run that departs
+        # *later* than it does, and a few such constraints close a loop. On
+        # one 7x7 instance with six agents a run departing at t=3 led one
+        # departing at t=2. Unmerged, every constraint points forward in
+        # discrete time and the only cycles are genuine simultaneous
+        # rotations -- so if this one is genuine too, the call below says so.
+        return _schedule(paths, coords, limits_for, False)
 
+
+def _schedule(paths, coords, limits_for, merge_straight) -> TrajectorySet:
+    """Build the temporal network for one choice of runs and solve it."""
     # -- variables: one per run departure ------------------------------------
     # dep[(agent, i)] is when the agent's i-th run leaves halt i. Arrival at
     # halt i+1 is dep[(agent, i)] + the run's duration, and passing the k-th

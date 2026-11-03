@@ -447,6 +447,29 @@ def test_crossing_runs_hand_over_the_shared_vertex_safely():
     assert down_at > across_at
 
 
+def test_merging_runs_never_makes_a_valid_plan_infeasible():
+    """A CBS plan (random_obstacles 7x7, seed 15) that schedules without
+    merging. Merged, a run is ordered against others at vertices it passes
+    long after it departs, and the constraints closed a loop: the plan was
+    reported infeasible, as if four agents had to rotate at once."""
+    solution = Solution(
+        {
+            "A": [(2, 3), (2, 4), (2, 5), (1, 5)],
+            "B": [(3, 3), (3, 3), (4, 3), (4, 4), (4, 5)],
+            "C": [(5, 5), (4, 5), (3, 5), (3, 4)],
+            "D": [(2, 5), (3, 5), (3, 4), (2, 4), (2, 3), (1, 3)],
+            "E": [(2, 4), (3, 4), (3, 3), (4, 3)],
+            "F": [(4, 2), (4, 3), (4, 4), (4, 5), (3, 5)],
+        }
+    )
+    assert solution.is_valid()
+    limits = KinematicLimits(v_max=1.3, a_max=0.7, safety_distance=0.9)
+    halted = plan_trajectories(solution, limits=limits)
+    merged = plan_trajectories(solution, limits=limits, merge_straight=True)
+    assert merged.makespan == pytest.approx(halted.makespan)  # scheduled unmerged
+    assert merged.min_separation(0.01)[0] >= 0.9 - 5e-3
+
+
 def test_runs_that_share_an_endpoint_are_allowed():
     # Both leave (0, 0) along the same row, one after the other: sharing the
     # origin must not be mistaken for a permanent collision there.
