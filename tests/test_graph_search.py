@@ -50,6 +50,16 @@ def test_blocked_nodes_are_not_traversable():
     assert graph.free_cells == 2
 
 
+def test_free_cells_ignores_blocked_names_that_are_not_nodes():
+    graph = ExplicitGraph.undirected([("a", "b")], blocked=["b", "x", "y", "z"])
+    assert graph.free_cells == 1
+    # The horizon used to go negative here, and every search gave up.
+    graph = ExplicitGraph.undirected([("a", "b")], blocked=["x", "y", "z"])
+    assert graph.free_cells == 2
+    problem = MAPFProblem(graph, [Agent("r", "a", "b")])
+    assert pymapf.solve(problem, "cbs").paths["r"] == ["a", "b"]
+
+
 def test_graph_rejects_empty_adjacency():
     with pytest.raises(ValueError):
         ExplicitGraph({})

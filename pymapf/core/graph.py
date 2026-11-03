@@ -108,8 +108,13 @@ class ExplicitGraph:
 
     @property
     def free_cells(self) -> int:
-        """Number of traversable nodes (the solvers' horizon bound)."""
-        return len(self._adjacency) - len(self._blocked)
+        """Number of traversable nodes (the solvers' horizon bound).
+
+        Only blocked nodes that exist count against it: ``blocked`` may name
+        nodes the adjacency never mentions, and those must not drive the
+        horizon down (or negative, which made every search give up).
+        """
+        return len(self._adjacency) - len(self._blocked & self._adjacency.keys())
 
     # -- extras -------------------------------------------------------------
     @property
