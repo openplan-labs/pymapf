@@ -525,6 +525,40 @@ def test_time_varying_coverage_tracks_a_moving_density():
     assert result.final[:, 0].mean() > result.history[0][:, 0].mean()
 
 
+def test_time_varying_coverage_settles_on_a_static_density():
+    # The finite difference used to be taken against the previous *target*,
+    # feed-forward included, so e_t = -lookahead * e_(t-1): with the swarm
+    # frozen, the target kept flipping 1.16 either side of the centroid.
+    from pymapf.swarm.coverage import CoverageController
+
+    simulator = CoverageSimulator("time_varying", n_agents=6, seed=0)
+    controller = simulator.controller
+    moved = controller.step(simulator.initial_positions(), 1.0)
+    centroids = CoverageController.targets(controller, moved, 0.0)
+    controller.targets(moved, 2.0)  # still sees the motion of the last step
+    for time in (3.0, 4.0, 5.0):
+        assert np.allclose(controller.targets(moved, time), centroids)
+
+
+def test_adaptive_coverage_is_scored_against_the_truth_and_reset_per_run():
+    from pymapf.swarm.coverage import CoverageController
+    from pymapf.swarm.density import GaussianDensity
+
+    truth = GaussianDensity(mean=(15, 15), sigma=3.0)
+    simulator = CoverageSimulator("adaptive", n_agents=8, truth=truth, seed=0)
+    first = simulator.run(steps=30)
+    # Scored against the moving estimate, this run "lost" 190% of its cost
+    # while it actually removed 82% of it under the true density.
+    scorer = CoverageController(density=truth)
+    assert np.allclose(first.costs, [scorer.cost(p) for p in first.history])
+    assert first.improvement > 0.5
+    # A second run used to start from the first run's estimate (initial cost
+    # 3264 instead of 2054) and append to its history.
+    second = simulator.run(steps=30)
+    assert np.allclose(first.costs, second.costs)
+    assert len(second.extras["estimation_error"]) == 30
+
+
 def test_unknown_coverage_controller_is_rejected():
     with pytest.raises(ValueError):
         get_coverage("telekinesis")

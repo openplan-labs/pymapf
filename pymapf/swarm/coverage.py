@@ -136,8 +136,13 @@ class CoverageController(ABC):
         _, distances = self.ownership(positions, time)
         nearest = distances[np.arange(len(self._points)), np.argmin(distances, axis=1)]
         nearest = self._clip_range(nearest)
-        weights = self.weights(time)
+        weights = self.cost_weights(time)
         return float(np.mean(weights * nearest**2) * self.domain.measure)
+
+    def cost_weights(self, time: float = 0.0) -> np.ndarray:
+        """The importance :meth:`cost` scores against: the density the
+        controller steers by, unless a subclass knows a truer one."""
+        return self.weights(time)
 
     def _clip_range(self, nearest: np.ndarray) -> np.ndarray:
         """Hook for limited-range variants; unlimited by default."""
@@ -167,6 +172,15 @@ class CoverageController(ABC):
 
     def observe(self, positions: np.ndarray, time: float = 0.0) -> None:
         """Hook for controllers that learn from what agents measure."""
+
+    def reset(self) -> None:
+        """Forget anything learned or remembered during a previous run.
+
+        :class:`CoverageSimulator` calls it at the start of every ``run``, so
+        two runs of one simulator start from the same controller state.
+        Controllers with memory (estimates, assignments, finite differences)
+        override it.
+        """
 
     def __repr__(self) -> str:
         return "%s(domain=%r, density=%r)" % (
@@ -293,8 +307,6 @@ class AdaptiveCoverage(CoverageController):
                 floor=0.0,
             )
         self.basis = basis
-        self.estimate = np.ones(self.basis.k) / self.basis.k
-        self.history: List[float] = []
         # Measurements are *accumulated*. Fitting only the current positions is
         # under-determined (a handful of agents, many basis weights) and
         # self-confirming: agents move to where the estimate says to look, then
@@ -302,6 +314,12 @@ class AdaptiveCoverage(CoverageController):
         # cheapest form of the persistence of excitation this needs.
         self.memory = memory
         self.steps_per_update = steps_per_update
+        self.reset()
+
+    def reset(self) -> None:
+        # Flat weights, no readings: what the team knows before it sets out.
+        self.estimate = np.ones(self.basis.k) / self.basis.k
+        self.history: List[float] = []
         self._samples: List[np.ndarray] = []
         self._values: List[float] = []
 
@@ -312,6 +330,14 @@ class AdaptiveCoverage(CoverageController):
     def weights(self, time: float = 0.0) -> np.ndarray:
         components = self.basis.component_densities(self._points)
         return 1e-3 + components @ self.estimate
+
+    def cost_weights(self, time: float = 0.0) -> np.ndarray:
+        # Score against the true density when it is known. Scored against the
+        # estimate, the cost is measured with a ruler that changes every step:
+        # it rises as the estimate sharpens even while coverage improves.
+        if self.truth is not None:
+            return np.asarray(self.truth(self._points, time), dtype=float)
+        return self.weights(time)
 
     def observe(self, positions: np.ndarray, time: float = 0.0) -> None:
         if self.truth is None:
@@ -378,6 +404,9 @@ class MixtureCoverage(CoverageController):
         self.stickiness = stickiness
         self._assignment: Optional[np.ndarray] = None
 
+    def reset(self) -> None:
+        self._assignment = None
+
     def assign(self, positions: np.ndarray) -> np.ndarray:
         """Which component each agent serves, respecting the mixing weights."""
         responsibilities = self.mixture.responsibilities(positions)
@@ -438,16 +467,24 @@ class TimeVaryingCoverage(CoverageController):
     def __init__(self, lookahead: float = 1.0, **kwargs):
         super().__init__(**kwargs)
         self.lookahead = lookahead
+        self.reset()
+
+    def reset(self) -> None:
         self._previous: Optional[np.ndarray] = None
         self._previous_time: float = 0.0
 
     def targets(self, positions: np.ndarray, time: float = 0.0) -> np.ndarray:
-        targets = super().targets(positions, time)
-        if self._previous is not None and len(self._previous) == len(targets):
+        centroids = super().targets(positions, time)
+        targets = centroids
+        if self._previous is not None and len(self._previous) == len(centroids):
             dt = max(1e-6, time - self._previous_time)
-            velocity = (targets - self._previous) / dt
-            targets = targets + self.lookahead * velocity * dt
-        self._previous = targets.copy()
+            velocity = (centroids - self._previous) / dt
+            targets = centroids + self.lookahead * velocity * dt
+        # Remember the raw centroids, not the extrapolated targets: differencing
+        # against our own feed-forward would feed it back into the next
+        # estimate (e_t = -lookahead * e_{t-1}), an oscillation that never
+        # settles even when the density stands still.
+        self._previous = centroids.copy()
         self._previous_time = time
         return targets
 
@@ -506,6 +543,7 @@ class CoverageSimulator:
             if initial is not None
             else self.initial_positions()
         )
+        self.controller.reset()
         history = [positions.copy()]
         costs = [self.controller.cost(positions, 0.0)]
 
