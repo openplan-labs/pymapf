@@ -137,7 +137,10 @@ class JointPlan:
     """The optimised trajectories and what they actually achieve.
 
     ``trajectories[name]`` is a :class:`~pymapf.trajectory.PiecewisePolynomial`
-    over ``[0, duration]``; call it with a time in seconds.
+    over ``[0, duration]``; call it with a time in seconds. ``cost`` is the
+    objective of those trajectories as returned -- ``½ Σ_i ∫ ‖p_i⁽ᵈ⁾‖² dt``
+    for the ``minimise``-th derivative, after any time dilation -- while
+    ``history`` records the optimiser's own iterates, before it.
     """
 
     trajectories: Dict[str, PiecewisePolynomial]
@@ -775,6 +778,10 @@ def plan_joint_trajectories(
     )
     if enforce_limits:
         _dilate(plan, limits)
+        # Stretching time by f scales the d-th derivative by f^-d and the
+        # interval by f, so the objective of what is returned is the
+        # optimiser's times f^(1 - 2d).
+        plan.cost *= plan.time_scale ** (1 - 2 * minimise)
     return plan
 
 

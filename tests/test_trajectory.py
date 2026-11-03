@@ -429,6 +429,23 @@ def test_time_dilation_meets_the_limits_and_preserves_every_separation():
     assert pair
 
 
+def test_the_reported_cost_is_the_cost_of_the_returned_trajectories():
+    """It used to be the optimiser's cost, before the dilation stretched the
+    flight -- 16x too high here, where the limits need a 1.5x slower clock
+    and snap cost scales as time to the -7th."""
+    plan = plan_joint_trajectories(
+        [Vehicle("a", (0.0, 0.0), (10.0, 0.0))], duration=5.0, samples=30
+    )
+    assert plan.time_scale > 1.1
+    trajectory = plan.trajectories["a"]
+    snap = sum(
+        float(c @ cost_matrix(trajectory.order, duration, 4) @ c)
+        for duration, segment in zip(trajectory.durations, trajectory.coefficients)
+        for c in segment
+    )
+    assert plan.cost == pytest.approx(0.5 * snap, rel=1e-9)
+
+
 def test_the_speed_limit_is_not_bought_with_a_sideways_weave():
     """A lone vehicle has no reason to leave a straight line. With the speed
     limit linearised as a tangent plane it did: turning a little let it fly
