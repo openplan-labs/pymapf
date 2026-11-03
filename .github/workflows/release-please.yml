@@ -60,7 +60,7 @@ jobs:
           ref: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: '3.15'
       - name: Fold the [Unreleased] notes into the release entry
         run: |
           python scripts/fold_changelog.py CHANGELOG.md
