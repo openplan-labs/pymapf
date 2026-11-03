@@ -51,7 +51,8 @@ class WeightedCBS(ConflictBasedSearch):
     Args:
         weight: suboptimality factor ``w >= 1``. The returned solution's
             sum-of-costs is guaranteed ``<= w * optimal``.
-        heuristic: name or callable for the low-level search.
+        heuristic: name or callable for the low-level search; ``None`` picks
+            the admissible default for the map and move set.
         max_expansions: safety cap on high-level nodes.
         time_limit: optional wall-clock budget in seconds.
     """
@@ -59,7 +60,7 @@ class WeightedCBS(ConflictBasedSearch):
     def __init__(
         self,
         weight: float = 1.5,
-        heuristic="manhattan",
+        heuristic=None,
         max_expansions: int = 10000,
         time_limit: Optional[float] = None,
     ):

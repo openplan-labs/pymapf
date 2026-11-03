@@ -48,3 +48,46 @@ def test_edge_constraint_blocks_move():
     p = space_time_astar(g, (0, 0), (0, 1), constraints=c)
     # Only route is that edge, but not at t=1; it must wait then move at t=2.
     assert p == [(0, 0), (0, 0), (0, 1)]
+
+
+# A 4x5 map where Manhattan distance overestimates once diagonals are allowed:
+# the optimum from (0, 0) to (3, 4) is 5 moves, and A* driven by Manhattan
+# distance used to return 6.
+_DIAGONAL_TRAP = GridMap(
+    [
+        [0, 0, 0, 1, 0],
+        [0, 1, 0, 0, 1],
+        [0, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0],
+    ]
+)
+
+
+def test_default_heuristic_is_admissible_with_diagonals():
+    from pymapf.algorithms.search import dijkstra
+
+    distance, _ = dijkstra(_DIAGONAL_TRAP, (0, 0), allow_diagonals=True)
+    assert distance[(3, 4)] == 5
+    p = space_time_astar(_DIAGONAL_TRAP, (0, 0), (3, 4), allow_diagonals=True)
+    assert len(p) - 1 == 5
+
+
+def test_default_heuristic_is_optimal_on_random_diagonal_maps():
+    import random
+
+    from pymapf.algorithms.search import dijkstra
+
+    rng = random.Random(0)
+    for _ in range(150):
+        h, w = rng.randint(3, 7), rng.randint(3, 7)
+        g = GridMap([[int(rng.random() < 0.25) for _ in range(w)] for _ in range(h)])
+        free = [(r, c) for r in range(h) for c in range(w) if g.is_free((r, c))]
+        if len(free) < 2:
+            continue
+        start, goal = rng.sample(free, 2)
+        distance, _ = dijkstra(g, start, allow_diagonals=True)
+        p = space_time_astar(g, start, goal, allow_diagonals=True)
+        if goal not in distance:
+            assert p is None
+        else:
+            assert len(p) - 1 == distance[goal]

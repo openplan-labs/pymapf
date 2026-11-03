@@ -3,6 +3,7 @@ from os import path
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
+import pymapf
 from pymapf.algorithms.cbs import ConflictBasedSearch
 from pymapf.core import Agent, GridMap, MAPFProblem
 
@@ -53,3 +54,23 @@ def test_expansion_cap_returns_none():
     )
     # A cap of 1 cannot get past the root conflict.
     assert ConflictBasedSearch(max_expansions=1).solve(prob) is None
+
+
+def test_optimal_with_diagonal_moves():
+    # Manhattan distance overestimates with diagonals; the default heuristic
+    # must not, or CBS (and everything built on space-time A*) is suboptimal.
+    grid = GridMap(
+        [
+            [0, 0, 0, 1, 0],
+            [0, 1, 0, 0, 1],
+            [0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0],
+        ]
+    )
+    problem = MAPFProblem(grid, [Agent("a", (0, 0), (3, 4))], allow_diagonals=True)
+    for solver in ("cbs", "wcbs", "prioritized", "lns"):
+        kwargs = {"time_limit": 0.2} if solver == "lns" else {}
+        if solver == "wcbs":
+            kwargs = {"weight": 1.0}
+        sol = pymapf.solve(problem, solver, **kwargs)
+        assert sol.sum_of_costs == 5, solver

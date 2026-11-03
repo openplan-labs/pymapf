@@ -206,3 +206,31 @@ def test_sipp_returns_none_when_the_start_is_forbidden():
     constraints = Constraints()
     constraints.add_vertex((0, 0), 0)
     assert sipp(grid, (0, 0), (2, 2), constraints=constraints) is None
+
+
+@pytest.mark.parametrize("algorithm", ["cbs", "wcbs", "prioritized", "lns"])
+def test_solvers_default_to_exact_distances_on_a_general_graph(algorithm):
+    # String nodes have no coordinates, so Manhattan distance cannot even be
+    # evaluated; the default must be a per-goal true distance instead.
+    graph = ExplicitGraph.undirected(
+        [("a", "b"), ("b", "c"), ("c", "d"), ("d", "a"), ("b", "e")]
+    )
+    problem = MAPFProblem(graph, [Agent("r1", "a", "c"), Agent("r2", "c", "a")])
+    kwargs = {"time_limit": 0.2} if algorithm == "lns" else {}
+    solution = pymapf.solve(problem, algorithm, **kwargs)
+    assert solution is not None and solution.is_valid()
+    assert solution.sum_of_costs == 4
+
+
+def test_true_distance_without_a_goal_serves_every_goal():
+    h = true_distance(_open(4), None)
+    assert h((0, 0), (3, 3)) == 6
+    assert h((0, 0), (0, 2)) == 2
+
+
+def test_distance_table_follows_one_way_edges_backwards():
+    # a -> b -> c -> a: from b the goal c is one move away, from a two.
+    graph = ExplicitGraph({"a": ["b"], "b": ["c"], "c": ["a"]})
+    assert distance_table(graph, "c") == {"c": 0, "b": 1, "a": 2}
+    solution = pymapf.solve(MAPFProblem(graph, [Agent("r", "b", "c")]), "cbs")
+    assert solution.paths["r"] == ["b", "c"]

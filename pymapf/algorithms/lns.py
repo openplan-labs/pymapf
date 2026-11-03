@@ -65,6 +65,9 @@ class LargeNeighborhoodSearch(MAPFSolver):
         time_limit: wall-clock budget in seconds; this is the knob that matters,
             since LNS is designed to be stopped rather than to terminate.
         seed: reproducible operator choices and agent sampling.
+        initial_kwargs: keyword arguments for the initial solver.
+        heuristic: name or callable for the SIPP repairs; ``None`` (the
+            default) picks the admissible one for the map and move set.
     """
 
     def __init__(
@@ -75,6 +78,7 @@ class LargeNeighborhoodSearch(MAPFSolver):
         time_limit: Optional[float] = 5.0,
         seed: Optional[int] = 0,
         initial_kwargs: Optional[Dict] = None,
+        heuristic=None,
     ):
         self.initial = initial
         self.neighborhood_size = neighborhood_size
@@ -82,6 +86,7 @@ class LargeNeighborhoodSearch(MAPFSolver):
         self.time_limit = time_limit
         self.seed = seed
         self.initial_kwargs = initial_kwargs or {}
+        self.heuristic = heuristic
 
     # -- destroy operators --------------------------------------------------
     def operators(self):
@@ -178,6 +183,7 @@ class LargeNeighborhoodSearch(MAPFSolver):
                 agent.start,
                 agent.goal,
                 constraints=self._constraints_from(result, horizon),
+                heuristic=self.heuristic,
                 allow_diagonals=problem.allow_diagonals,
                 max_timestep=horizon,
             )

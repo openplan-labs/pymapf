@@ -40,12 +40,13 @@ class PrioritizedPlanning(MAPFSolver):
     """Plan agents sequentially, reserving space-time cells as we go.
 
     Args:
-        heuristic: name or callable used by the low-level search.
+        heuristic: name or callable used by the low-level search; ``None``
+            picks the admissible default for the map and move set.
         priority: optional list of agent names giving the planning order.
             Defaults to the order agents appear in the problem.
     """
 
-    def __init__(self, heuristic="manhattan", priority: Optional[List[str]] = None):
+    def __init__(self, heuristic=None, priority: Optional[List[str]] = None):
         self.heuristic = heuristic
         self.priority = priority
 

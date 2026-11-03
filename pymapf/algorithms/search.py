@@ -28,7 +28,7 @@ import heapq
 from itertools import count
 from typing import Callable, Dict, List, Optional, Tuple
 
-from ..core.heuristics import get_heuristic
+from ..core.heuristics import resolve_heuristic
 
 __all__ = [
     "dijkstra",
@@ -90,10 +90,14 @@ def astar(
     graph,
     start,
     goal,
-    heuristic="manhattan",
+    heuristic=None,
     allow_diagonals: bool = False,
 ) -> Optional[List]:
-    """A* (Hart, Nilsson and Raphael 1968). Optimal for an admissible heuristic."""
+    """A* (Hart, Nilsson and Raphael 1968). Optimal for an admissible heuristic.
+
+    ``heuristic=None`` picks the admissible default for the map and move set
+    (:func:`~pymapf.core.heuristics.default_heuristic`).
+    """
     return weighted_astar(
         graph,
         start,
@@ -108,7 +112,7 @@ def weighted_astar(
     graph,
     start,
     goal,
-    heuristic="manhattan",
+    heuristic=None,
     weight: float = 1.0,
     allow_diagonals: bool = False,
 ) -> Optional[List]:
@@ -119,7 +123,7 @@ def weighted_astar(
     """
     if weight < 1.0:
         raise ValueError("weight must be >= 1.0")
-    h = get_heuristic(heuristic)
+    h = resolve_heuristic(heuristic, graph, allow_diagonals)
 
     g: Dict = {start: 0}
     parent: Dict = {start: None}
@@ -148,7 +152,7 @@ def focal_astar(
     graph,
     start,
     goal,
-    heuristic="manhattan",
+    heuristic=None,
     weight: float = 1.5,
     tie_breaker: Optional[Callable] = None,
     allow_diagonals: bool = False,
@@ -163,7 +167,7 @@ def focal_astar(
     """
     if weight < 1.0:
         raise ValueError("weight must be >= 1.0")
-    h = get_heuristic(heuristic)
+    h = resolve_heuristic(heuristic, graph, allow_diagonals)
     secondary = tie_breaker or (lambda node, g_value: h(node, goal))
 
     g: Dict = {start: 0}
@@ -220,6 +224,26 @@ def distance_table(graph, goal, allow_diagonals: bool = False) -> Dict:
     on a shortest path, and on a maze it is worth orders of magnitude over
     Manhattan distance. It is also the only admissible heuristic available on a
     graph with no geometry.
+
+    "Backward" matters on a directed graph: the distance *to* the goal is a
+    search from the goal along reversed edges. Grids are symmetric, so for them
+    (and for undirected graphs) the forward search is the same thing.
     """
+    if hasattr(graph, "is_undirected") and not graph.is_undirected():
+        graph = _Reversed(graph)
     distance, _ = dijkstra(graph, goal, allow_diagonals=allow_diagonals)
     return distance
+
+
+class _Reversed:
+    """A directed graph's free nodes with every edge flipped (``u -> v`` becomes
+    ``v -> u``), exposing just the ``neighbors`` call :func:`dijkstra` needs."""
+
+    def __init__(self, graph):
+        self._predecessors: Dict = {}
+        for u, v in graph.edges:
+            if graph.is_free(u) and graph.is_free(v):
+                self._predecessors.setdefault(v, []).append(u)
+
+    def neighbors(self, node, allow_diagonals: bool = False) -> List:
+        return self._predecessors.get(node, [])
