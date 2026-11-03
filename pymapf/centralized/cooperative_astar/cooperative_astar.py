@@ -27,6 +27,15 @@ class CooperativeAStar:
         if ident in self.agents:
             logging.warning("Agent ID already registered, ignoring...")
             return
+        # A shared start collides at t = 0 and a shared goal can only be held
+        # by one agent: neither instance has a conflict-free solution.
+        for other in self.agents.values():
+            if tuple(other.init_pos) == tuple(start) or tuple(other.goal_pos) == tuple(goal):
+                logging.warning(
+                    "Agent %s shares a start or goal with agent %s, ignoring..."
+                    % (ident, other.ident)
+                )
+                return
         self.agents[ident] = Agent(
             ident, start, goal, allow_diagonals=self.allow_diagonals
         )

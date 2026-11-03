@@ -99,8 +99,10 @@ class World:
         )
         hTarget = nTarget.calculate_heuristic()
 
+        # Two agents can never share a start (they would collide at t = 0) or
+        # a goal (only one of them can stay there), so reject either repeat.
         while h < hTarget * pHeuristic or (
-            start in self.start_positions and goal in self.goal_positions
+            start in self.start_positions or goal in self.goal_positions
         ):
             i += 1
             start = self.get_random_available_position()
