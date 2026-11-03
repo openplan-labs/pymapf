@@ -1,39 +1,140 @@
 name: release
 
-# Builds, verifies and publishes the package, then opens a GitHub Release.
+# Every merge to main can release. Nobody picks a number and nothing waits for
+# approval: the merged commits decide.
 #
-# Normally started by release-please.yml, on the tag it creates when a release
-# PR is merged (a tag pushed by the workflow token cannot trigger this file by
-# itself). Pushing a tag by hand still works the same way.
+#   plan   reads the Conventional Commits since the last v* tag and decides the
+#          bump (scripts/release/plan.py): a breaking change (`!` or a
+#          BREAKING CHANGE footer) major -- minor while below 1.0 -- feat minor,
+#          fix/perf/revert patch, anything else nothing. A release:major,
+#          release:minor, release:patch or release:none label on the merged pull
+#          request overrides it.
+#   bump   bumps pymapf/__init__.py and CITATION.cff, moves the [Unreleased]
+#          changelog notes under a dated heading (scripts/release/bump.py),
+#          commits "chore(release): vX.Y.Z" to main and tags it. Both are pushed
+#          with the workflow token, which does not start workflows, so the
+#          release commit does not release again.
+#   then   the tag is tested on every supported Python, built, installed in a
+#          clean environment, published to PyPI and released on GitHub -- all in
+#          this run, which is the workflow PyPI's trusted publisher trusts.
 #
-# Triggered by pushing a tag like `v0.7.0`. The tag is the single instruction:
-# the version is *read from the package*, and the job fails if the tag disagrees
-# with it, so a mislabelled artifact cannot be published by accident.
+# The same pipeline runs for a v* tag pushed by hand (released as it is), and
+# by hand from the Actions tab: with `bump` to cut a release, or with
+# bump=none to rehearse the current version on TestPyPI.
 #
-# Publishing uses PyPI Trusted Publishing (OIDC). There is no API token in this
-# repository's secrets and there does not need to be -- see `verify` below for
-# what has to be configured on PyPI once, by hand.
-#
-#   Dry run:  gh workflow run release.yml -f target=testpypi
-#   Real:     git tag v0.7.0 && git push origin v0.7.0
+# The version is *read from the package* and the build fails if the tag
+# disagrees with it, so a mislabelled artifact cannot be published by accident.
+# Publishing uses PyPI Trusted Publishing (OIDC): no API token is stored here.
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
     inputs:
+      bump:
+        description: 'Release: the part of the version to bump (none = rehearse the current version)'
+        required: true
+        default: none
+        type: choice
+        options: [none, patch, minor, major]
       target:
-        description: 'Where to publish'
+        description: 'Where a bump=none rehearsal publishes'
         required: true
         default: testpypi
         type: choice
-        options: [testpypi, pypi, none]
+        options: [testpypi, none]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  # ----------------------------------------------------------------- plan ---
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.plan.outputs.run }}
+      bump: ${{ steps.plan.outputs.bump }}
+      tag: ${{ steps.plan.outputs.tag }}
+      publish: ${{ steps.plan.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_BUMP: ${{ inputs.bump }}
+          DISPATCH_TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            echo "a tag was pushed: release $GITHUB_REF_NAME as it is"
+            { echo run=true; echo tag="$GITHUB_REF_NAME"; echo publish=pypi; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            if [ "$DISPATCH_BUMP" = none ]; then
+              echo "rehearsal of the current version, publishing to: $DISPATCH_TARGET"
+              { echo run=true; echo publish="$DISPATCH_TARGET"; } >> "$GITHUB_OUTPUT"
+            else
+              echo "release requested by hand: $DISPATCH_BUMP"
+              { echo run=true; echo bump="$DISPATCH_BUMP"; echo publish=pypi; } >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+          # A push to main: the merged commits decide, a release:* label wins.
+          bump="$(python3 scripts/release/plan.py)"
+          labels="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq '.[0].labels[].name' 2>/dev/null || true)"
+          for part in none major minor patch; do
+            if printf '%s\n' "$labels" | grep -qx "release:$part"; then
+              echo "label release:$part overrides the commits ($bump)"
+              bump="$part"; break
+            fi
+          done
+          [ "$bump" = none ] && bump=""
+          echo "commits since $(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo 'the start'): release ${bump:-nothing}"
+          if [ -n "$bump" ]; then
+            { echo run=true; echo bump="$bump"; echo publish=pypi; } >> "$GITHUB_OUTPUT"
+          fi
+
+  # ----------------------------------------------------------------- bump ---
+  bump:
+    needs: plan
+    if: needs.plan.outputs.bump != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - id: bump
+        env:
+          PART: ${{ needs.plan.outputs.bump }}
+        run: |
+          set -euo pipefail
+          version="$(python3 scripts/release/bump.py "$PART")"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qam "chore(release): v$version"
+          git tag -a "v$version" -m "pymapf $version"
+          # The workflow token's pushes start no workflow, so this cannot loop.
+          git push origin HEAD:main "v$version"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "released v$version"
+
   # ---------------------------------------------------------------- tests ---
   # The package is published only if it passes on every Python it claims to
   # support. This duplicates tests.yml on purpose: a tag is the one moment
@@ -42,6 +143,8 @@ jobs:
   # release after tests.yml and `requires-python` had moved to 3.10, and the
   # v0.9.0 tag failed here rather than in CI. Both matrices move together.
   test:
+    needs: [plan, bump]
+    if: ${{ !cancelled() && needs.plan.outputs.run == 'true' && needs.bump.result != 'failure' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -49,6 +152,8 @@ jobs:
         python-version: ['3.10', '3.11', '3.12', '3.13']
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.bump.outputs.tag || needs.plan.outputs.tag || github.sha }}
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
@@ -61,12 +166,20 @@ jobs:
 
   # ---------------------------------------------------------------- build ---
   build:
-    needs: test
+    needs: [plan, bump, test]
+    if: ${{ !cancelled() && needs.test.result == 'success' }}
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
+      - id: tag
+        env:
+          TAG: ${{ needs.bump.outputs.tag || needs.plan.outputs.tag }}
+        run: echo "tag=$TAG" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.tag.outputs.tag || github.sha }}
       - uses: actions/setup-python@v7
         with:
           python-version: '3.15'
@@ -82,9 +195,11 @@ jobs:
           echo "package version: $VERSION"
 
       - name: Refuse to publish if the tag disagrees with the package
-        if: startsWith(github.ref, 'refs/tags/')
+        if: steps.tag.outputs.tag != ''
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          TAG="${GITHUB_REF#refs/tags/v}"
+          TAG="${RELEASE_TAG#v}"
           VERSION="${{ steps.version.outputs.version }}"
           if [ "$TAG" != "$VERSION" ]; then
             echo "::error::tag v$TAG does not match pymapf.__version__ ($VERSION)."
@@ -127,6 +242,7 @@ jobs:
   # number on PyPI can never be reused, so "publish and see" is not available.
   verify:
     needs: build
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -193,8 +309,8 @@ jobs:
   # project was registered while the organisation was APLA-Toolbox, so that
   # entry has to be updated to openplan-labs before a release can publish.
   publish-testpypi:
-    needs: verify
-    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+    needs: [plan, verify]
+    if: ${{ !cancelled() && needs.verify.result == 'success' && needs.plan.outputs.publish == 'testpypi' }}
     runs-on: ubuntu-latest
     environment:
       name: testpypi
@@ -212,8 +328,8 @@ jobs:
           skip-existing: true
 
   publish-pypi:
-    needs: verify
-    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi')
+    needs: [plan, build, verify]
+    if: ${{ !cancelled() && needs.verify.result == 'success' && needs.plan.outputs.publish == 'pypi' && needs.build.outputs.tag != '' }}
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -237,12 +353,16 @@ jobs:
   # release is published either way, and says which happened.
   github-release:
     needs: [build, verify, publish-pypi]
-    if: always() && startsWith(github.ref, 'refs/tags/') && needs.verify.result == 'success'
+    if: ${{ always() && needs.build.outputs.tag != '' && needs.verify.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      # The tag, not the pushed commit: on a release from a merge, only the
+      # tagged release commit has this version's dated changelog entry.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.build.outputs.tag }}
       - uses: actions/download-artifact@v8
         with:
           name: dist
@@ -283,6 +403,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ needs.build.outputs.tag }}
           body_path: notes.md
           files: dist/*
           generate_release_notes: true
