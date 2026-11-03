@@ -35,6 +35,7 @@ from pymapf.swarm import (
     available_shapes,
     formation_error,
     get_shape,
+    is_infinitesimally_bearing_rigid,
     is_infinitesimally_rigid,
     register_shape,
 )
@@ -483,6 +484,32 @@ def test_a_rigid_target_raises_no_warning():
         SwarmSimulator("distance_formation", n_agents=6, dimension=2, shape="grid").run(
             steps=5
         )
+
+
+def test_bearing_rigidity_is_not_distance_rigidity():
+    # A square without its diagonal can stretch into a rectangle keeping every
+    # bearing; the diagonal pins it.
+    square = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
+    sides = [(0, 1), (1, 2), (2, 3), (3, 0)]
+    assert not is_infinitesimally_bearing_rigid(square, sides)
+    assert is_infinitesimally_bearing_rigid(square, sides + [(0, 2)])
+    # A planar circle in 3D folds out of its plane without changing a length,
+    # but not without changing a bearing.
+    circle = CircleFormation().centred(6, 3)
+    assert not is_infinitesimally_rigid(circle, _complete_edges(6))
+    assert is_infinitesimally_bearing_rigid(circle, _complete_edges(6))
+
+
+def test_bearing_control_does_not_warn_on_a_planar_target_in_3d():
+    # It used to apply the *distance* rigidity test and warn that a 3D circle
+    # "will not converge" -- then hold it perfectly.
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        SwarmSimulator(
+            "bearing_formation", n_agents=6, dimension=3, shape="circle"
+        ).run(steps=5)
 
 
 def test_the_interaction_graph_is_augmented_until_it_is_rigid():

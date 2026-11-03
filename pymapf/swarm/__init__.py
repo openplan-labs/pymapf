@@ -110,6 +110,7 @@ from .formation import (  # noqa: F401
     formation_error,
     get_shape,
     is_infinitesimally_rigid,
+    is_infinitesimally_bearing_rigid,
     register_shape,
 )
 from .domain import (
@@ -190,6 +191,7 @@ __all__ = [
     "assign_slots",
     "formation_error",
     "is_infinitesimally_rigid",
+    "is_infinitesimally_bearing_rigid",
     # domains
     "Domain",
     "PlanarDomain",

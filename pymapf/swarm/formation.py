@@ -82,6 +82,7 @@ __all__ = [
     "assign_slots",
     "formation_error",
     "is_infinitesimally_rigid",
+    "is_infinitesimally_bearing_rigid",
     "DisplacementFormation",
     "DistanceFormation",
     "BearingFormation",
@@ -610,6 +611,44 @@ def is_infinitesimally_rigid(
     return int(np.linalg.matrix_rank(matrix, tol=tolerance)) >= expected
 
 
+def is_infinitesimally_bearing_rigid(
+    positions: np.ndarray, edges: Sequence[Tuple[int, int]], tolerance: float = 1e-8
+) -> bool:
+    """Do the *bearings* along these edges pin the shape down?
+
+    The bearing counterpart of :func:`is_infinitesimally_rigid` (Zhao and
+    Zelazo 2016). Bearings cannot see translation or scale, so those are the
+    trivial motions here: the framework is infinitesimally bearing rigid when
+    the bearing rigidity matrix -- one block ``P(g_ij) / |p_j - p_i|`` per edge,
+    ``P(g) = I - g g^T`` -- has rank ``dn - d - 1``.
+
+    The two notions differ, and a bearing controller must be judged by this
+    one: a planar circle in 3D is not distance rigid (it can fold out of its
+    plane without changing a single length), but every fold changes some
+    bearing, so a bearing controller holds it perfectly.
+    """
+    positions = np.atleast_2d(np.asarray(positions, dtype=float))
+    n, dimension = positions.shape
+    if n < 2 or not len(edges):
+        return False
+
+    matrix = np.zeros((len(edges) * dimension, n * dimension))
+    identity = np.eye(dimension)
+    for row, (i, j) in enumerate(edges):
+        edge = positions[j] - positions[i]
+        length = float(np.linalg.norm(edge))
+        if length < 1e-12:
+            return False  # coincident slots have no bearing
+        g = edge / length
+        block = (identity - np.outer(g, g)) / length
+        rows = slice(row * dimension, (row + 1) * dimension)
+        matrix[rows, i * dimension : (i + 1) * dimension] = -block
+        matrix[rows, j * dimension : (j + 1) * dimension] = block
+
+    expected = dimension * n - dimension - 1
+    return int(np.linalg.matrix_rank(matrix, tol=tolerance)) >= expected
+
+
 # --------------------------------------------------------------------------
 # controllers
 # --------------------------------------------------------------------------
@@ -722,8 +761,8 @@ class _FormationBase(Behavior):
         and held fixed. ``degree = 0`` (the default) means the complete graph,
         which is trivially rigid and is what small teams should use. A positive
         ``degree`` keeps only that many nearest slots per agent -- sparser and
-        more realistic -- and edges are then added back until
-        :func:`is_infinitesimally_rigid` accepts the framework, because a
+        more realistic -- and edges are then added back until the controller's
+        own rigidity test (:meth:`is_rigid`) accepts the framework, because a
         controller descending a non-rigid set of constraints has a flex mode it
         will happily drift along.
         """
@@ -758,7 +797,7 @@ class _FormationBase(Behavior):
                 edges = [
                     (a, b) for a in range(n) for b in range(a + 1, n) if adjacency[a, b]
                 ]
-                if is_infinitesimally_rigid(ordered, edges):
+                if self.is_rigid(ordered, edges):
                     break
                 adjacency[i, j] = adjacency[j, i] = True
         np.fill_diagonal(adjacency, False)
@@ -768,7 +807,7 @@ class _FormationBase(Behavior):
             edges = [
                 (a, b) for a in range(n) for b in range(a + 1, n) if adjacency[a, b]
             ]
-            if not is_infinitesimally_rigid(ordered, edges):
+            if not self.is_rigid(ordered, edges):
                 self._warned_rigidity = True
                 warnings.warn(
                     "%s: the target %r formation is not infinitesimally rigid in "
@@ -785,6 +824,11 @@ class _FormationBase(Behavior):
     #: interaction graph is rigid; :meth:`interaction_graph` then warns if it
     #: is not, rather than silently converging to the wrong thing.
     requires_rigidity = False
+
+    def is_rigid(self, positions: np.ndarray, edges) -> bool:
+        """The rigidity this controller's constraints need: distance rigidity
+        by default; :class:`BearingFormation` needs bearing rigidity."""
+        return is_infinitesimally_rigid(positions, edges)
 
     def migration(self, state: SwarmState, index: int) -> np.ndarray:
         """Move the *formation* to the waypoint, not each agent individually.
@@ -1018,6 +1062,12 @@ class BearingFormation(_FormationBase):
     def reset(self, state: SwarmState) -> None:
         super().reset(state)
         self._bearings = None
+
+    def is_rigid(self, positions: np.ndarray, edges) -> bool:
+        # Bearings fix the shape up to translation and scale, and that is the
+        # rigidity that matters here -- not distance rigidity, which flags a
+        # planar target in 3D that this controller holds without trouble.
+        return is_infinitesimally_bearing_rigid(positions, edges)
 
     def command(self, state: SwarmState, index: int) -> np.ndarray:
         bearings = self.desired_bearings(state)
