@@ -163,6 +163,34 @@ class BenchmarkReport:
         return "\n".join(out)
 
 
+def _accepted_options(cls) -> Optional[set]:
+    """Keyword options ``cls(...)`` accepts, or ``None`` if it takes anything.
+
+    A subclass whose ``__init__(self, *args, **kwargs)`` forwards to
+    ``super().__init__`` accepts what its base accepts, so ``**kwargs`` is
+    followed up the MRO rather than read as "anything goes".
+    """
+    import inspect
+
+    names = set()
+    for klass in cls.__mro__:
+        if klass is object:
+            return names
+        init = klass.__dict__.get("__init__")
+        if init is None:
+            continue
+        params = inspect.signature(init).parameters.values()
+        names.update(
+            p.name
+            for p in params
+            if p.name != "self"
+            and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY)
+        )
+        if not any(p.kind is p.VAR_KEYWORD for p in params):
+            return names
+    return None
+
+
 def _supported(algorithm: str, kwargs: Dict) -> Dict:
     """Drop constructor kwargs a given solver does not accept.
 
@@ -172,17 +200,15 @@ def _supported(algorithm: str, kwargs: Dict) -> Dict:
     (``time_limt=5``), and dropping it silently would run the benchmark with
     the default -- so that raises.
     """
-    import inspect
-
     from .core.solver import _REGISTRY
 
-    known = set()
+    known: Optional[set] = set()
     for solver_cls in _REGISTRY.values():
-        params = inspect.signature(solver_cls.__init__).parameters.values()
-        if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params):
+        options = _accepted_options(solver_cls)
+        if options is None:
             known = None  # some solver takes anything: nothing is a typo
             break
-        known.update(p.name for p in params)
+        known |= options
     unknown = sorted(key for key in kwargs if known is not None and key not in known)
     if unknown:
         raise ValueError(
@@ -192,8 +218,8 @@ def _supported(algorithm: str, kwargs: Dict) -> Dict:
     cls = _REGISTRY.get(algorithm.lower())
     if cls is None:
         return kwargs
-    accepted = inspect.signature(cls.__init__).parameters
-    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in accepted.values()):
+    accepted = _accepted_options(cls)
+    if accepted is None:
         return kwargs
     return {key: value for key, value in kwargs.items() if key in accepted}
 
