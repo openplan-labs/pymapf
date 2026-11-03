@@ -162,7 +162,8 @@ def test_following_is_allowed():
     """A may enter the cell B is leaving -- that is not a conflict in MAPF."""
     grid = pymapf.GridMap([[1, 1, 1, 1, 1, 1], [1, 0, 0, 0, 0, 1], [1, 1, 1, 1, 1, 1]])
     problem = pymapf.MAPFProblem(
-        grid, [pymapf.Agent("A", (1, 1), (1, 4)), pymapf.Agent("B", (1, 2), (1, 4))]
+        # Distinct goals: two agents cannot share one, and MAPFProblem says so.
+        grid, [pymapf.Agent("A", (1, 1), (1, 3)), pymapf.Agent("B", (1, 2), (1, 4))]
     )
     env = MAPFEnv(problem)
     env.reset(seed=0)
