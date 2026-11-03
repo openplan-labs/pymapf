@@ -10,6 +10,8 @@ version's entry.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-03
+
 ### Added
 
 - **Joint trajectory optimisation in continuous space** (`pymapf.trajectory`):
