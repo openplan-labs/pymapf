@@ -1,0 +1,49 @@
+name: commits
+
+# Every commit in a pull request must follow Conventional Commits
+# (https://www.conventionalcommits.org): the version bump and the release
+# notes are computed from them by release-please. See CONTRIBUTING.md.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  conventional:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check commit subjects
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python - <<'PY'
+          import os, re, subprocess, sys
+          subjects = subprocess.run(
+              ["git", "log", "--no-merges", "--format=%h %s",
+               "%s..%s" % (os.environ["BASE"], os.environ["HEAD"])],
+              check=True, capture_output=True, text=True,
+          ).stdout.splitlines()
+          pattern = re.compile(
+              r"^(feat|fix|perf|revert|docs|refactor|test|build|ci|chore|style)"
+              r"(\([\w./-]+\))?!?: \S"
+          )
+          bad = [line for line in subjects
+                 if not pattern.match(line.split(" ", 1)[1])
+                 and not line.split(" ", 1)[1].startswith("Revert \"")]
+          for line in subjects:
+              print(("  ok  " if line not in bad else "  BAD ") + line)
+          if bad:
+              print()
+              print("These commit subjects are not Conventional Commits, so")
+              print("release-please cannot tell what version bump they need.")
+              print("Expected `type(scope): summary`, e.g. `fix(cbs): ...`,")
+              print("`feat(rl): ...`, or `feat!: ...` for a breaking change.")
+              print("See CONTRIBUTING.md#commit-messages-and-releases.")
+              sys.exit(1)
+          PY

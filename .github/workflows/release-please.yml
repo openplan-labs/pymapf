@@ -1,0 +1,86 @@
+name: release-please
+
+# Semantic versioning from the commit messages, with nobody choosing a number.
+#
+# On every push to main, release-please reads the Conventional Commits since
+# the last release and keeps one "release PR" open that bumps the version
+# (pymapf/__init__.py, CITATION.cff) and adds a changelog entry:
+#
+#   fix: / perf: / revert:  -> patch   0.9.0 -> 0.9.1
+#   feat: ...           -> minor   0.9.0 -> 0.10.0
+#   feat!: / BREAKING CHANGE: footer
+#                       -> major, except before 1.0, where it is a minor
+#                          (bump-minor-pre-major in release-please-config.json)
+#   docs/test/ci/chore/refactor/build/style -> no release on their own
+#
+# Merging the release PR tags the commit (vX.Y.Z), creates the GitHub Release,
+# and starts release.yml on that tag, which tests, builds, verifies and
+# publishes to PyPI exactly as a hand-pushed tag always did.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      prs_created: ${{ steps.release.outputs.prs_created }}
+      pr: ${{ steps.release.outputs.pr }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # release-please puts its entry above the first version heading, which is
+  # `## [Unreleased]` -- the hand-written notes this release is made of. Move
+  # them under the new version so the release PR shows the finished entry.
+  # Idempotent, and re-run whenever release-please rewrites its branch.
+  fold-changelog:
+    needs: release-please
+    if: needs.release-please.outputs.prs_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Fold the [Unreleased] notes into the release entry
+        run: |
+          python scripts/fold_changelog.py CHANGELOG.md
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: fold the [Unreleased] notes into the release entry"
+          git push
+
+  # A tag created with the workflow token does not trigger `on: push: tags`
+  # (GitHub suppresses workflow runs from GITHUB_TOKEN events), but a
+  # workflow_dispatch does. So release.yml is started explicitly, on the tag,
+  # and remains the one workflow PyPI's trusted publisher is registered for.
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start release.yml on the new tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG" -f target=pypi

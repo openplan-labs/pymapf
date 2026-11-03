@@ -84,7 +84,8 @@ Concretely, a new solver should come with:
      instances; bounded-suboptimal ones stay within their bound;
    - the solver is deterministic for a fixed seed;
    - unsolvable instances fail cleanly instead of looping.
-5. **A changelog entry** under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md).
+5. **A changelog entry** under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md),
+   and a `feat(...)` commit (see [Commit messages and releases](#commit-messages-and-releases)).
 
 Some conventions that keep the project usable everywhere:
 
@@ -101,6 +102,44 @@ Some conventions that keep the project usable everywhere:
 
 The [Adding your own solver](README.md#adding-your-own-solver) section of the
 README shows the minimum working example.
+
+## Commit messages and releases
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org).
+They are not decoration: [release-please](https://github.com/googleapis/release-please)
+reads them to decide the next version number and to write the changelog's
+commit list, and a CI check rejects a pull request whose commits do not parse.
+
+```text
+fix(cbs): reopen a node reached by a cheaper path
+feat(rl): add a lifelong throughput benchmark
+feat(core)!: reject agents that share a goal
+docs(readme): explain the playground fallback
+```
+
+| Commit type | What it releases |
+|---|---|
+| `fix:`, `perf:`, `revert:` | a patch, 0.9.0 to 0.9.1 |
+| `feat:` | a minor version, 0.9.0 to 0.10.0 |
+| `!` after the type, or a `BREAKING CHANGE:` footer | a major version, but a minor one while we are below 1.0 |
+| `docs:`, `test:`, `ci:`, `chore:`, `refactor:`, `build:`, `style:` | nothing on its own |
+
+The scope in parentheses is optional; use the package you touched (`cbs`,
+`rl`, `swarm`, `trajectory`, `viz`, `playground`...).
+
+How a release happens, with nobody choosing a number:
+
+1. Every merge to `main` updates one open **release PR**, titled
+   `chore(main): release X.Y.Z`, with the bumped version and the changelog
+   entry.
+2. Merging that PR tags the commit, creates the GitHub Release, and runs
+   `release.yml`, which tests, builds, checks the wheel in a clean
+   environment, and publishes to PyPI.
+
+The changelog has two parts. The commit list is generated. The explanation
+is yours: write it under `## [Unreleased]` in `CHANGELOG.md` (what was wrong,
+measured if you can, and what a user should do differently). The release
+workflow moves it under the new version heading.
 
 ## Pull request process
 

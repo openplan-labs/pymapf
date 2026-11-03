@@ -2,6 +2,10 @@ name: release
 
 # Builds, verifies and publishes the package, then opens a GitHub Release.
 #
+# Normally started by release-please.yml, on the tag it creates when a release
+# PR is merged (a tag pushed by the workflow token cannot trigger this file by
+# itself). Pushing a tag by hand still works the same way.
+#
 # Triggered by pushing a tag like `v0.7.0`. The tag is the single instruction:
 # the version is *read from the package*, and the job fails if the tag disagrees
 # with it, so a mislabelled artifact cannot be published by accident.

@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Releases are cut by [release-please](https://github.com/googleapis/release-please)
+from Conventional Commit messages (see CONTRIBUTING.md). Each release entry
+holds the notes written under *Unreleased* followed by the generated list of
+commits.
+
 ## [Unreleased]
 
 ### Added

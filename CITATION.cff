@@ -19,7 +19,7 @@ abstract: >-
   nonlinear model predictive control, velocity obstacles and swarm behaviours.
   The solver core is pure standard library and also runs in the browser.
 license: MIT
-version: 0.9.0
+version: 0.9.0 # x-release-please-version
 keywords:
   - multi-agent pathfinding
   - motion planning
