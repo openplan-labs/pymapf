@@ -59,6 +59,52 @@ def test_custom_solver_registration_and_use():
     assert get_solver("noop-test-solver").solve(None) is None
 
 
+def test_re_registering_the_same_class_is_allowed():
+    # What re-running a notebook cell does: same module, same qualified name.
+    from pymapf.core.solver import _REGISTRY
+
+    try:
+        for attempt in range(2):
+
+            @register_solver("rerun-test-solver")
+            class _Rerun(MAPFSolver):
+                version = attempt
+
+                def solve(self, problem, observer=None):
+                    return None
+
+        assert get_solver("rerun-test-solver").version == 1
+    finally:
+        _REGISTRY.pop("rerun-test-solver", None)
+
+
+def test_replace_overrides_a_different_class():
+    from pymapf.core.solver import _REGISTRY
+
+    try:
+
+        @register_solver("replace-test-solver")
+        class _First(MAPFSolver):
+            def solve(self, problem, observer=None):
+                return None
+
+        with pytest.raises(ValueError, match="replace=True"):
+
+            @register_solver("replace-test-solver")
+            class _Second(MAPFSolver):
+                def solve(self, problem, observer=None):
+                    return None
+
+        @register_solver("replace-test-solver", replace=True)
+        class _Third(MAPFSolver):
+            def solve(self, problem, observer=None):
+                return None
+
+        assert type(get_solver("replace-test-solver")) is _Third
+    finally:
+        _REGISTRY.pop("replace-test-solver", None)
+
+
 def test_problem_rejects_two_agents_on_one_start():
     # Planners used to return invalid plans (PP, LaCAM) or burn their whole
     # budget (CBS) on an instance that is unsolvable from t = 0.

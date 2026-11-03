@@ -329,13 +329,30 @@ class MAPFSolver(ABC):
 _REGISTRY: Dict[str, Type[MAPFSolver]] = {}
 
 
-def register_solver(name: str):
-    """Class decorator that registers a solver under ``name``."""
+def register_solver(name: str, replace: bool = False):
+    """Class decorator that registers a solver under ``name``.
+
+    Registering a *different* class under a taken name raises, unless
+    ``replace=True``: silently shadowing a built-in is a bug, not a feature.
+    Re-registering the same class -- same module and qualified name, which is
+    what re-running a notebook cell or reloading a module does -- simply
+    installs the new definition.
+    """
 
     def decorator(cls: Type[MAPFSolver]) -> Type[MAPFSolver]:
         key = name.lower()
-        if key in _REGISTRY:
-            raise ValueError("solver %r already registered" % name)
+        existing = _REGISTRY.get(key)
+        if existing is not None and not replace:
+            same = (existing.__module__, existing.__qualname__) == (
+                cls.__module__,
+                cls.__qualname__,
+            )
+            if not same:
+                raise ValueError(
+                    "solver %r is already registered by %s.%s; pass "
+                    "replace=True to override it"
+                    % (name, existing.__module__, existing.__qualname__)
+                )
         cls.name = key
         _REGISTRY[key] = cls
         return cls
