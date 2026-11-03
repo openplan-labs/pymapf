@@ -40,14 +40,19 @@ coordinates. On a six-vehicle instance that turns a 816-dimensional
 saddle-point system into a 144-dimensional one, which is the difference
 between seconds and milliseconds per iteration.
 
-**Speed and acceleration are met exactly, by dilating time.** Their
-linearised constraints are an *outer* approximation (the bound is convex, so
-its tangent plane lies outside it), so the optimiser can finish a hair over
-the limit. Rather than pretend otherwise, the result is time-dilated by the
-smallest factor that brings both within bounds. Dilation is safe in a way no
-other repair is: it scales every vehicle's clock by the same factor, so the
-fleet's geometry at corresponding times -- and therefore every pairwise
-separation -- is exactly preserved.
+**Speed and acceleration are kept inside the limits, then met exactly by
+dilating time.** The natural linearisation of ``‖ṗ‖ <= v_max`` -- the tangent
+plane at the current heading -- is an *outer* approximation (the bound is
+convex, so its tangent plane lies outside it), and the optimiser exploits it:
+the plane caps the speed along the old heading and nothing to the side. So the
+limits are written as a polytope *inscribed* in the ball instead, with a
+vertex on the current heading -- conservative in the same way the separation
+half-spaces are, and still exact along the direction of flight. That holds at
+the sample times; between them the speed can peak a hair over, so the result
+is time-dilated by the smallest factor that brings both within bounds. Dilation
+is safe in a way no other repair is: it scales every vehicle's clock by the
+same factor, so the fleet's geometry at corresponding times -- and therefore
+every pairwise separation -- is exactly preserved.
 
 **A discrete plan makes a good seed.** :func:`waypoints_from_solution` turns
 any :class:`~pymapf.Solution` into the waypoint lists this optimiser starts
@@ -60,6 +65,8 @@ obstacles but has no way to reason about which way *around* is better.
 
 from __future__ import annotations
 
+import functools
+import itertools
 import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
@@ -630,6 +637,16 @@ def plan_joint_trajectories(
     hessian = _hessian(layout, durations, minimise)
     gradient = np.zeros(layout.size)
 
+    times = np.linspace(0.0, duration, samples)
+    sampler = _Sampler(layout, durations, times, derivatives=(0, 1, 2))
+    limits = {
+        v.name: (
+            v.v_max if v.v_max is not None else v_max,
+            v.a_max if v.a_max is not None else a_max,
+        )
+        for v in fleet
+    }
+
     # -- the initial guess: minimum-snap through the seed's waypoints --------
     pinned_a, pinned_b = _equalities(
         layout, fleet, durations, boundary, continuity, pinned=seeds
@@ -639,10 +656,9 @@ def plan_joint_trajectories(
     # -- the affine set the optimiser really lives on ------------------------
     a, b = _equalities(layout, fleet, durations, boundary, continuity)
     affine = _Affine(a, b, layout.size)
+    guess = _within_limits(guess, a, b, sampler, layout, names, limits)
     z = affine.to_reduced(guess)
 
-    times = np.linspace(0.0, duration, samples)
-    sampler = _Sampler(layout, durations, times, derivatives=(0, 1, 2))
     # The true violation is measured on a finer grid than the one the
     # constraints are written on, so that "converged" means what
     # JointPlan.is_safe() means and not merely "feasible where we looked".
@@ -660,13 +676,6 @@ def plan_joint_trajectories(
         if inter_sample
         else sampler
     )
-    limits = {
-        v.name: (
-            v.v_max if v.v_max is not None else v_max,
-            v.a_max if v.a_max is not None else a_max,
-        )
-        for v in fleet
-    }
     radii = {v.name: v.radius for v in fleet}
 
     reduced_h = affine.basis.T @ hessian @ affine.basis
@@ -732,6 +741,65 @@ def plan_joint_trajectories(
     if enforce_limits:
         _dilate(plan, limits)
     return plan
+
+
+def _within_limits(guess, a, b, sampler, layout, names, limits) -> np.ndarray:
+    """The nearest trajectory to ``guess`` that keeps the speed and
+    acceleration limits at the samples, on the affine set ``Ax = b``.
+
+    The minimum-snap curve through a seed's waypoints is usually faster than
+    the limits allow -- 2.9 m/s on a straight 10 m flight limited to 2 -- and
+    the first trust region is too small to slow it down that much. That
+    subproblem is then infeasible, and the compromise a solver returns for an
+    infeasible problem is not even symmetric: the lone straight-line vehicle
+    came out weaving 0.6 m from side to side, and no later iteration undid
+    it. So the guess is first projected onto the limits (a convex problem:
+    the rows of :func:`_limit_rows` at the guess's own headings). From a
+    point inside them every later iterate satisfies its own limit rows, and
+    the trust region never has to choose between the two. The pinned
+    waypoints are released here -- they are what makes a fast seed fast --
+    but staying as close as possible to the guess keeps its shape. If the
+    limits cannot be met at all in the time given, the guess is returned
+    unchanged and the dilation at the end does the work.
+    """
+    velocities = {name: sampler.values(guess, name, 1) for name in names}
+    accelerations = {name: sampler.values(guess, name, 2) for name in names}
+    default = np.zeros(layout.dimension)
+    default[0] = 1.0
+    rows: List[np.ndarray] = []
+    upper: List[float] = []
+    for name in names:
+        _limit_rows(
+            rows,
+            upper,
+            sampler,
+            layout,
+            name,
+            velocities,
+            accelerations,
+            limits,
+            _unit,
+            default,
+        )
+    if not rows:
+        return guess
+    nearest = solve_qp(
+        np.eye(layout.size),
+        -guess,
+        a,
+        b,
+        np.array(rows),
+        np.array(upper),
+        x0=guess,
+    )
+    return nearest.x if nearest.converged else guess
+
+
+def _unit(vector: np.ndarray, fallback: np.ndarray) -> np.ndarray:
+    norm = float(np.linalg.norm(vector))
+    if norm < 1e-12:
+        return fallback
+    return vector / norm
 
 
 def _iterate(
@@ -937,9 +1005,8 @@ def _linearise(
     Separation and obstacle rows are *supporting half-spaces*: satisfying
     them implies the true constraint, so a feasible subproblem solution is
     genuinely collision-free at the sampled times. Speed and acceleration
-    rows are tangent planes to a ball from the inside, which is an outer
-    approximation -- they can be violated slightly, and the time dilation at
-    the end is what makes them exact.
+    rows are the faces of a polytope inscribed in the limit's ball, so they
+    are conservative in the same way; see :func:`_limit_rows`.
     """
     positions = {name: sampler.values(x, name, 0) for name in names}
     velocities = {name: sampler.values(x, name, 1) for name in names}
@@ -950,11 +1017,7 @@ def _linearise(
     n_samples = len(times)
     step = float(times[1] - times[0]) if n_samples > 1 else 0.0
 
-    def unit(vector: np.ndarray, fallback: np.ndarray) -> np.ndarray:
-        norm = float(np.linalg.norm(vector))
-        if norm < 1e-12:
-            return fallback
-        return vector / norm
+    unit = _unit
 
     def dip(relative_speed: np.ndarray, relative_acceleration: float) -> np.ndarray:
         """How far a distance can dip *between* two samples.
@@ -1113,6 +1176,55 @@ def _obstacle_rows(
             )
 
 
+#: Half the angle between the vertex the limit polytope puts on the current
+#: heading and the vertices either side of it; see :func:`_inscribed_polytope`.
+#: Smaller makes the polytope hug the ball more closely around the heading
+#: and allows less sideways speed while the heading is still turning.
+_LIMIT_HALF_ANGLE = math.radians(15.0)
+
+
+@functools.lru_cache(maxsize=None)
+def _inscribed_polytope(dimension: int) -> Tuple[np.ndarray, np.ndarray]:
+    """``(normals, bounds)`` of a polytope inside the unit ball, in the frame
+    ``(heading, lateral_1, ..., lateral_{n-1})``.
+
+    With ``a`` the component along the heading, ``b`` the lateral ones,
+    ``t = tan φ`` and ``s = sin 2φ``, the polytope is
+
+        ±a + t‖b‖₁ <= 1,      ‖b‖₁ <= s
+
+    and each ``‖·‖₁`` bound is one linear row per sign pattern of ``b``.
+    Every point of it lies in the ball: with ``r = ‖b‖₁ >= ‖b‖₂``,
+    ``‖v‖² <= (1 - t r)² + r²``, which is convex in ``r`` and equals 1 at both
+    ends of ``[0, s]`` -- that is what ``s = sin 2φ = 2t / (1 + t²)`` is. And
+    it touches the ball at ``±heading``, so a vehicle flying straight along
+    its current heading may use the whole limit.
+    """
+    lateral = dimension - 1
+    t = math.tan(_LIMIT_HALF_ANGLE)
+    s = math.sin(2.0 * _LIMIT_HALF_ANGLE)
+    signs = list(itertools.product((-1.0, 1.0), repeat=lateral))
+    normals: List[Tuple[float, ...]] = []
+    bounds: List[float] = []
+    for along in (1.0, -1.0):
+        for sign in signs:
+            normals.append((along,) + tuple(t * x for x in sign))
+            bounds.append(1.0)
+    if lateral:
+        for sign in signs:
+            normals.append((0.0,) + sign)
+            bounds.append(s)
+    return np.array(normals), np.array(bounds)
+
+
+def _frame(direction: np.ndarray) -> np.ndarray:
+    """An orthonormal basis of R^n, as rows, whose first row is ``direction``."""
+    n = len(direction)
+    basis = np.linalg.qr(np.column_stack([direction, np.eye(n)]))[0].T
+    basis[0] = direction  # QR returns it up to sign
+    return basis
+
+
 def _limit_rows(
     rows,
     upper,
@@ -1125,21 +1237,35 @@ def _limit_rows(
     unit,
     default,
 ):
-    """Tangent planes to the speed and acceleration balls.
+    """An inscribed polytope for the speed ball and the acceleration ball.
 
-    Unlike the separation rows these are an *outer* approximation -- the
-    bound is convex, so its tangent plane lies outside it -- which is why the
-    limits are met exactly afterwards, by dilating time.
+    The obvious linearisation -- the tangent plane ``ĥᵀv <= v_max`` at the
+    current heading ``ĥ`` -- is an *outer* approximation: it caps the speed
+    along the old heading and nothing sideways, so the next iterate can fly
+    faster than ``v_max`` by turning a little. The optimiser finds that and
+    exploits it. Given a straight 10 m flight it weaved 0.6 m from side to
+    side, oscillated between two shapes, and still needed its clock
+    stretched by 11% afterwards.
+
+    These rows are an *inner* approximation instead, aligned with the
+    current velocity (or acceleration): see :func:`_inscribed_polytope`. A
+    subproblem solution satisfies the true limit at every sample, and on its
+    own heading may use all of it, so the SCP's fixed points meet the limit
+    exactly. Only the times *between* samples are left to the dilation at
+    the end, which is why that dilation is now a fraction of a percent.
     """
     speed_limit, acceleration_limit = limits[first]
-    for s in range(len(velocities[first])):
-        direction = unit(velocities[first][s], default)
-        row = np.zeros(layout.size)
-        sampler.write(row, first, s, direction, 1)
-        rows.append(row)
-        upper.append(speed_limit)
-        direction = unit(accelerations[first][s], default)
-        row = np.zeros(layout.size)
-        sampler.write(row, first, s, direction, 2)
-        rows.append(row)
-        upper.append(acceleration_limit)
+    normals, bounds = _inscribed_polytope(layout.dimension)
+    for values, limit, derivative in (
+        (velocities[first], speed_limit, 1),
+        (accelerations[first], acceleration_limit, 2),
+    ):
+        if not math.isfinite(limit):
+            continue
+        for s in range(len(values)):
+            directions = normals @ _frame(unit(values[s], default))
+            for direction, bound in zip(directions, bounds):
+                row = np.zeros(layout.size)
+                sampler.write(row, first, s, direction, derivative)
+                rows.append(row)
+                upper.append(limit * bound)

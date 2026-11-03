@@ -513,12 +513,15 @@ separation constraints carry a bound on how far the distance can dip between
 two samples, computed from each pair's own relative speed; the paper enforces
 them at the sample times only, and the tests here measure what that costs
 (0.742 m realised against a 0.800 m requirement on a head-on pair). And the
-speed and acceleration limits, whose linearisation is an outer approximation,
-are met exactly afterwards by dilating the fleet's clock -- uniform dilation
-leaves every pairwise separation unchanged, so it cannot undo the work of the
-optimisation. Segment times are allocated by leg length with a floor rather
-than optimised as Mellinger and Kumar do; a one-cell leg from a grid seed
-would otherwise take a twentieth of the flight and dominate the snap cost.
+speed and acceleration limits are written as a polytope inscribed in the
+limit's ball and aligned with the current heading -- the tangent plane is an
+outer approximation, and the optimiser bought speed with a sideways weave
+through it -- and the overshoot left between samples is removed afterwards by
+dilating the fleet's clock; uniform dilation leaves every pairwise separation
+unchanged, so it cannot undo the work of the optimisation. Segment times are
+allocated by leg length with a floor rather than optimised as Mellinger and
+Kumar do; a one-cell leg from a grid seed would otherwise take a twentieth of
+the flight and dominate the snap cost.
 
 **Quadrotor docking** stacks three exact steps where CAPT solves one joint
 problem. CAPT's insight is that in free space the minimum-sum-of-squares

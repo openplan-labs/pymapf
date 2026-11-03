@@ -429,6 +429,21 @@ def test_time_dilation_meets_the_limits_and_preserves_every_separation():
     assert pair
 
 
+def test_the_speed_limit_is_not_bought_with_a_sideways_weave():
+    """A lone vehicle has no reason to leave a straight line. With the speed
+    limit linearised as a tangent plane it did: turning a little let it fly
+    faster than the limit along its old heading, so it weaved 0.6 m from side
+    to side, 12% over the limit until the clock was stretched to hide it."""
+    fleet = [Vehicle("a", (0.0, 0.0), (10.0, 0.0))]
+    raw = plan_joint_trajectories(fleet, v_max=2.0, a_max=4.0, enforce_limits=False)
+    assert raw.max_speed(0.005) <= 2.0 * 1.005  # only between the samples
+    plan = plan_joint_trajectories(fleet, v_max=2.0, a_max=4.0)
+    sideways = np.abs(plan.trajectories["a"].sample(plan.times(0.01))[:, 1]).max()
+    assert sideways < 0.02
+    assert plan.path_length("a") == pytest.approx(10.0, abs=1e-3)
+    assert plan.time_scale < 1.005
+
+
 # --------------------------------------------------------------------------
 # seeding from a discrete plan
 # --------------------------------------------------------------------------

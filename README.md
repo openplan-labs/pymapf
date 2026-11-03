@@ -371,12 +371,19 @@ Three things worth knowing, each measured:
   dip, derived from the pair's own relative speed. It costs 26% more snap and
   it is the difference between a plan that is safe and a plan that is safe
   where you looked. Pass `inter_sample=False` for the cheaper, weaker version.
-- **The speed limit is met by dilating time.** A norm bound is convex, so its
-  linearisation is an *outer* approximation and the optimiser can finish a
-  hair over. Rather than fudge it, the fleet's clock is scaled by the smallest
-  factor that brings every vehicle inside its envelope. Dilation scales every
-  vehicle equally, so the geometry — and every pairwise separation — is
-  preserved exactly. That is a test.
+- **The speed limit is an inscribed polytope, and time dilation does the
+  rest.** The tangent plane to a norm bound at the current heading is an
+  *outer* approximation, and the optimiser exploits it: given a straight
+  10 m flight, a lone vehicle weaved 0.6 m from side to side to fly faster
+  than the limit along its old heading. So the limit is written as a polytope
+  *inside* the ball, with a vertex on the current heading — conservative like
+  the separation half-spaces, and still exact along the direction of flight.
+  That holds at the samples; between them the speed can peak a hair over, so
+  the fleet's clock is then scaled by the smallest factor that brings every
+  vehicle inside its envelope: 1.001 on twelve random fleets, where the
+  tangent plane needed 1.10 to 1.33. Dilation scales every vehicle equally,
+  so the geometry — and every pairwise separation — is preserved exactly.
+  That is a test.
 - **A discrete plan makes a good seed.** `waypoints_from_solution(solution)`
   turns any CBS or LaCAM plan into the waypoints this optimiser starts from,
   which is how the fleet inherits a *globally* sensible homotopy — which side
