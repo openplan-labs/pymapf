@@ -129,6 +129,10 @@ def apply(theme="dark") -> Theme:
 
     Called by every plotting helper, so figures are consistent whether they are
     produced one at a time in a notebook or in a batch by the gallery script.
+
+    This changes matplotlib's *global* rcParams, so it also restyles figures
+    you make yourself afterwards. To keep it to PyMAPF's figures, call the
+    helpers inside ``with matplotlib.rc_context():``.
     """
     import matplotlib as mpl
 

@@ -203,3 +203,56 @@ def test_live_console_view_reports_failure():
     with view:
         pymapf.solve(problem, "cbs", observer=view, max_expansions=20)
     assert "failed" in stream.getvalue()
+
+
+# --------------------------------------------------------------------------
+# edge cases found in review
+# --------------------------------------------------------------------------
+
+
+def test_plot_spacetime_accepts_an_empty_plan(scenario):
+    """`legend(ncol=0)` used to raise for a plan with no agents."""
+    from pymapf.core.solver import Solution
+
+    ax = viz.plot_spacetime(Solution(paths={}), scenario)
+    assert ax.get_legend() is None
+
+
+def test_continuous_helpers_handle_a_single_vehicle_and_close_their_figures():
+    import matplotlib.pyplot as plt
+
+    pytest.importorskip("numpy")
+    from pymapf.trajectory.joint import Vehicle, plan_joint_trajectories
+
+    plt.close("all")
+    plan = plan_joint_trajectories([Vehicle("a", (0, 0), (3, 1))])
+    # One vehicle has no pair to measure: a clear error, not numpy's
+    # "zero-size array to reduction".
+    with pytest.raises(ValueError, match="at least two vehicles"):
+        viz.plot_separation(plan)
+    plt.close("all")
+    animation = viz.animate_trajectories(plan)
+    assert animation is not None
+    # Like animate_solution, the helper must not leave its figure open.
+    assert plt.get_fignums() == []
+
+
+def test_save_respects_an_ffmpeg_path_the_user_set(tmp_path, monkeypatch):
+    import matplotlib as mpl
+
+    from pymapf.viz import animate as animate_module
+
+    seen = {}
+
+    class FakeWriter:
+        def __init__(self, *args, **kwargs):
+            seen["path"] = mpl.rcParams["animation.ffmpeg_path"]
+
+    class FakeAnimation:
+        def save(self, path, writer=None, dpi=None):
+            pass
+
+    monkeypatch.setattr("matplotlib.animation.FFMpegWriter", FakeWriter)
+    with mpl.rc_context({"animation.ffmpeg_path": "/opt/custom/ffmpeg"}):
+        animate_module.save(FakeAnimation(), str(tmp_path / "out.mp4"))
+        assert seen["path"] == "/opt/custom/ffmpeg"

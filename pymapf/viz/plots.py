@@ -396,15 +396,16 @@ def plot_spacetime(
     ax.set_zlabel("time", color=resolved.muted, fontsize=8)
     ax.tick_params(colors=resolved.muted, labelsize=7)
     ax.set_title(title, color=resolved.ink, pad=12)
-    ax.legend(
-        loc="upper left",
-        bbox_to_anchor=(-0.06, 1.02),
-        fontsize=8,
-        ncol=min(8, len(names)),
-        columnspacing=1.1,
-        handlelength=1.4,
-        labelcolor=resolved.ink_secondary,
-    )
+    if names:  # legend(ncol=0) raises, and an empty plan has nothing to label
+        ax.legend(
+            loc="upper left",
+            bbox_to_anchor=(-0.06, 1.02),
+            fontsize=8,
+            ncol=min(8, len(names)),
+            columnspacing=1.1,
+            handlelength=1.4,
+            labelcolor=resolved.ink_secondary,
+        )
     ax.view_init(elev=22, azim=-58)
     return ax
 
