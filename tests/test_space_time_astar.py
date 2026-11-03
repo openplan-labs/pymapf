@@ -91,3 +91,13 @@ def test_default_heuristic_is_optimal_on_random_diagonal_maps():
             assert p is None
         else:
             assert len(p) - 1 == distance[goal]
+
+
+def test_a_forbidden_start_is_unsolvable_like_in_sipp():
+    from pymapf.algorithms.sipp import sipp
+
+    g = GridMap([[0, 0, 0]])
+    c = Constraints()
+    c.add_vertex((0, 0), 0)
+    assert sipp(g, (0, 0), (0, 2), constraints=c) is None
+    assert space_time_astar(g, (0, 0), (0, 2), constraints=c) is None

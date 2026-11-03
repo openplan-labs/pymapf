@@ -20,11 +20,21 @@ from .trace import Observer
 
 @dataclass(frozen=True)
 class Agent:
-    """A planning agent: a unique ``name`` with ``start`` and ``goal`` cells."""
+    """A planning agent: a unique ``name`` with ``start`` and ``goal`` cells.
+
+    Cells given as lists (``[0, 1]``, as JSON hands them over) are stored as
+    tuples: every solver hashes cells, and a list cannot be hashed.
+    """
 
     name: str
     start: Cell
     goal: Cell
+
+    def __post_init__(self):
+        for field_name in ("start", "goal"):
+            value = getattr(self, field_name)
+            if isinstance(value, list):
+                object.__setattr__(self, field_name, tuple(value))
 
 
 @dataclass
@@ -36,9 +46,23 @@ class MAPFProblem:
     allow_diagonals: bool = False
 
     def __post_init__(self):
+        self.agents = list(self.agents)
         names = [a.name for a in self.agents]
         if len(names) != len(set(names)):
             raise ValueError("agent names must be unique")
+        # Two agents cannot occupy one cell, at t = 0 or parked at the end, so
+        # a shared start or goal makes the instance unsolvable. Say so here
+        # rather than let each solver fail (or worse, "succeed") in its own way.
+        for attribute in ("start", "goal"):
+            claimed = {}
+            for a in self.agents:
+                cell = getattr(a, attribute)
+                if cell in claimed:
+                    raise ValueError(
+                        "agents %r and %r share the %s %s"
+                        % (claimed[cell], a.name, attribute, cell)
+                    )
+                claimed[cell] = a.name
         for a in self.agents:
             if not self.grid.is_free(a.start):
                 raise ValueError(

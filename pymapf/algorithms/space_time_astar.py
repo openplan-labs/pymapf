@@ -68,6 +68,9 @@ def space_time_astar(
     if max_timestep is None:
         max_timestep = grid.free_cells + last_constraint_t + 1
 
+    if constraints.blocks_vertex(start, 0):
+        return None  # standing somewhere it is forbidden to be (as SIPP does)
+
     counter = count()  # stable tie-breaker for the heap
     start_state = (start, 0)
     open_heap = [(h(start, goal), next(counter), start, 0)]

@@ -57,3 +57,24 @@ def test_custom_solver_registration_and_use():
 
     assert "noop-test-solver" in available_solvers()
     assert get_solver("noop-test-solver").solve(None) is None
+
+
+def test_problem_rejects_two_agents_on_one_start():
+    # Planners used to return invalid plans (PP, LaCAM) or burn their whole
+    # budget (CBS) on an instance that is unsolvable from t = 0.
+    grid = GridMap([[0, 0, 0], [0, 0, 0]])
+    with pytest.raises(ValueError, match="'a' and 'b' share the start"):
+        MAPFProblem(grid, [Agent("a", (0, 0), (1, 2)), Agent("b", (0, 0), (1, 1))])
+
+
+def test_problem_rejects_two_agents_on_one_goal():
+    grid = GridMap([[0, 0, 0], [0, 0, 0]])
+    with pytest.raises(ValueError, match="'a' and 'b' share the goal"):
+        MAPFProblem(grid, [Agent("a", (0, 0), (1, 2)), Agent("b", (0, 1), (1, 2))])
+
+
+def test_list_cells_become_tuples():
+    grid = GridMap([[0, 0, 0]])
+    problem = MAPFProblem(grid, [Agent("a", [0, 0], [0, 2])])
+    assert problem.agents[0].start == (0, 0)
+    assert pymapf.solve(problem, "cbs").paths["a"] == [(0, 0), (0, 1), (0, 2)]
