@@ -183,8 +183,7 @@ def _accepted_options(cls) -> Optional[set]:
         names.update(
             p.name
             for p in params
-            if p.name != "self"
-            and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY)
+            if p.name != "self" and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY)
         )
         if not any(p.kind is p.VAR_KEYWORD for p in params):
             return names

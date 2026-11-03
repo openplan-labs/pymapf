@@ -434,8 +434,7 @@ def from_ascii(text: str, name: str = "ascii", allow_diagonals: bool = False):
                 key, table = (char.upper(), starts) if char.islower() else (char, goals)
                 if key in table:
                     raise ValueError(
-                        "%r appears twice, at %s and %s"
-                        % (char, table[key], (r, c))
+                        "%r appears twice, at %s and %s" % (char, table[key], (r, c))
                     )
                 table[key] = (r, c)
 

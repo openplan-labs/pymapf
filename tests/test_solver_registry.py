@@ -165,7 +165,12 @@ def test_violations_report_conflicts_and_missing_agents():
     from pymapf.core.solver import Solution
 
     grid = GridMap([[0, 0]])
-    problem = MAPFProblem(grid, [Agent("a", (0, 0), (0, 1)), Agent("b", (0, 1), (0, 0))])
+    problem = MAPFProblem(
+        grid, [Agent("a", (0, 0), (0, 1)), Agent("b", (0, 1), (0, 0))]
+    )
     swap = Solution({"a": [(0, 0), (0, 1)], "b": [(0, 1), (0, 0)]})
     assert any("edge conflict" in v for v in swap.violations(problem))
-    assert any("'b' has no path" in v for v in Solution({"a": [(0, 0), (0, 1)]}).violations(problem))
+    assert any(
+        "'b' has no path" in v
+        for v in Solution({"a": [(0, 0), (0, 1)]}).violations(problem)
+    )

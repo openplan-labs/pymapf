@@ -47,9 +47,11 @@ def brute_force_sum_of_costs(problem):
             if not committed >> i & 1 and cells[i] == goals[i]:
                 successors.append((cost, (cells, committed | 1 << i)))
         options = [
-            [cells[i]]
-            if committed >> i & 1
-            else grid.neighbors(cells[i], diagonals) + [cells[i]]
+            (
+                [cells[i]]
+                if committed >> i & 1
+                else grid.neighbors(cells[i], diagonals) + [cells[i]]
+            )
             for i in range(n)
         ]
         step = cost + n - bin(committed).count("1")

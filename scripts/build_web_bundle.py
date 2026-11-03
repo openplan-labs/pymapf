@@ -188,7 +188,9 @@ def check(bundle_path: str) -> None:
             text=True,
         )
     if result.returncode != 0:
-        raise SystemExit("bundle %s does not import cleanly:\n%s" % (bundle_path, result.stderr))
+        raise SystemExit(
+            "bundle %s does not import cleanly:\n%s" % (bundle_path, result.stderr)
+        )
     print(result.stdout.strip())
 
 
