@@ -771,3 +771,24 @@ def test_the_summary_reports_what_a_caller_needs():
     assert summary["path_length"] > 0
     assert "JointPlan" in repr(plan)
     assert set(plan.positions(0.5)) == {"v0", "v1"}
+
+
+def test_numpy_is_a_declared_extra_and_its_absence_is_explained():
+    """``pymapf.trajectory`` imports numpy, which no extra used to declare."""
+    import subprocess
+
+    root = path.dirname(path.dirname(path.abspath(__file__)))
+    tomllib = pytest.importorskip("tomllib")
+    with open(path.join(root, "pyproject.toml"), "rb") as handle:
+        extras = tomllib.load(handle)["project"]["optional-dependencies"]
+    assert any(r.startswith("numpy") for r in extras["trajectory"])
+    assert any(r.startswith("numpy") for r in extras["all"])
+    hidden = (
+        "import sys; sys.modules['numpy'] = None; "
+        "import pymapf.kinodynamic, pymapf.aerial; import pymapf.trajectory"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", hidden], cwd=root, capture_output=True, text=True
+    )
+    assert result.returncode != 0
+    assert "pymapf[trajectory]" in result.stderr

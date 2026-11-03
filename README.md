@@ -91,6 +91,7 @@ algorithm step by step, and researchers who want a readable baseline. See
 ```bash
 pip install pymapf                 # the solver framework — no dependencies
 pip install "pymapf[viz]"          # + plots, animations and live views
+pip install "pymapf[trajectory]"   # + joint trajectory optimisation (numpy)
 pip install "pymapf[all]"          # + the decentralized/legacy planners
 ```
 
@@ -323,7 +324,9 @@ Everything above plans a **path**: cells on a graph, timed afterwards. This
 plans the **trajectory** itself, in continuous space, for the whole fleet at
 once. No grid: positions are floats in R², R³ or R^n, and velocity,
 acceleration and jerk are exact derivatives of a polynomial rather than
-differences of a sampled path.
+differences of a sampled path. It needs numpy — `pip install
+"pymapf[trajectory]"` — unlike the solvers, `pymapf.kinodynamic` and
+`pymapf.aerial`, which are pure Python.
 
 ```python
 from pymapf.trajectory import Vehicle, plan_joint_trajectories

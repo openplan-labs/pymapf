@@ -23,9 +23,22 @@ Seed it from a discrete plan when the routing decision matters::
     solution = pymapf.solve(scenario.to_problem(), "cbs")
     plan = plan_joint_trajectories(fleet, waypoints=waypoints_from_solution(solution))
 
-Requires numpy. See :mod:`pymapf.trajectory.joint` for the formulation and
+Requires numpy: ``pip install "pymapf[trajectory]"``. See
+:mod:`pymapf.trajectory.joint` for the formulation and
 :mod:`pymapf.trajectory.qp` for the solver it is built on.
 """
+
+from __future__ import annotations
+
+try:  # pragma: no cover - exercised by the import itself
+    import numpy  # noqa: F401
+except ModuleNotFoundError as error:  # pragma: no cover
+    raise ModuleNotFoundError(
+        "pymapf.trajectory needs numpy, which is optional: the discrete "
+        "solvers, pymapf.kinodynamic and pymapf.aerial run without it. "
+        "Install the extra with `pip install pymapf[trajectory]` (or "
+        "`pip install numpy`)."
+    ) from error
 
 from .joint import (
     JointPlan,
