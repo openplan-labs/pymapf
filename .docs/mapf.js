@@ -314,7 +314,8 @@ export function* prioritizedPlanning(problem, options = {}) {
 
 /**
  * Conflict-based search. `weight === 1` is optimal CBS; a larger weight runs
- * the focal (ECBS) variant, whose cost is bounded by weight × optimal.
+ * the focal variant (BCBS(w, 1): focal high level, optimal low level), whose
+ * cost is bounded by weight × optimal.
  */
 export function* conflictBasedSearch(problem, options = {}) {
   const started = performance.now();

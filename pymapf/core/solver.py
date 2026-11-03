@@ -43,6 +43,9 @@ class MAPFProblem:
 
     grid: GridMap
     agents: List[Agent]
+    # Diagonal moves cost one timestep, like straight ones. Note the conflict
+    # model does not forbid two agents crossing diagonally through each other;
+    # see :func:`find_first_conflict`.
     allow_diagonals: bool = False
 
     def __post_init__(self):
@@ -261,6 +264,13 @@ def find_first_conflict(paths: Dict[str, List[Cell]]) -> Optional[Conflict]:
 
     Paths are implicitly padded: once an agent reaches its goal it is assumed to
     stay there, so a shorter path still occupies its goal at later timesteps.
+
+    The conflict model is the standard one (Stern et al. 2019): a *vertex*
+    conflict is two agents in one cell, an *edge* conflict two agents swapping
+    cells. With diagonal moves, two agents crossing each other diagonally
+    inside one 2x2 block -- ``(0, 0) -> (1, 1)`` while another goes ``(0, 1)
+    -> (1, 0)`` -- share neither a cell nor an edge, so this is *not* a
+    conflict here, although the two would meet in the middle of the block.
     """
     names = list(paths)
     horizon = max((len(p) for p in paths.values()), default=0)

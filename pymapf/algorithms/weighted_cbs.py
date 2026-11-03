@@ -1,4 +1,4 @@
-"""Bounded-suboptimal CBS (focal search), a.k.a. the ECBS high level.
+"""Bounded-suboptimal CBS: focal search on the constraint tree, BCBS(w, 1).
 
 Vanilla CBS is optimal, and on corridor-heavy maps that optimality is paid for
 in an exponential constraint tree: every symmetric way of yielding in a corridor
@@ -13,11 +13,18 @@ selection typically drives the search straight at a valid plan.
 ``w = 1.0`` degenerates to CBS with a conflict tie-break; ``w = 1.5`` solves
 instances in milliseconds that plain CBS cannot finish in minutes.
 
+In the terms of Barer et al. (2014) this is **BCBS(w, 1)**: a focal high level
+with weight ``w`` over an *optimal* low level, whose lower bound is the
+cheapest cost in OPEN. It is not ECBS, which also runs a focal low level and
+bounds the high level by the sum of the low-level searches' own lower bounds;
+that is what lets ECBS pick from a larger focal set for the same guarantee.
+
 References
 ----------
 * Barer, M.; Sharon, G.; Stern, R.; and Felner, A. 2014. *Suboptimal variants of
   the conflict-based search algorithm for the multi-agent pathfinding problem.*
-  SOCS 2014: 19-27.  (ECBS: the focal-search high level implemented here)
+  SOCS 2014: 19-27.  (BCBS(w_H, w_L), implemented here with w_L = 1, and
+  ECBS)
 * Li, J.; Ruml, W.; and Koenig, S. 2021. *EECBS: A bounded-suboptimal search for
   multi-agent path finding.* AAAI 2021: 12353-12362.  (adds an inadmissible
   online-learned high-level heuristic on top of the same focal scheme)

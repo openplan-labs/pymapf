@@ -7,11 +7,12 @@ initial plan -- from PIBT, prioritized planning, LaCAM, anything -- then loops:
    around a congested vertex, or a connected component of interacting agents);
 2. **repair**: delete their paths and re-plan them one at a time against the
    *frozen* paths of everyone else, using :mod:`~pymapf.algorithms.sipp`;
-3. **accept** the new plan only if the sum of costs did not get worse.
+3. **accept** the new plan only if its sum of costs is strictly lower (and
+   it is collision-free); otherwise keep the current one.
 
 The neighbourhood is small (5-15 agents), so each iteration is milliseconds
-even with a thousand agents, and the accepted-only rule makes the cost curve
-monotone: stop whenever you like and you keep the best plan so far. Which
+even with a thousand agents, and the improve-only rule makes the cost curve
+monotone (never worse than the initial plan): stop whenever you like and you keep the best plan so far. Which
 destroy operator to use is chosen adaptively -- operators that have been paying
 off recently get picked more often (roulette weights, as in the original).
 
