@@ -22,7 +22,8 @@ Two are provided.
     than rigged.
 
 ``global``
-    The whole grid, every agent, every goal. Fully observable, mostly useful as
+    The whole grid, every agent, and this agent's goal. Fully observable
+    except for the other agents' goals, and mostly useful as
     a control: it tells you how much of a policy's failure is the observation
     and how much is the learning.
 
@@ -169,7 +170,7 @@ class LocalWindow(ObservationEncoder):
 
 
 class GlobalGrid(ObservationEncoder):
-    """The whole map, every agent, every goal -- full observability.
+    """The whole map, every agent and this agent's goal.
 
     A control rather than a proposal: it does not scale and it is not
     decentralized, but when a policy fails it separates "could not see enough"

@@ -622,7 +622,10 @@ worth knowing about:
 
 <sub>Read from [`.docs/assets/rl-benchmark.json`](.docs/assets/rl-benchmark.json),
 which `scripts/train_rl.py` writes. The [playground](https://openplan-labs.github.io/pymapf/#learning)
-renders all four settings from that same file.</sub>
+renders all four settings from that same file. These numbers predate three
+fixes to the learning layer (a goal bonus that could be farmed, truncated
+episodes valued at zero, and a MAPPO critic that could not tell agents apart;
+see the changelog); re-run the script to regenerate them.</sub>
 
 The same weights, evaluated two ways — and the gap has **two** causes, measured
 over 80 instances (33 greedy failures, no wall contacts, and in every case both

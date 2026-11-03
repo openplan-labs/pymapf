@@ -55,12 +55,23 @@ def PettingZooParallel(env: "MAPFEnv"):
             self.inner = inner
             self.possible_agents = list(inner.possible_agents)
             self.agents = list(inner.agents)
+            # Converted once: the API expects the same object on every call.
+            self._observation_spaces = {}
+            self._action_spaces = {}
 
         def observation_space(self, agent):
-            return to_gymnasium(self.inner.observation_space(agent))
+            if agent not in self._observation_spaces:
+                self._observation_spaces[agent] = to_gymnasium(
+                    self.inner.observation_space(agent)
+                )
+            return self._observation_spaces[agent]
 
         def action_space(self, agent):
-            return to_gymnasium(self.inner.action_space(agent))
+            if agent not in self._action_spaces:
+                self._action_spaces[agent] = to_gymnasium(
+                    self.inner.action_space(agent)
+                )
+            return self._action_spaces[agent]
 
         def reset(self, seed=None, options=None):
             observations, infos = self.inner.reset(seed=seed, options=options)
@@ -209,6 +220,9 @@ class VectorMAPFEnv:
             if done:
                 final_info = {agent: dict(entry) for agent, entry in info.items()}
                 final_observation = observation
+                # The global state at the horizon, for a centralized critic
+                # to bootstrap from; the reset below overwrites it.
+                final_state = env.state()
                 truncated = any(truncation.values())
                 observation, reset_info = env.reset(
                     seed=int(self._random.integers(1 << 30))
@@ -222,6 +236,7 @@ class VectorMAPFEnv:
                         # real terminal state, biases every estimate near the
                         # horizon downward.
                         final_observation=final_observation.get(agent),
+                        final_state=final_state,
                         truncated=truncated,
                     )
                     for agent in env.agents

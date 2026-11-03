@@ -361,9 +361,15 @@ def save(
         animation.save(path, writer="pillow", fps=fps, dpi=dpi)
         return path
 
+    import shutil
+
     import matplotlib as mpl
 
-    if not mpl.rcParams.get("animation.ffmpeg_path", "ffmpeg") or True:
+    # Fall back to the ffmpeg bundled with imageio-ffmpeg only when the user has
+    # not pointed matplotlib at one and there is none on PATH. This used to read
+    # `... or True`, which overwrote a path the user had set on purpose.
+    configured = mpl.rcParams.get("animation.ffmpeg_path", "ffmpeg")
+    if configured == "ffmpeg" and shutil.which("ffmpeg") is None:
         try:  # a bundled ffmpeg is the difference between "works" and "install ffmpeg"
             import imageio_ffmpeg
 

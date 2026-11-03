@@ -234,3 +234,30 @@ def test_one_shot_summaries_are_unchanged():
     _, summary = rollout(env, PIBTPolicy(env), seed=1)
     assert "throughput" not in summary
     assert set(summary) >= {"solved", "steps", "collisions", "sum_of_costs", "makespan"}
+
+
+def test_an_agent_with_nowhere_new_to_go_is_not_counted_again_every_step():
+    """With every free cell taken, `_new_goal` keeps the current goal. Staying
+    on it is not another completed task: this used to report 102 completions
+    for four real arrivals."""
+    STAY, UP, DOWN, LEFT, RIGHT = range(5)
+    grid = pymapf.GridMap([[0, 0, 0], [0, 0, 0]])
+    problem = pymapf.MAPFProblem(
+        grid,
+        [
+            pymapf.Agent("A", (0, 0), (0, 1)),
+            pymapf.Agent("B", (0, 1), (0, 2)),
+            pymapf.Agent("C", (1, 2), (1, 1)),
+            pymapf.Agent("D", (1, 1), (1, 0)),
+        ],
+    )
+    env = MAPFEnv(problem, lifelong=True, max_steps=50)
+    env.reset(seed=0)
+    env.step({"A": RIGHT, "B": RIGHT, "C": LEFT, "D": LEFT})
+    arrivals = env.goals_completed
+    assert arrivals == 4
+    while env.agents:
+        env.step({agent: STAY for agent in env.agents})
+    # Some agents may have been re-tasked onto a cell another one vacated, but
+    # nobody moved, so nobody can have arrived anywhere new.
+    assert env.goals_completed == arrivals

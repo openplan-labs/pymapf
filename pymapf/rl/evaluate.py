@@ -22,6 +22,7 @@ rather than counted as learned-policy wins.
 
 from __future__ import annotations
 
+import inspect
 import time
 from typing import Dict, List, Optional, Sequence
 
@@ -141,12 +142,28 @@ def plan(problem, algorithm: str, time_limit: float = 5.0):
 
 
 def _ask(policy, observations, deterministic):
+    """One joint action from anything that looks like a policy.
+
+    ``deterministic`` is passed only to an ``act`` that declares it. Catching a
+    ``TypeError`` instead would also swallow a real one raised inside ``act``,
+    and silently retry in a different mode.
+    """
     if hasattr(policy, "act"):
-        try:
+        if _accepts(policy.act, "deterministic"):
             return policy.act(observations, deterministic=deterministic)
-        except TypeError:
-            return policy.act(observations)
+        return policy.act(observations)
     return policy(observations)
+
+
+def _accepts(function, keyword: str) -> bool:
+    try:
+        parameters = inspect.signature(function).parameters.values()
+    except (TypeError, ValueError):  # builtins without a signature
+        return False
+    return any(
+        parameter.name == keyword or parameter.kind is parameter.VAR_KEYWORD
+        for parameter in parameters
+    )
 
 
 def evaluate(

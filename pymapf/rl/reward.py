@@ -131,8 +131,12 @@ class SparseReward(RewardFunction):
             reward += self.collision
         elif blocked:
             reward += self.blocked
-        if at_goal and not was_at_goal:
-            reward += self.goal
+        # Arriving pays the bonus and leaving pays it back. Paying it on
+        # arrival alone made a loop off the goal and back worth more than
+        # staying (+8.6 against 0 over twenty steps at gamma 0.99), so the
+        # optimal policy never parked. As a difference of an indicator, the
+        # bonus is itself a potential and cannot be farmed.
+        reward += self.goal * (int(at_goal) - int(was_at_goal))
         return reward
 
 

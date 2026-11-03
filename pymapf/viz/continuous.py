@@ -180,6 +180,11 @@ def plot_separation(
     if ax is None:
         _, ax = plt.subplots(figsize=(6.4, 2.8))
     names = list(plan.trajectories)
+    if len(names) < 2:
+        raise ValueError(
+            "plot_separation needs at least two vehicles; this plan has %d, "
+            "so there is no pair to measure" % len(names)
+        )
     times = plan.times(dt)
     tracks = {name: plan.trajectories[name].sample(times) for name in names}
     closest = np.full(len(times), np.inf)
@@ -233,6 +238,7 @@ def animate_trajectories(
     """
     import numpy as np
     from matplotlib.animation import FuncAnimation
+    import matplotlib.pyplot as plt
 
     resolved = theme_module.apply(theme)
     names = list(plan.trajectories)
@@ -282,7 +288,14 @@ def animate_trajectories(
         )
         return list(bodies.values()) + list(trails.values()) + [readout]
 
-    return FuncAnimation(figure, update, frames=frames, interval=1000 * dt, blit=False)
+    animation = FuncAnimation(
+        figure, update, frames=frames, interval=1000 * dt, blit=False
+    )
+    # As in `animate_solution`: the animation keeps a reference to the figure,
+    # and closing it stops a notebook from also rendering the still frame and
+    # stops a batch script from accumulating open figures.
+    plt.close(figure)
+    return animation
 
 
 def _artists(ax, names, colors, radii, dimension, resolved):

@@ -13,7 +13,9 @@ only difference is **what the critic is allowed to look at**:
 
 ``mappo``
     Multi-Agent PPO (Yu et al. 2022). The critic sees the *global state*:
-    every agent's position and goal. Centralized training, decentralized
+    every agent's position and goal, plus which agent it is valuing (their
+    rewards differ, so one value per state would be the average of them).
+    Centralized training, decentralized
     execution -- at run time the policy still only sees its own window, so the
     learned controller is just as deployable, but the value estimates it was
     trained against were not fighting the same non-stationarity.
@@ -208,7 +210,9 @@ class PPOTrainer:
         self.streams = n_envs * len(self.agents)
 
         obs_dim = int(env.observation_space(self.agents[0]).shape[0])
-        critic_dim = env.state_size if self.centralized_critic else obs_dim
+        critic_dim = (
+            env.state_size + len(self.agents) if self.centralized_critic else obs_dim
+        )
         self.policy: ActorCritic = make_actor_critic(
             backend,
             obs_dim=obs_dim,
@@ -249,10 +253,53 @@ class PPOTrainer:
     ) -> np.ndarray:
         if not self.centralized_critic:
             return self._stack(observations)
-        # One global state per environment, repeated for each of its agents:
-        # they share a state, they do not share an observation.
-        states = self.vector.state()
-        return np.repeat(states, len(self.agents), axis=0)
+        return self._agent_specific(self.vector.state())
+
+    def _agent_specific(self, states: np.ndarray) -> np.ndarray:
+        """``[envs, state]`` to ``[envs * agents, state + agents]``.
+
+        The global state is the same for every agent of an environment, but
+        their rewards and returns are not. A critic fed the bare state would
+        have to give all of them one value, the average, so each row also
+        carries a one-hot of the agent it is valued for: the "agent-specific
+        global state" of Yu et al. (2022).
+        """
+        n_agents = len(self.agents)
+        repeated = np.repeat(np.atleast_2d(states), n_agents, axis=0)
+        identity = np.tile(
+            np.eye(n_agents, dtype=np.float32), (len(repeated) // n_agents, 1)
+        )
+        return np.concatenate([repeated, identity], axis=1).astype(np.float32)
+
+    def _truncation_bootstrap(self, infos) -> np.ndarray:
+        """``V(final state)`` for every stream whose episode was truncated, else 0.
+
+        A truncated episode is cut by the time limit, not finished, so its
+        return does not stop at the horizon. GAE cuts the recursion at every
+        episode end (the next observation already belongs to a new episode),
+        so the value the cut would drop is added to the last reward instead,
+        as ``gamma * V(s_T)``. Without it every estimate near the horizon is
+        biased low, and a lifelong episode -- which only ever ends by
+        truncation -- is biased throughout.
+        """
+        bootstrap = np.zeros(self.streams, dtype=np.float32)
+        rows, inputs = [], []
+        index = 0
+        for info in infos:
+            for offset, agent in enumerate(self.agents):
+                entry = info.get(agent, {})
+                if entry.get("truncated"):
+                    if self.centralized_critic:
+                        inputs.append(
+                            self._agent_specific(entry["final_state"])[offset]
+                        )
+                    else:
+                        inputs.append(entry["final_observation"])
+                    rows.append(index)
+                index += 1
+        if rows:
+            bootstrap[rows] = self.policy.value(np.stack(inputs).astype(np.float32))
+        return bootstrap
 
     def collect(self, observations):
         """Fill the buffer with one rollout, returning the trailing observations."""
@@ -285,6 +332,7 @@ class PPOTrainer:
                 ],
                 dtype=np.float32,
             )
+            flat_rewards += self.gamma * self._truncation_bootstrap(infos)
             flat_dones = np.array(
                 [
                     float(
