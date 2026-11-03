@@ -384,10 +384,16 @@ Three things worth knowing, each measured:
   tangent plane needed 1.10 to 1.33. Dilation scales every vehicle equally,
   so the geometry — and every pairwise separation — is preserved exactly.
   That is a test.
-- **A discrete plan makes a good seed.** `waypoints_from_solution(solution)`
-  turns any CBS or LaCAM plan into the waypoints this optimiser starts from,
-  which is how the fleet inherits a *globally* sensible homotopy — which side
-  of the obstacle, who goes first — that no local optimiser can find on its own.
+- **A discrete plan makes a good seed — for the route.**
+  `waypoints_from_solution(solution)` turns any CBS or LaCAM plan into the
+  waypoints this optimiser starts from, which is how the fleet inherits a
+  *globally* sensible route — which way round each other and round the walls
+  — that no local optimiser can find on its own. Two things do not carry
+  over. Waits are dropped and knot times come from leg lengths, so who goes
+  first is left to the optimiser. And the grid's blocked cells are not
+  constraints of the continuous problem: the waypoints are not pinned, so a
+  smoothed corner can cut across a blocked cell. Only the spheres passed as
+  `obstacles=` are avoided.
 
 Validated against `scipy.optimize.minimize(method="SLSQP")` on the same
 problem: the same optimum to **3.8 × 10⁻¹¹** relative, and the same closest

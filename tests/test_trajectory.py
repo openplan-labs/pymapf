@@ -490,6 +490,11 @@ def test_a_wait_on_a_corner_keeps_the_corner_and_a_parked_agent_has_a_leg():
 
 
 def test_a_discrete_plan_seeds_the_optimiser_through_an_obstacle_field():
+    """The fleet stays apart and keeps its endpoints. The grid's walls are
+    *not* checked: they are not constraints of the continuous problem (only
+    ``obstacles=`` spheres are), and on this instance three of the four
+    smoothed trajectories cut across a blocked cell -- see the module
+    docstring."""
     pymapf = pytest.importorskip("pymapf")
     scenario = pymapf.build_scenario(
         "random_obstacles", height=10, width=10, n_agents=4, seed=1
@@ -522,6 +527,27 @@ def test_a_discrete_plan_seeds_the_optimiser_through_an_obstacle_field():
         assert trajectory(plan.duration) == pytest.approx(
             np.asarray(agent.goal, dtype=float), abs=1e-6
         )
+
+
+def test_a_straight_seed_still_leaves_the_optimiser_room_to_avoid():
+    """CBS makes ``a`` wait so that ``b`` crosses first. Both paths are
+    straight, so each seed simplified to a single leg -- one segment of
+    order 7, every coefficient fixed by the boundary conditions -- and the
+    pair finished 0.024 m apart for a 0.6 m requirement, with no error."""
+    pymapf = pytest.importorskip("pymapf")
+    grid = pymapf.GridMap([[0] * 5 for _ in range(5)])
+    agents = [pymapf.Agent("a", (2, 0), (2, 4)), pymapf.Agent("b", (0, 2), (4, 2))]
+    solution = pymapf.solve(pymapf.MAPFProblem(grid, agents), "cbs")
+    fleet = [Vehicle(a.name, a.start, a.goal, radius=0.3) for a in agents]
+    plan = plan_joint_trajectories(
+        fleet, waypoints=waypoints_from_solution(solution), v_max=2.0, a_max=4.0
+    )
+    assert all(len(t.durations) >= 4 for t in plan.trajectories.values())
+    assert plan.converged
+    assert plan.min_separation(0.005)[0] >= 0.6 - 1e-9
+    # Asked for outright, a trajectory with no freedom is refused, not flown.
+    with pytest.raises(ValueError, match="no freedom"):
+        plan_joint_trajectories(fleet, segments=1)
 
 
 # --------------------------------------------------------------------------

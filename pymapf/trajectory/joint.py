@@ -54,13 +54,18 @@ is safe in a way no other repair is: it scales every vehicle's clock by the
 same factor, so the fleet's geometry at corresponding times -- and therefore
 every pairwise separation -- is exactly preserved.
 
-**A discrete plan makes a good seed.** :func:`waypoints_from_solution` turns
-any :class:`~pymapf.Solution` into the waypoint lists this optimiser starts
-from, which is how a fleet gets a *globally* sensible homotopy (which side of
-the obstacle, who goes first) from a complete MAPF solver before the
-continuous optimiser makes it smooth and fast. Without a seed the initial
-guess is a straight line, and the optimiser will find a way around convex
-obstacles but has no way to reason about which way *around* is better.
+**A discrete plan makes a good seed -- for the route.**
+:func:`waypoints_from_solution` turns any :class:`~pymapf.Solution` into the
+waypoint lists this optimiser starts from, which is how a fleet gets a
+*globally* sensible route (which way round each other and round the walls)
+from a complete MAPF solver before the continuous optimiser makes it smooth
+and fast. Without a seed the initial guess is a straight line, and the
+optimiser will find a way around convex obstacles but has no way to reason
+about which way *around* is better. Two things do not carry over. The discrete
+plan's waits are dropped and knot times come from leg lengths, so who goes
+first is the optimiser's decision. And the grid's blocked cells are not
+constraints here: the waypoints are not pinned, so a smoothed corner can cut
+across a blocked cell. Only the spheres passed as ``obstacles`` are avoided.
 """
 
 from __future__ import annotations
@@ -385,6 +390,9 @@ def waypoints_from_solution(
             carry the routing decision.
 
     Use the result as ``waypoints=`` to :func:`plan_joint_trajectories`.
+    The result is geometry only: waits are not represented, and nothing
+    here tells the optimiser which cells were blocked -- see the module
+    docstring.
     """
     out: Dict[str, np.ndarray] = {}
     for name, path in solution.paths.items():
@@ -591,8 +599,10 @@ def plan_joint_trajectories(
         duration: the fleet's makespan in seconds. ``None`` sizes it from the
             longest seed path at ``0.7 * v_max``, leaving room to accelerate
             and to detour.
-        segments: polynomial pieces per vehicle when no waypoints are given;
-            with waypoints, each leg is a segment.
+        segments: polynomial pieces per vehicle. With waypoints each leg is
+            a segment, and the longest legs are halved until there are at
+            least this many: a single straight leg leaves the optimiser
+            nothing to work with.
         order: polynomial degree per piece. 7 is the classical choice for a
             snap objective -- eight coefficients, enough for position,
             velocity, acceleration and jerk at both ends of a segment.
@@ -606,7 +616,9 @@ def plan_joint_trajectories(
         waypoints: ``{name: points}`` to seed from -- see
             :func:`waypoints_from_solution`. Interior waypoints are *not*
             pinned in the optimisation; they set the time allocation and the
-            initial guess, and the optimiser is free to leave them.
+            initial guess, and the optimiser is free to leave them. Only the
+            geometry is used: knot times come from leg lengths, so a wait in
+            the discrete plan does not survive into the seed.
         samples: times at which the constraints are enforced, over the whole
             flight. The guarantee is at these times; the result's
             :meth:`JointPlan.min_separation` samples much more finely, and
@@ -645,6 +657,7 @@ def plan_joint_trajectories(
         fleet, waypoints, segments, dimension, duration, v_max
     )
     layout = _Layout(names, {n: len(durations[n]) for n in names}, dimension, order)
+    _check_freedom(layout, order, boundary, continuity)
 
     hessian = _hessian(layout, durations, minimise)
     gradient = np.zeros(layout.size)
@@ -929,6 +942,7 @@ def _seed(fleet, waypoints, segments, dimension, duration, v_max):
             raise ValueError("waypoints for %r have the wrong shape" % name)
         if len(points) < 2:
             raise ValueError("waypoints for %r need at least two points" % name)
+        seeds[name] = _split_legs(points, segments)
     if duration is None:
         # Cruising at 70% of the limit leaves room to accelerate into the
         # corners and to detour around whoever is in the way.
@@ -943,6 +957,45 @@ def _seed(fleet, waypoints, segments, dimension, duration, v_max):
         for name, points in seeds.items()
     }
     return seeds, durations, duration
+
+
+def _split_legs(points: np.ndarray, pieces: int) -> np.ndarray:
+    """Halve the longest leg until there are at least ``pieces`` of them.
+
+    A seed from a grid plan is simplified to its corners, so a vehicle that
+    flies straight gets a single leg -- and one segment of order 7 has eight
+    coefficients per axis, every one of them fixed by the eight boundary
+    conditions. Such a vehicle cannot swerve, slow down or wait: two of them
+    crossing a 5x5 grid finished 0.024 m apart for a 0.6 m requirement, and
+    nothing said why. The extra knots only shape the initial guess and the
+    time allocation; they are not pinned.
+    """
+    points = [np.asarray(point, dtype=float) for point in points]
+    while len(points) - 1 < pieces:
+        legs = [np.linalg.norm(b - a) for a, b in zip(points, points[1:])]
+        k = int(np.argmax(legs))
+        points.insert(k + 1, 0.5 * (points[k] + points[k + 1]))
+    return np.array(points)
+
+
+def _check_freedom(layout, order, boundary, continuity) -> None:
+    """Refuse a vehicle whose trajectory the equalities fix completely.
+
+    Each segment has ``order + 1`` coefficients per axis; the two ends take
+    ``boundary + 1`` conditions each and every internal knot ``continuity +
+    1``. If that leaves nothing, the optimiser can move the vehicle nowhere,
+    and would report a collision it was never able to avoid.
+    """
+    for name, pieces in layout.segments.items():
+        coefficients = pieces * (order + 1)
+        conditions = 2 * (boundary + 1) + (pieces - 1) * (continuity + 1)
+        if coefficients <= conditions:
+            raise ValueError(
+                "%r has no freedom left: %d segment(s) of order %d have %d "
+                "coefficients per axis and its boundary and continuity "
+                "conditions fix all of them; use more segments or a higher "
+                "order" % (name, pieces, order, coefficients)
+            )
 
 
 def _validate(fleet, obstacles, order, boundary, segments, clearance) -> int:
