@@ -58,7 +58,9 @@ Voxel = Tuple[int, int, int]
 
 @dataclass(frozen=True)
 class DockingStation:
-    """A pad on the ground. ``position`` is ``(x, y, z)`` in metres."""
+    """A pad on the ground. ``position`` is ``(x, y, z)`` in metres, at the
+    centre of a voxel of the airspace it is used in (``Airspace.position``).
+    """
 
     name: str
     position: Point
@@ -68,6 +70,8 @@ class DockingStation:
 class Quadrotor:
     """A vehicle: where it hovers, how big it is, and optionally its own
     limits (a heavier vehicle is slower; the fleet default applies otherwise).
+    :func:`plan_docking` needs ``position`` at a voxel centre
+    (``Airspace.position``) and refuses one that is not.
     """
 
     name: str
@@ -352,6 +356,26 @@ class DockingPlan:
         }
 
 
+def _centred_voxel(airspace: Airspace, point: Sequence[float], who: str) -> Voxel:
+    """The voxel ``point`` is the centre of; refuse a point that is not one.
+
+    The routes start and end at voxel centres. Snapping to the nearest one
+    quietly moved a quadrotor hovering at (2.2, 2.2, 3.7) to (1.5, 1.5, 3.0)
+    -- a metre away, through air no constraint had looked at -- and the plan
+    began there as if it had always been.
+    """
+    voxel = airspace.voxel(point)
+    centre = airspace.position(voxel)
+    off = math.dist(tuple(float(x) for x in point), centre)
+    if off > 1e-6 * max(1.0, airspace.cell_size):
+        raise ValueError(
+            "%s at %s, %.3f m from the centre %s of voxel %s; plans start and end "
+            "at voxel centres (Airspace.position), so place it on one or fly it "
+            "there first" % (who, tuple(point), off, centre, voxel)
+        )
+    return voxel
+
+
 def plan_docking(
     quadrotors: Sequence[Quadrotor],
     airspace: Airspace,
@@ -384,8 +408,8 @@ def plan_docking(
 
     Raises:
         ValueError: on an ill-posed instance -- a vehicle outside the free
-            airspace, two on the same voxel, a safety distance larger than a
-            voxel, more vehicles than stations.
+            airspace or off the centre of its voxel, two on the same voxel, a
+            safety distance larger than a voxel, more vehicles than stations.
         RuntimeError: when the solver finds no conflict-free routes in time.
     """
     stations = list(stations if stations is not None else airspace.stations())
@@ -411,7 +435,7 @@ def plan_docking(
 
     starts: Dict[Voxel, str] = {}
     for q in fleet:
-        voxel = airspace.voxel(q.position)
+        voxel = _centred_voxel(airspace, q.position, "%s hovers" % q.name)
         if not airspace.grid.is_free(voxel):
             raise ValueError(
                 "%s hovers at %s, which is not free airspace" % (q.name, voxel)
@@ -426,7 +450,12 @@ def plan_docking(
         assignment = assign_stations(fleet, stations, airspace)
     by_name = {s.name: s for s in stations}
     goals = {
-        q.name: airspace.voxel(by_name[assignment[q.name]].position) for q in fleet
+        q.name: _centred_voxel(
+            airspace,
+            by_name[assignment[q.name]].position,
+            "station %s is" % assignment[q.name],
+        )
+        for q in fleet
     }
     if len(set(goals.values())) != len(goals):
         raise ValueError("the assignment sends two quadrotors to the same station")
