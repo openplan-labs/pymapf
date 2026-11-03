@@ -157,6 +157,7 @@ export function spaceTimeAStar(grid, start, goal, constraints = null, options = 
   const { heuristic = null, allowDiagonals = false } = options;
   const h = resolveHeuristic(heuristic, allowDiagonals);
   const cons = constraints || newConstraints();
+  if (blocksVertex(cons, start, 0)) return null; // forbidden start, as in Python
 
   const settleTime = cons.lastVertex.get(key(goal[0], goal[1])) ?? -1;
   let lastConstraintT = 0;
