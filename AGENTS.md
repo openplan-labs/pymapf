@@ -55,10 +55,11 @@ Layout:
 ### Commits and releases
 - Commit subjects must be Conventional Commits (`fix(scope): ...`, `feat(scope): ...`,
   `feat!:` for a breaking change). The `commits` workflow rejects anything else, and
-  release-please computes the version bump from them. Never edit the version by hand
-  in `pymapf/__init__.py` or `CITATION.cff`; the release PR does it.
-- Write the explanation of a change under `## [Unreleased]` in `CHANGELOG.md`.
-  `scripts/fold_changelog.py` moves it into the release entry on the release PR.
+  every merge to `main` releases what they call for (`fix` patch, `feat` minor, `!`
+  breaking; see `release.yml` and `scripts/release/`). Never edit the version by hand
+  in `pymapf/__init__.py` or `CITATION.cff`; the release commit does it.
+- Write the explanation of a change under `## [Unreleased]` in `CHANGELOG.md`; the
+  release moves it under the new version's dated heading.
 
 ### Commands
 - Lint (matches CI): `flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.venv`

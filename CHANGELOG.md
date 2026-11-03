@@ -4,10 +4,9 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Releases are cut by [release-please](https://github.com/googleapis/release-please)
-from Conventional Commit messages (see CONTRIBUTING.md). Each release entry
-holds the notes written under *Unreleased* followed by the generated list of
-commits.
+Every merge to `main` releases what its Conventional Commits call for (see
+CONTRIBUTING.md): the notes written under *Unreleased* become the new
+version's entry.
 
 ## [Unreleased]
 
@@ -190,6 +189,15 @@ commits.
 
 ### Changed
 
+- **Merging is releasing.** Every merge to `main` releases what its
+  Conventional Commits call for -- `fix`/`perf`/`revert` a patch, `feat` a
+  minor version, a breaking change (`!`) a major one, or a minor one while
+  below 1.0 -- with no release PR to approve and no version number to choose.
+  `release.yml` bumps `pymapf/__init__.py` and `CITATION.cff`, dates these
+  notes, commits and tags `vX.Y.Z`, then tests, builds, verifies and
+  publishes in the same run. A `release:major|minor|patch|none` label on a
+  pull request overrides its commits. A `commits` check rejects pull requests
+  whose commit subjects are not Conventional Commits.
 - `CITATION.cff` now describes the software itself, so GitHub's "Cite this
   repository" button cites PyMAPF rather than the 2021 survey. The survey is
   kept as a reference.

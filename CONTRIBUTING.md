@@ -106,9 +106,9 @@ README shows the minimum working example.
 ## Commit messages and releases
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org).
-They are not decoration: [release-please](https://github.com/googleapis/release-please)
-reads them to decide the next version number and to write the changelog's
-commit list, and a CI check rejects a pull request whose commits do not parse.
+They are not decoration: the release workflow reads them to decide the next
+version number, and a CI check rejects a pull request whose commits do not
+parse.
 
 ```text
 fix(cbs): reopen a node reached by a cheaper path
@@ -127,19 +127,22 @@ docs(readme): explain the playground fallback
 The scope in parentheses is optional; use the package you touched (`cbs`,
 `rl`, `swarm`, `trajectory`, `viz`, `playground`...).
 
-How a release happens, with nobody choosing a number:
+**Merging is releasing.** Nobody picks a number and nothing waits for an
+approval: when a pull request lands on `main`, `release.yml` reads the
+commits since the last release, and if any of them calls for a release it
+bumps the version, dates the changelog, commits and tags `vX.Y.Z`, tests the
+tag on every supported Python, checks the wheel in a clean environment, and
+publishes it to PyPI and as a GitHub Release.
 
-1. Every merge to `main` updates one open **release PR**, titled
-   `chore(main): release X.Y.Z`, with the bumped version and the changelog
-   entry.
-2. Merging that PR tags the commit, creates the GitHub Release, and runs
-   `release.yml`, which tests, builds, checks the wheel in a clean
-   environment, and publishes to PyPI.
+To override the commits for one pull request, give it a label before merging:
+`release:major`, `release:minor`, `release:patch`, or `release:none` to merge
+without releasing. A release can also be cut by hand from the Actions tab
+(*release*, with the part to bump).
 
-The changelog has two parts. The commit list is generated. The explanation
-is yours: write it under `## [Unreleased]` in `CHANGELOG.md` (what was wrong,
-measured if you can, and what a user should do differently). The release
-workflow moves it under the new version heading.
+The changelog entry is yours to write: put it under `## [Unreleased]` in
+`CHANGELOG.md` (what was wrong, measured if you can, and what a user should
+do differently). The release moves it under the new version's dated heading.
+If nobody wrote one, the release lists its commit subjects instead.
 
 ## Pull request process
 
