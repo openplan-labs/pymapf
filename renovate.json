@@ -1,6 +1,39 @@
 {
   "extends": [
-    "config:base"
+    "config:recommended"
   ],
-  "semanticCommits": "enabled"
+  "semanticCommits": "enabled",
+  "packageRules": [
+    {
+      "description": "requirements.txt pins NumPy, SciPy and Matplotlib once per Python version, by environment marker. Renovate does not read the markers, so keep each line inside the release series that still supports its Python (bumping them all to the newest release breaks installs on 3.10 and 3.11).",
+      "matchManagers": ["pip_requirements"],
+      "matchPackageNames": ["numpy"],
+      "matchCurrentValue": "/^==2\\.2\\./",
+      "allowedVersions": "<2.3"
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "matchPackageNames": ["numpy"],
+      "matchCurrentValue": "/^==2\\.4\\./",
+      "allowedVersions": "<2.5"
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "matchPackageNames": ["scipy"],
+      "matchCurrentValue": "/^==1\\.15\\./",
+      "allowedVersions": "<1.16"
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "matchPackageNames": ["scipy"],
+      "matchCurrentValue": "/^==1\\.17\\./",
+      "allowedVersions": "<1.18"
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "matchPackageNames": ["matplotlib"],
+      "matchCurrentValue": "/^==3\\.10\\./",
+      "allowedVersions": "<3.11"
+    }
+  ]
 }
