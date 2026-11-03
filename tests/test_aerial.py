@@ -262,6 +262,21 @@ def test_ill_posed_instances_are_refused():
         plan_docking(hovering_fleet(airspace, n=7, seed=0), airspace)
 
 
+def test_a_vehicle_off_its_voxel_centre_is_refused_not_snapped():
+    """Routes start at voxel centres; the vehicle at (2.2, 2.2, 3.7) used to
+    start its trajectory at (1.5, 1.5, 3.0), a metre from where it was."""
+    airspace = Airspace.build(cells=(6, 6, 4), cell_size=1.5, pads=[(1, 1), (4, 4)])
+    fleet = [Quadrotor("q0", (2.2, 2.2, 3.7)), Quadrotor("q1", (6.0, 6.0, 4.5))]
+    with pytest.raises(ValueError, match="q0 hovers .* from the centre"):
+        plan_docking(fleet, airspace)
+    centred = [Quadrotor("q0", (1.5, 1.5, 3.0)), fleet[1]]
+    plan = plan_docking(centred, airspace)
+    assert plan.trajectories["q0"].position_at(0.0) == pytest.approx((1.5, 1.5, 3.0))
+    pads = [DockingStation("near", (1.5, 1.5, 0.2)), DockingStation("far", (6, 6, 0))]
+    with pytest.raises(ValueError, match="station near is"):
+        plan_docking(centred, airspace, stations=pads)
+
+
 def test_a_heavier_vehicle_keeps_its_own_limits():
     airspace = small_airspace()
     fleet = hovering_fleet(airspace, n=3, seed=2)

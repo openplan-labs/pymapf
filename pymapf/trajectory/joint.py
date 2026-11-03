@@ -40,26 +40,38 @@ coordinates. On a six-vehicle instance that turns a 816-dimensional
 saddle-point system into a 144-dimensional one, which is the difference
 between seconds and milliseconds per iteration.
 
-**Speed and acceleration are met exactly, by dilating time.** Their
-linearised constraints are an *outer* approximation (the bound is convex, so
-its tangent plane lies outside it), so the optimiser can finish a hair over
-the limit. Rather than pretend otherwise, the result is time-dilated by the
-smallest factor that brings both within bounds. Dilation is safe in a way no
-other repair is: it scales every vehicle's clock by the same factor, so the
-fleet's geometry at corresponding times -- and therefore every pairwise
-separation -- is exactly preserved.
+**Speed and acceleration are kept inside the limits, then met exactly by
+dilating time.** The natural linearisation of ``‖ṗ‖ <= v_max`` -- the tangent
+plane at the current heading -- is an *outer* approximation (the bound is
+convex, so its tangent plane lies outside it), and the optimiser exploits it:
+the plane caps the speed along the old heading and nothing to the side. So the
+limits are written as a polytope *inscribed* in the ball instead, with a
+vertex on the current heading -- conservative in the same way the separation
+half-spaces are, and still exact along the direction of flight. That holds at
+the sample times; between them the speed can peak a hair over, so the result
+is time-dilated by the smallest factor that brings both within bounds. Dilation
+is safe in a way no other repair is: it scales every vehicle's clock by the
+same factor, so the fleet's geometry at corresponding times -- and therefore
+every pairwise separation -- is exactly preserved.
 
-**A discrete plan makes a good seed.** :func:`waypoints_from_solution` turns
-any :class:`~pymapf.Solution` into the waypoint lists this optimiser starts
-from, which is how a fleet gets a *globally* sensible homotopy (which side of
-the obstacle, who goes first) from a complete MAPF solver before the
-continuous optimiser makes it smooth and fast. Without a seed the initial
-guess is a straight line, and the optimiser will find a way around convex
-obstacles but has no way to reason about which way *around* is better.
+**A discrete plan makes a good seed -- for the route.**
+:func:`waypoints_from_solution` turns any :class:`~pymapf.Solution` into the
+waypoint lists this optimiser starts from, which is how a fleet gets a
+*globally* sensible route (which way round each other and round the walls)
+from a complete MAPF solver before the continuous optimiser makes it smooth
+and fast. Without a seed the initial guess is a straight line, and the
+optimiser will find a way around convex obstacles but has no way to reason
+about which way *around* is better. Two things do not carry over. The discrete
+plan's waits are dropped and knot times come from leg lengths, so who goes
+first is the optimiser's decision. And the grid's blocked cells are not
+constraints here: the waypoints are not pinned, so a smoothed corner can cut
+across a blocked cell. Only the spheres passed as ``obstacles`` are avoided.
 """
 
 from __future__ import annotations
 
+import functools
+import itertools
 import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
@@ -125,7 +137,10 @@ class JointPlan:
     """The optimised trajectories and what they actually achieve.
 
     ``trajectories[name]`` is a :class:`~pymapf.trajectory.PiecewisePolynomial`
-    over ``[0, duration]``; call it with a time in seconds.
+    over ``[0, duration]``; call it with a time in seconds. ``cost`` is the
+    objective of those trajectories as returned -- ``½ Σ_i ∫ ‖p_i⁽ᵈ⁾‖² dt``
+    for the ``minimise``-th derivative, after any time dilation -- while
+    ``history`` records the optimiser's own iterates, before it.
     """
 
     trajectories: Dict[str, PiecewisePolynomial]
@@ -327,6 +342,16 @@ class _Affine:
             self.basis = np.eye(size)
             self.rank = 0
             return
+        # Equilibrate the rows first. A derivative row carries 1/T^d, so on
+        # a short segment the jerk rows outweigh the position rows by many
+        # orders of magnitude, the rank test below mistakes the position
+        # rows for noise, and a perfectly good 1 cm hop was reported as
+        # "inconsistent". Scaling rows changes neither the solution set nor
+        # its minimum-norm point.
+        norms = np.linalg.norm(a, axis=1)
+        norms[norms == 0.0] = 1.0
+        a = a / norms[:, None]
+        b = b / norms
         u, singular, vt = np.linalg.svd(a, full_matrices=True)
         tol = max(a.shape) * (singular[0] if singular.size else 0.0) * 1e-12
         rank = int((singular > tol).sum())
@@ -371,13 +396,16 @@ def waypoints_from_solution(
         solution: any valid plan, on a grid, a volume or an explicit graph.
         positions: ``{vertex: point}`` when the vertices are not themselves
             coordinates; grid cells are, scaled by ``cell_size``.
-        simplify: drop waypoints that lie on the straight line between their
-            neighbours. A grid path has a waypoint per cell, and pinning the
-            optimiser's knots to every one of them wastes segments on a
-            corridor where one would do; the corners are what carry the
-            routing decision.
+        simplify: drop waits, and waypoints that lie on the straight line
+            between their neighbours. A grid path has a waypoint per cell,
+            and pinning the optimiser's knots to every one of them wastes
+            segments on a corridor where one would do; the corners are what
+            carry the routing decision.
 
     Use the result as ``waypoints=`` to :func:`plan_joint_trajectories`.
+    The result is geometry only: waits are not represented, and nothing
+    here tells the optimiser which cells were blocked -- see the module
+    docstring.
     """
     out: Dict[str, np.ndarray] = {}
     for name, path in solution.paths.items():
@@ -385,6 +413,21 @@ def waypoints_from_solution(
             points = [np.asarray(positions[v], dtype=float) for v in path]
         else:
             points = [np.asarray(v, dtype=float) * cell_size for v in path]
+        if simplify:
+            # A wait repeats a vertex; drop the repeats before looking for
+            # corners. The continuous plan decides its own timing, and a
+            # collinearity test straddling a wait would skip the corner the
+            # agent happened to wait on.
+            distinct = [points[0]]
+            for point in points[1:]:
+                if np.linalg.norm(point - distinct[-1]) > 1e-12:
+                    distinct.append(point)
+            points = distinct
+        if len(points) == 1:
+            # Already at its goal: a leg of length zero, so that it still
+            # has a trajectory -- parked -- for the others to avoid.
+            out[name] = np.array([points[0], points[0]])
+            continue
         kept = [points[0]]
         for previous, current, following in zip(points, points[1:], points[2:]):
             if not simplify:
@@ -392,14 +435,11 @@ def waypoints_from_solution(
                 continue
             before = current - previous
             after = following - current
-            n_before = np.linalg.norm(before)
-            n_after = np.linalg.norm(after)
-            if n_before < 1e-12 or n_after < 1e-12:
-                continue  # a wait: the continuous plan decides its own timing
-            if np.linalg.norm(before / n_before - after / n_after) > 1e-9:
+            before /= np.linalg.norm(before)
+            after /= np.linalg.norm(after)
+            if np.linalg.norm(before - after) > 1e-9:
                 kept.append(current)
-        if len(points) > 1:
-            kept.append(points[-1])
+        kept.append(points[-1])
         out[name] = np.array(kept)
     return out
 
@@ -572,8 +612,10 @@ def plan_joint_trajectories(
         duration: the fleet's makespan in seconds. ``None`` sizes it from the
             longest seed path at ``0.7 * v_max``, leaving room to accelerate
             and to detour.
-        segments: polynomial pieces per vehicle when no waypoints are given;
-            with waypoints, each leg is a segment.
+        segments: polynomial pieces per vehicle. With waypoints each leg is
+            a segment, and the longest legs are halved until there are at
+            least this many: a single straight leg leaves the optimiser
+            nothing to work with.
         order: polynomial degree per piece. 7 is the classical choice for a
             snap objective -- eight coefficients, enough for position,
             velocity, acceleration and jerk at both ends of a segment.
@@ -587,7 +629,9 @@ def plan_joint_trajectories(
         waypoints: ``{name: points}`` to seed from -- see
             :func:`waypoints_from_solution`. Interior waypoints are *not*
             pinned in the optimisation; they set the time allocation and the
-            initial guess, and the optimiser is free to leave them.
+            initial guess, and the optimiser is free to leave them. Only the
+            geometry is used: knot times come from leg lengths, so a wait in
+            the discrete plan does not survive into the seed.
         samples: times at which the constraints are enforced, over the whole
             flight. The guarantee is at these times; the result's
             :meth:`JointPlan.min_separation` samples much more finely, and
@@ -626,9 +670,20 @@ def plan_joint_trajectories(
         fleet, waypoints, segments, dimension, duration, v_max
     )
     layout = _Layout(names, {n: len(durations[n]) for n in names}, dimension, order)
+    _check_freedom(layout, order, boundary, continuity)
 
     hessian = _hessian(layout, durations, minimise)
     gradient = np.zeros(layout.size)
+
+    times = np.linspace(0.0, duration, samples)
+    sampler = _Sampler(layout, durations, times, derivatives=(0, 1, 2))
+    limits = {
+        v.name: (
+            v.v_max if v.v_max is not None else v_max,
+            v.a_max if v.a_max is not None else a_max,
+        )
+        for v in fleet
+    }
 
     # -- the initial guess: minimum-snap through the seed's waypoints --------
     pinned_a, pinned_b = _equalities(
@@ -639,10 +694,9 @@ def plan_joint_trajectories(
     # -- the affine set the optimiser really lives on ------------------------
     a, b = _equalities(layout, fleet, durations, boundary, continuity)
     affine = _Affine(a, b, layout.size)
+    guess = _within_limits(guess, a, b, sampler, layout, names, limits)
     z = affine.to_reduced(guess)
 
-    times = np.linspace(0.0, duration, samples)
-    sampler = _Sampler(layout, durations, times, derivatives=(0, 1, 2))
     # The true violation is measured on a finer grid than the one the
     # constraints are written on, so that "converged" means what
     # JointPlan.is_safe() means and not merely "feasible where we looked".
@@ -660,13 +714,6 @@ def plan_joint_trajectories(
         if inter_sample
         else sampler
     )
-    limits = {
-        v.name: (
-            v.v_max if v.v_max is not None else v_max,
-            v.a_max if v.a_max is not None else a_max,
-        )
-        for v in fleet
-    }
     radii = {v.name: v.radius for v in fleet}
 
     reduced_h = affine.basis.T @ hessian @ affine.basis
@@ -731,7 +778,70 @@ def plan_joint_trajectories(
     )
     if enforce_limits:
         _dilate(plan, limits)
+        # Stretching time by f scales the d-th derivative by f^-d and the
+        # interval by f, so the objective of what is returned is the
+        # optimiser's times f^(1 - 2d).
+        plan.cost *= plan.time_scale ** (1 - 2 * minimise)
     return plan
+
+
+def _within_limits(guess, a, b, sampler, layout, names, limits) -> np.ndarray:
+    """The nearest trajectory to ``guess`` that keeps the speed and
+    acceleration limits at the samples, on the affine set ``Ax = b``.
+
+    The minimum-snap curve through a seed's waypoints is usually faster than
+    the limits allow -- 2.9 m/s on a straight 10 m flight limited to 2 -- and
+    the first trust region is too small to slow it down that much. That
+    subproblem is then infeasible, and the compromise a solver returns for an
+    infeasible problem is not even symmetric: the lone straight-line vehicle
+    came out weaving 0.6 m from side to side, and no later iteration undid
+    it. So the guess is first projected onto the limits (a convex problem:
+    the rows of :func:`_limit_rows` at the guess's own headings). From a
+    point inside them every later iterate satisfies its own limit rows, and
+    the trust region never has to choose between the two. The pinned
+    waypoints are released here -- they are what makes a fast seed fast --
+    but staying as close as possible to the guess keeps its shape. If the
+    limits cannot be met at all in the time given, the guess is returned
+    unchanged and the dilation at the end does the work.
+    """
+    velocities = {name: sampler.values(guess, name, 1) for name in names}
+    accelerations = {name: sampler.values(guess, name, 2) for name in names}
+    default = np.zeros(layout.dimension)
+    default[0] = 1.0
+    rows: List[np.ndarray] = []
+    upper: List[float] = []
+    for name in names:
+        _limit_rows(
+            rows,
+            upper,
+            sampler,
+            layout,
+            name,
+            velocities,
+            accelerations,
+            limits,
+            _unit,
+            default,
+        )
+    if not rows:
+        return guess
+    nearest = solve_qp(
+        np.eye(layout.size),
+        -guess,
+        a,
+        b,
+        np.array(rows),
+        np.array(upper),
+        x0=guess,
+    )
+    return nearest.x if nearest.converged else guess
+
+
+def _unit(vector: np.ndarray, fallback: np.ndarray) -> np.ndarray:
+    norm = float(np.linalg.norm(vector))
+    if norm < 1e-12:
+        return fallback
+    return vector / norm
 
 
 def _iterate(
@@ -849,20 +959,73 @@ def _seed(fleet, waypoints, segments, dimension, duration, v_max):
             raise ValueError("waypoints for %r have the wrong shape" % name)
         if len(points) < 2:
             raise ValueError("waypoints for %r need at least two points" % name)
+        seeds[name] = _split_legs(points, segments)
     if duration is None:
-        # Cruising at 70% of the limit leaves room to accelerate into the
-        # corners and to detour around whoever is in the way.
-        cruise = 0.7 * v_max
-        duration = max(
-            float(np.linalg.norm(np.diff(points, axis=0), axis=1).sum()) / cruise
+        longest = max(
+            float(np.linalg.norm(np.diff(points, axis=0), axis=1).sum())
             for points in seeds.values()
         )
-        duration = max(duration, 1e-3)
+        if longest <= 0.0:
+            # Nobody moves, so any makespan is as good as another. (This
+            # used to floor at a millisecond, and the derivative rows of a
+            # 1 ms segment are too ill-conditioned for the equalities to be
+            # solved: a parked fleet was reported as "inconsistent".)
+            duration = 1.0
+        elif not 0.0 < v_max < math.inf:
+            raise ValueError(
+                "duration=None sizes the flight from v_max, which must be "
+                "finite and positive; pass a duration"
+            )
+        else:
+            # Cruising at 70% of the limit leaves room to accelerate into
+            # the corners and to detour around whoever is in the way.
+            duration = longest / (0.7 * v_max)
+    elif not 0.0 < duration < math.inf:
+        raise ValueError("duration must be positive and finite")
     durations = {
         name: _time_allocation(points, duration, v_max)
         for name, points in seeds.items()
     }
     return seeds, durations, duration
+
+
+def _split_legs(points: np.ndarray, pieces: int) -> np.ndarray:
+    """Halve the longest leg until there are at least ``pieces`` of them.
+
+    A seed from a grid plan is simplified to its corners, so a vehicle that
+    flies straight gets a single leg -- and one segment of order 7 has eight
+    coefficients per axis, every one of them fixed by the eight boundary
+    conditions. Such a vehicle cannot swerve, slow down or wait: two of them
+    crossing a 5x5 grid finished 0.024 m apart for a 0.6 m requirement, and
+    nothing said why. The extra knots only shape the initial guess and the
+    time allocation; they are not pinned.
+    """
+    points = [np.asarray(point, dtype=float) for point in points]
+    while len(points) - 1 < pieces:
+        legs = [np.linalg.norm(b - a) for a, b in zip(points, points[1:])]
+        k = int(np.argmax(legs))
+        points.insert(k + 1, 0.5 * (points[k] + points[k + 1]))
+    return np.array(points)
+
+
+def _check_freedom(layout, order, boundary, continuity) -> None:
+    """Refuse a vehicle whose trajectory the equalities fix completely.
+
+    Each segment has ``order + 1`` coefficients per axis; the two ends take
+    ``boundary + 1`` conditions each and every internal knot ``continuity +
+    1``. If that leaves nothing, the optimiser can move the vehicle nowhere,
+    and would report a collision it was never able to avoid.
+    """
+    for name, pieces in layout.segments.items():
+        coefficients = pieces * (order + 1)
+        conditions = 2 * (boundary + 1) + (pieces - 1) * (continuity + 1)
+        if coefficients <= conditions:
+            raise ValueError(
+                "%r has no freedom left: %d segment(s) of order %d have %d "
+                "coefficients per axis and its boundary and continuity "
+                "conditions fix all of them; use more segments or a higher "
+                "order" % (name, pieces, order, coefficients)
+            )
 
 
 def _validate(fleet, obstacles, order, boundary, segments, clearance) -> int:
@@ -897,7 +1060,9 @@ def _dilate(plan: JointPlan, limits: Mapping[str, Tuple[float, float]]) -> None:
     optimiser established would no longer mean anything. So the factor is
     the worst vehicle's, and the rest fly further inside their envelopes.
     """
-    times = plan.times(0.01)
+    # At least a thousand samples: a fixed 10 ms step saw a sub-centimetre
+    # hop at t = 0 only, and stretched nothing.
+    times = plan.times(min(0.01, plan.duration / 1000.0))
     factor = 1.0
     for name, trajectory in plan.trajectories.items():
         speed_limit, acceleration_limit = limits[name]
@@ -937,9 +1102,8 @@ def _linearise(
     Separation and obstacle rows are *supporting half-spaces*: satisfying
     them implies the true constraint, so a feasible subproblem solution is
     genuinely collision-free at the sampled times. Speed and acceleration
-    rows are tangent planes to a ball from the inside, which is an outer
-    approximation -- they can be violated slightly, and the time dilation at
-    the end is what makes them exact.
+    rows are the faces of a polytope inscribed in the limit's ball, so they
+    are conservative in the same way; see :func:`_limit_rows`.
     """
     positions = {name: sampler.values(x, name, 0) for name in names}
     velocities = {name: sampler.values(x, name, 1) for name in names}
@@ -950,11 +1114,7 @@ def _linearise(
     n_samples = len(times)
     step = float(times[1] - times[0]) if n_samples > 1 else 0.0
 
-    def unit(vector: np.ndarray, fallback: np.ndarray) -> np.ndarray:
-        norm = float(np.linalg.norm(vector))
-        if norm < 1e-12:
-            return fallback
-        return vector / norm
+    unit = _unit
 
     def dip(relative_speed: np.ndarray, relative_acceleration: float) -> np.ndarray:
         """How far a distance can dip *between* two samples.
@@ -1113,6 +1273,55 @@ def _obstacle_rows(
             )
 
 
+#: Half the angle between the vertex the limit polytope puts on the current
+#: heading and the vertices either side of it; see :func:`_inscribed_polytope`.
+#: Smaller makes the polytope hug the ball more closely around the heading
+#: and allows less sideways speed while the heading is still turning.
+_LIMIT_HALF_ANGLE = math.radians(15.0)
+
+
+@functools.lru_cache(maxsize=None)
+def _inscribed_polytope(dimension: int) -> Tuple[np.ndarray, np.ndarray]:
+    """``(normals, bounds)`` of a polytope inside the unit ball, in the frame
+    ``(heading, lateral_1, ..., lateral_{n-1})``.
+
+    With ``a`` the component along the heading, ``b`` the lateral ones,
+    ``t = tan φ`` and ``s = sin 2φ``, the polytope is
+
+        ±a + t‖b‖₁ <= 1,      ‖b‖₁ <= s
+
+    and each ``‖·‖₁`` bound is one linear row per sign pattern of ``b``.
+    Every point of it lies in the ball: with ``r = ‖b‖₁ >= ‖b‖₂``,
+    ``‖v‖² <= (1 - t r)² + r²``, which is convex in ``r`` and equals 1 at both
+    ends of ``[0, s]`` -- that is what ``s = sin 2φ = 2t / (1 + t²)`` is. And
+    it touches the ball at ``±heading``, so a vehicle flying straight along
+    its current heading may use the whole limit.
+    """
+    lateral = dimension - 1
+    t = math.tan(_LIMIT_HALF_ANGLE)
+    s = math.sin(2.0 * _LIMIT_HALF_ANGLE)
+    signs = list(itertools.product((-1.0, 1.0), repeat=lateral))
+    normals: List[Tuple[float, ...]] = []
+    bounds: List[float] = []
+    for along in (1.0, -1.0):
+        for sign in signs:
+            normals.append((along,) + tuple(t * x for x in sign))
+            bounds.append(1.0)
+    if lateral:
+        for sign in signs:
+            normals.append((0.0,) + sign)
+            bounds.append(s)
+    return np.array(normals), np.array(bounds)
+
+
+def _frame(direction: np.ndarray) -> np.ndarray:
+    """An orthonormal basis of R^n, as rows, whose first row is ``direction``."""
+    n = len(direction)
+    basis = np.linalg.qr(np.column_stack([direction, np.eye(n)]))[0].T
+    basis[0] = direction  # QR returns it up to sign
+    return basis
+
+
 def _limit_rows(
     rows,
     upper,
@@ -1125,21 +1334,35 @@ def _limit_rows(
     unit,
     default,
 ):
-    """Tangent planes to the speed and acceleration balls.
+    """An inscribed polytope for the speed ball and the acceleration ball.
 
-    Unlike the separation rows these are an *outer* approximation -- the
-    bound is convex, so its tangent plane lies outside it -- which is why the
-    limits are met exactly afterwards, by dilating time.
+    The obvious linearisation -- the tangent plane ``ĥᵀv <= v_max`` at the
+    current heading ``ĥ`` -- is an *outer* approximation: it caps the speed
+    along the old heading and nothing sideways, so the next iterate can fly
+    faster than ``v_max`` by turning a little. The optimiser finds that and
+    exploits it. Given a straight 10 m flight it weaved 0.6 m from side to
+    side, oscillated between two shapes, and still needed its clock
+    stretched by 11% afterwards.
+
+    These rows are an *inner* approximation instead, aligned with the
+    current velocity (or acceleration): see :func:`_inscribed_polytope`. A
+    subproblem solution satisfies the true limit at every sample, and on its
+    own heading may use all of it, so the SCP's fixed points meet the limit
+    exactly. Only the times *between* samples are left to the dilation at
+    the end, which is why that dilation is now a fraction of a percent.
     """
     speed_limit, acceleration_limit = limits[first]
-    for s in range(len(velocities[first])):
-        direction = unit(velocities[first][s], default)
-        row = np.zeros(layout.size)
-        sampler.write(row, first, s, direction, 1)
-        rows.append(row)
-        upper.append(speed_limit)
-        direction = unit(accelerations[first][s], default)
-        row = np.zeros(layout.size)
-        sampler.write(row, first, s, direction, 2)
-        rows.append(row)
-        upper.append(acceleration_limit)
+    normals, bounds = _inscribed_polytope(layout.dimension)
+    for values, limit, derivative in (
+        (velocities[first], speed_limit, 1),
+        (accelerations[first], acceleration_limit, 2),
+    ):
+        if not math.isfinite(limit):
+            continue
+        for s in range(len(values)):
+            directions = normals @ _frame(unit(values[s], default))
+            for direction, bound in zip(directions, bounds):
+                row = np.zeros(layout.size)
+                sampler.write(row, first, s, direction, derivative)
+                rows.append(row)
+                upper.append(limit * bound)

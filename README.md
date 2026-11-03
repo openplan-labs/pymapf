@@ -91,6 +91,7 @@ algorithm step by step, and researchers who want a readable baseline. See
 ```bash
 pip install pymapf                 # the solver framework — no dependencies
 pip install "pymapf[viz]"          # + plots, animations and live views
+pip install "pymapf[trajectory]"   # + joint trajectory optimisation (numpy)
 pip install "pymapf[all]"          # + the decentralized/legacy planners
 ```
 
@@ -271,7 +272,9 @@ vehicle that can hover or coast actually does. The safety margin between two
 agents at a shared vertex is not one number: the scheduler simulates the two
 vehicles' actual motion through it, at their actual speeds and the actual
 angle between them, and finds the smallest delay at which they never come
-within `safety_distance`. Heterogeneous fleets pass `limits_by_agent`;
+within `safety_distance`. Two moves that come that close without sharing a
+vertex — diagonals crossing mid-cell — are ordered the same way at their
+point of closest approach. Heterogeneous fleets pass `limits_by_agent`;
 general graphs take coordinates from `ExplicitGraph.positions`; a margin too
 long for a cycle of agents raises `InfeasibleScheduleError` rather than a
 schedule that never finishes.
@@ -323,7 +326,9 @@ Everything above plans a **path**: cells on a graph, timed afterwards. This
 plans the **trajectory** itself, in continuous space, for the whole fleet at
 once. No grid: positions are floats in R², R³ or R^n, and velocity,
 acceleration and jerk are exact derivatives of a polynomial rather than
-differences of a sampled path.
+differences of a sampled path. It needs numpy — `pip install
+"pymapf[trajectory]"` — unlike the solvers, `pymapf.kinodynamic` and
+`pymapf.aerial`, which are pure Python.
 
 ```python
 from pymapf.trajectory import Vehicle, plan_joint_trajectories
@@ -371,16 +376,29 @@ Three things worth knowing, each measured:
   dip, derived from the pair's own relative speed. It costs 26% more snap and
   it is the difference between a plan that is safe and a plan that is safe
   where you looked. Pass `inter_sample=False` for the cheaper, weaker version.
-- **The speed limit is met by dilating time.** A norm bound is convex, so its
-  linearisation is an *outer* approximation and the optimiser can finish a
-  hair over. Rather than fudge it, the fleet's clock is scaled by the smallest
-  factor that brings every vehicle inside its envelope. Dilation scales every
-  vehicle equally, so the geometry — and every pairwise separation — is
-  preserved exactly. That is a test.
-- **A discrete plan makes a good seed.** `waypoints_from_solution(solution)`
-  turns any CBS or LaCAM plan into the waypoints this optimiser starts from,
-  which is how the fleet inherits a *globally* sensible homotopy — which side
-  of the obstacle, who goes first — that no local optimiser can find on its own.
+- **The speed limit is an inscribed polytope, and time dilation does the
+  rest.** The tangent plane to a norm bound at the current heading is an
+  *outer* approximation, and the optimiser exploits it: given a straight
+  10 m flight, a lone vehicle weaved 0.6 m from side to side to fly faster
+  than the limit along its old heading. So the limit is written as a polytope
+  *inside* the ball, with a vertex on the current heading — conservative like
+  the separation half-spaces, and still exact along the direction of flight.
+  That holds at the samples; between them the speed can peak a hair over, so
+  the fleet's clock is then scaled by the smallest factor that brings every
+  vehicle inside its envelope: 1.001 on twelve random fleets, where the
+  tangent plane needed 1.10 to 1.33. Dilation scales every vehicle equally,
+  so the geometry — and every pairwise separation — is preserved exactly.
+  That is a test.
+- **A discrete plan makes a good seed — for the route.**
+  `waypoints_from_solution(solution)` turns any CBS or LaCAM plan into the
+  waypoints this optimiser starts from, which is how the fleet inherits a
+  *globally* sensible route — which way round each other and round the walls
+  — that no local optimiser can find on its own. Two things do not carry
+  over. Waits are dropped and knot times come from leg lengths, so who goes
+  first is left to the optimiser. And the grid's blocked cells are not
+  constraints of the continuous problem: the waypoints are not pinned, so a
+  smoothed corner can cut across a blocked cell. Only the spheres passed as
+  `obstacles=` are avoided.
 
 Validated against `scipy.optimize.minimize(method="SLSQP")` on the same
 problem: the same optimum to **3.8 × 10⁻¹¹** relative, and the same closest

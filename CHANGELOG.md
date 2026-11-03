@@ -28,12 +28,14 @@ commits.
     bound on the dip derived from each pair's own relative speed. Without it a
     head-on pair that clears 0.800 m at every sample reaches 0.742 m between
     two of them, which a test measures both ways.
-  - Speed and acceleration limits are met exactly by dilating the fleet's
-    clock, which preserves every pairwise separation because it scales every
-    vehicle equally.
+  - Speed and acceleration limits are kept by a polytope inscribed in each
+    limit, exact along the direction of flight; what overshoot remains between
+    samples is removed by dilating the fleet's clock, which preserves every
+    pairwise separation because it scales every vehicle equally.
   - `waypoints_from_solution` seeds the optimiser from any discrete
-    `Solution`, so the fleet inherits the homotopy a complete MAPF solver
-    chose before the continuous optimiser smooths it.
+    `Solution`, so the fleet starts from the route a complete MAPF solver
+    chose (the route, not its timing, and not its walls: grid cells are not
+    constraints of the continuous problem).
 - `pymapf.trajectory.solve_qp`: a dense quadratic program solver in numpy
   alone -- augmented Lagrangian on the inequalities with a damped
   semismooth-Newton inner solve -- and `PiecewisePolynomial`, the
@@ -245,6 +247,17 @@ commits.
   planner's own package logger. `CooperativeAStar.register_agent` ignores (with
   a warning) an agent that shares a start or goal with one already registered.
 - `NMPCAgent` takes a `seed=0` keyword for its warm-start generator.
+- **`pip install "pymapf[trajectory]"`** declares the numpy that
+  `pymapf.trajectory` has always imported, and importing it without numpy now
+  says which extra to install, as `pymapf.viz` does. `pymapf.kinodynamic`,
+  `pymapf.aerial`, `core.voxel` and `core.assignment` remain pure Python.
+- **A discrete seed is documented as carrying the route, not the timing or the
+  walls.** The README and module docstring said the fleet inherits "who goes
+  first" and "which side of the obstacle" from the discrete plan; waits are
+  dropped (knot times come from leg lengths), and grid cells are never
+  constraints of the continuous problem -- three of the four seeded
+  trajectories in the obstacle-field test cut across a blocked cell. Only
+  `obstacles=` spheres are avoided.
 
 ### Fixed
 
@@ -399,6 +412,76 @@ commits.
   NMPC-agent tests is now a real array comparison; the cooperative A\* tests
   are seeded, and the legacy visualisation tests write their GIFs to
   `tmp_path` instead of the working directory.
+- **The joint trajectory optimiser no longer buys speed with a sideways
+  weave.** Speed and acceleration limits were linearised as the tangent plane
+  at the current heading -- an *outer* approximation that caps speed along
+  the old heading and nothing to the side -- and the optimiser exploited it: a
+  lone vehicle flying (0,0)->(10,0) weaved 0.597 m from side to side, reached
+  2.23 m/s against a 2.0 limit before dilation, oscillated between two costs
+  and still needed its clock stretched by 11.5%; on twelve random fleets
+  `time_scale` was 1.10 to 1.33. The limits are now the faces of a polytope
+  *inscribed* in the ball with a vertex on the current heading
+  (`±a + tan φ‖b‖₁ <= 1`, `‖b‖₁ <= sin 2φ`), so every subproblem solution
+  meets them at the samples, and the initial guess is first projected onto
+  them (the minimum-snap seed was faster than the limit, and the first trust
+  region could not slow it down: that subproblem was infeasible and its
+  compromise broke the fleet's symmetry). The straight line now deviates
+  0.005 m, flies 10.000 m and finishes at `time_scale` 1.001; all twelve
+  random fleets finish at 1.001. The README, REFERENCES and the module
+  docstring describe the inscribed polytope instead of "a hair over".
+- **A straight seed no longer leaves a vehicle with nothing to optimise.**
+  `waypoints_from_solution` simplifies a straight grid path to two waypoints,
+  which became one polynomial segment, and at order 7 the eight boundary
+  conditions fix all eight coefficients. CBS on a 5x5 crossing (one agent
+  waits for the other) came out 0.024 m apart for 0.6 m required, with
+  `converged=False` and no error. Seeds now have their longest legs halved
+  until each vehicle has at least `segments` pieces (the crossing now
+  converges at 0.602 m), and a vehicle whose equalities still fix its
+  trajectory (e.g. `segments=1` at order 7) is refused with a clear error.
+- **`waypoints_from_solution` keeps a corner the agent waited on, and gives a
+  parked agent a leg.** Waits were removed after the collinearity test, so a
+  wait on a corner made the corner disappear and the seed cut diagonally
+  across it; a single-vertex path produced one waypoint, which the planner
+  refuses. Repeats are now removed first, and a parked agent gets `[p, p]`.
+- **A parked fleet, or a centimetre hop, is planned rather than called
+  "inconsistent".** With every vehicle at its goal the sized makespan floored
+  at 1 ms, the derivative rows of a 1 ms segment differ by ~1e9 in scale, and
+  the SVD rank test reported the equalities inconsistent; a 1 cm hop failed
+  the same way. A parked fleet now gets 1 s, the equality rows are
+  equilibrated before factoring, `duration=None` with an infinite `v_max`
+  asks for a duration, and the final dilation samples at least 1000 points --
+  its fixed 10 ms step saw a sub-centimetre flight only at `t = 0` and left
+  it unstretched (the 1 cm hop needs `time_scale` 18.4).
+- **`JointPlan.cost` is the objective of the trajectories returned.** It was
+  computed before the dilation stretched the clock: (0,0)->(10,0) in 5 s
+  reported 1599.1 where the returned plan's ½∫‖snap‖² is 97.0 (`time_scale`
+  1.49, and snap cost scales as time to the -7th).
+- **Diagonal moves that cross mid-cell keep their distance in
+  `plan_trajectories`.** The scheduler only ordered runs that share a vertex
+  and promised that anything else stays a cell apart, which fails with
+  diagonals: CBS returns `a:(0,0)->(1,1)`, `b:(0,1)->(1,0)` as valid, and
+  with `safety_distance=0.5` both flew through the centre at once, 0.004
+  apart. Runs that come within the safety distance (or cross, under
+  `safety_time`) without sharing a vertex are now ordered at their point of
+  closest approach exactly as a shared vertex would be; a simultaneous
+  crossing takes the order the other constraints already imply. On 104
+  schedules of 8-connected 7x7 instances: 39 separation violations before, 0
+  after, with the same 4 infeasible (genuine rotations). The remaining gap,
+  an agent halted near another's path (≥ √2/2 cell with diagonals), is now
+  what the docstring names.
+- **`merge_straight=True` no longer reports valid plans infeasible.** A merged
+  run is ordered against others at vertices it passes long after it departs,
+  so it could be made to wait for a run that departs later, closing a cycle
+  the plan does not have: a CBS plan on a 7x7 grid with 6 agents (seed 15,
+  `KinematicLimits(1.3, 0.7, 0.9)`) raised `InfeasibleScheduleError`
+  merged and scheduled fine halted (makespan 12.53, separation 0.900). Such a
+  plan is now scheduled halted; `plan_docking`, which merges by default,
+  inherits the fix.
+- **`plan_docking` refuses a position off its voxel centre instead of moving
+  it.** A quadrotor hovering at (2.2, 2.2, 3.7) in a 1.5 m airspace had its
+  trajectory start at (1.5, 1.5, 3.0), 1.2 m away, without a word; station
+  positions were snapped the same way. Both now raise a `ValueError` naming
+  the centre to use.
 
 ## [0.9.0]
 

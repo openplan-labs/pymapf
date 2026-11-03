@@ -429,6 +429,38 @@ def test_time_dilation_meets_the_limits_and_preserves_every_separation():
     assert pair
 
 
+def test_the_reported_cost_is_the_cost_of_the_returned_trajectories():
+    """It used to be the optimiser's cost, before the dilation stretched the
+    flight -- 16x too high here, where the limits need a 1.5x slower clock
+    and snap cost scales as time to the -7th."""
+    plan = plan_joint_trajectories(
+        [Vehicle("a", (0.0, 0.0), (10.0, 0.0))], duration=5.0, samples=30
+    )
+    assert plan.time_scale > 1.1
+    trajectory = plan.trajectories["a"]
+    snap = sum(
+        float(c @ cost_matrix(trajectory.order, duration, 4) @ c)
+        for duration, segment in zip(trajectory.durations, trajectory.coefficients)
+        for c in segment
+    )
+    assert plan.cost == pytest.approx(0.5 * snap, rel=1e-9)
+
+
+def test_the_speed_limit_is_not_bought_with_a_sideways_weave():
+    """A lone vehicle has no reason to leave a straight line. With the speed
+    limit linearised as a tangent plane it did: turning a little let it fly
+    faster than the limit along its old heading, so it weaved 0.6 m from side
+    to side, 12% over the limit until the clock was stretched to hide it."""
+    fleet = [Vehicle("a", (0.0, 0.0), (10.0, 0.0))]
+    raw = plan_joint_trajectories(fleet, v_max=2.0, a_max=4.0, enforce_limits=False)
+    assert raw.max_speed(0.005) <= 2.0 * 1.005  # only between the samples
+    plan = plan_joint_trajectories(fleet, v_max=2.0, a_max=4.0)
+    sideways = np.abs(plan.trajectories["a"].sample(plan.times(0.01))[:, 1]).max()
+    assert sideways < 0.02
+    assert plan.path_length("a") == pytest.approx(10.0, abs=1e-3)
+    assert plan.time_scale < 1.005
+
+
 # --------------------------------------------------------------------------
 # seeding from a discrete plan
 # --------------------------------------------------------------------------
@@ -451,7 +483,35 @@ def test_waypoints_from_a_solution_keep_the_corners_and_drop_the_rest():
     assert np.allclose(scaled["a"], [(0, 0), (0, 1.5), (1, 1.5)])
 
 
+def test_a_wait_on_a_corner_keeps_the_corner_and_a_parked_agent_has_a_leg():
+    pymapf = pytest.importorskip("pymapf")
+    solution = pymapf.Solution(
+        {
+            "a": [(0, 0), (0, 1), (0, 2), (0, 3), (0, 3), (1, 3), (2, 3)],
+            "b": [(4, 4)],
+        }
+    )
+    waypoints = waypoints_from_solution(solution)
+    # The wait used to hide the corner from the collinearity test, and the
+    # seed cut straight across whatever the discrete plan went around.
+    assert np.allclose(waypoints["a"], [(0, 0), (0, 3), (2, 3)])
+    # One vertex used to be one waypoint, which the planner refuses.
+    assert np.allclose(waypoints["b"], [(4, 4), (4, 4)])
+    plan = plan_joint_trajectories(
+        [Vehicle("a", (0, 0), (2, 3)), Vehicle("b", (4, 4), (4, 4))],
+        waypoints=waypoints,
+        samples=30,
+        iterations=5,
+    )
+    assert plan.trajectories["b"](0.5 * plan.duration) == pytest.approx([4.0, 4.0])
+
+
 def test_a_discrete_plan_seeds_the_optimiser_through_an_obstacle_field():
+    """The fleet stays apart and keeps its endpoints. The grid's walls are
+    *not* checked: they are not constraints of the continuous problem (only
+    ``obstacles=`` spheres are), and on this instance three of the four
+    smoothed trajectories cut across a blocked cell -- see the module
+    docstring."""
     pymapf = pytest.importorskip("pymapf")
     scenario = pymapf.build_scenario(
         "random_obstacles", height=10, width=10, n_agents=4, seed=1
@@ -484,6 +544,27 @@ def test_a_discrete_plan_seeds_the_optimiser_through_an_obstacle_field():
         assert trajectory(plan.duration) == pytest.approx(
             np.asarray(agent.goal, dtype=float), abs=1e-6
         )
+
+
+def test_a_straight_seed_still_leaves_the_optimiser_room_to_avoid():
+    """CBS makes ``a`` wait so that ``b`` crosses first. Both paths are
+    straight, so each seed simplified to a single leg -- one segment of
+    order 7, every coefficient fixed by the boundary conditions -- and the
+    pair finished 0.024 m apart for a 0.6 m requirement, with no error."""
+    pymapf = pytest.importorskip("pymapf")
+    grid = pymapf.GridMap([[0] * 5 for _ in range(5)])
+    agents = [pymapf.Agent("a", (2, 0), (2, 4)), pymapf.Agent("b", (0, 2), (4, 2))]
+    solution = pymapf.solve(pymapf.MAPFProblem(grid, agents), "cbs")
+    fleet = [Vehicle(a.name, a.start, a.goal, radius=0.3) for a in agents]
+    plan = plan_joint_trajectories(
+        fleet, waypoints=waypoints_from_solution(solution), v_max=2.0, a_max=4.0
+    )
+    assert all(len(t.durations) >= 4 for t in plan.trajectories.values())
+    assert plan.converged
+    assert plan.min_separation(0.005)[0] >= 0.6 - 1e-9
+    # Asked for outright, a trajectory with no freedom is refused, not flown.
+    with pytest.raises(ValueError, match="no freedom"):
+        plan_joint_trajectories(fleet, segments=1)
 
 
 # --------------------------------------------------------------------------
@@ -657,6 +738,26 @@ def test_ill_posed_fleets_are_refused():
         )
 
 
+def test_a_parked_fleet_and_a_tiny_hop_are_planned_not_refused():
+    # Every vehicle already at its goal: the makespan used to floor at 1 ms,
+    # and the equalities of a 1 ms segment were reported as "inconsistent".
+    parked = plan_joint_trajectories(
+        [Vehicle("a", (1.0, 1.0), (1.0, 1.0)), Vehicle("b", (3.0, 0.0), (3.0, 0.0))]
+    )
+    assert parked.converged
+    assert parked.trajectories["a"](0.5 * parked.duration) == pytest.approx([1, 1])
+    # A 1 cm hop sizes a 7 ms flight; it is planned, and then slowed down
+    # until it meets the limits, which a fixed 10 ms check step never saw.
+    hop = plan_joint_trajectories([Vehicle("a", (0.0, 0.0), (0.01, 0.0))])
+    assert hop.trajectories["a"](hop.duration) == pytest.approx([0.01, 0.0])
+    step = hop.duration / 5000
+    assert hop.max_speed(step) <= 2.0 + 1e-6
+    assert hop.max_acceleration(step) <= 4.0 + 1e-6
+    # An infinite speed limit cannot size the flight; say so.
+    with pytest.raises(ValueError, match="pass a duration"):
+        plan_joint_trajectories([Vehicle("a", (0.0, 0.0), (4.0, 0.0))], v_max=math.inf)
+
+
 def test_the_summary_reports_what_a_caller_needs():
     fleet = crossing(2)
     plan = plan_joint_trajectories(
@@ -670,3 +771,24 @@ def test_the_summary_reports_what_a_caller_needs():
     assert summary["path_length"] > 0
     assert "JointPlan" in repr(plan)
     assert set(plan.positions(0.5)) == {"v0", "v1"}
+
+
+def test_numpy_is_a_declared_extra_and_its_absence_is_explained():
+    """``pymapf.trajectory`` imports numpy, which no extra used to declare."""
+    import subprocess
+
+    root = path.dirname(path.dirname(path.abspath(__file__)))
+    tomllib = pytest.importorskip("tomllib")
+    with open(path.join(root, "pyproject.toml"), "rb") as handle:
+        extras = tomllib.load(handle)["project"]["optional-dependencies"]
+    assert any(r.startswith("numpy") for r in extras["trajectory"])
+    assert any(r.startswith("numpy") for r in extras["all"])
+    hidden = (
+        "import sys; sys.modules['numpy'] = None; "
+        "import pymapf.kinodynamic, pymapf.aerial; import pymapf.trajectory"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", hidden], cwd=root, capture_output=True, text=True
+    )
+    assert result.returncode != 0
+    assert "pymapf[trajectory]" in result.stderr
