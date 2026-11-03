@@ -62,6 +62,24 @@ def test_simulation_is_deterministic_for_a_seed():
     assert np.allclose(a[-1].positions, b[-1].positions)
 
 
+def test_simulate_runs_a_custom_controller_function():
+    # Callables used to be looked up by ``__name__``: a custom law raised, and
+    # one that happened to be called ``boids`` silently ran the library Boids.
+    def brake(state, index, params=None):
+        return -2.0 * state.velocities[index]
+
+    def boids(state, index, params=None):
+        return -2.0 * state.velocities[index]
+
+    for law in (brake, boids):
+        history, _ = simulate(law, n_agents=4, steps=60, params=FlockParams(seed=1))
+        assert history[-1].speeds.max() < 0.05
+    # The library's own wrappers still map back to their model.
+    a, _ = simulate(CONTROLLERS["boids"], n_agents=4, steps=10)
+    b, _ = simulate("boids", n_agents=4, steps=10)
+    assert np.allclose(a[-1].positions, b[-1].positions)
+
+
 def test_spawn_starts_legal():
     """The lattice spawn must not begin already inside the separation distance."""
     params = FlockParams(seed=5)
