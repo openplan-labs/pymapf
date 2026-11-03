@@ -43,12 +43,21 @@ does not land at every metre of a corridor. A merged run is ordered against
 others at vertices it passes long after it departs, which can close a cycle
 the halted plan does not have; the plan is then scheduled halted instead.
 
-There is one respect in which the margin is *not* a guarantee: it covers each
-pair's hand-over at a shared vertex, not two agents passing on adjacent
-vertices without ever sharing one. On a unit grid those keep one cell apart,
-which is fine for ``safety_distance <= 1``; ask for more than the edge length
-and :meth:`TrajectorySet.min_separation` is the check, as it is for anything
-else this model does not see.
+**Near misses.** Two moves can come close without sharing a vertex: diagonal
+moves cross in the middle of a cell, and neighbours fly side by side. The
+discrete plan calls ``(0,0)->(1,1)`` against ``(0,1)->(1,0)`` valid, and
+scheduled on shared vertices alone the two met 0.004 apart. So a pair of
+runs that comes within the safety distance (or crosses, under
+``safety_time``) is treated as if it shared its point of closest approach:
+whoever the discrete plan has there first leads, and the other is delayed by
+the same simulation.
+
+What the model still does not see is an agent *halted* near another's path:
+the discrete plan lets them coexist, and no ordering of departures moves
+them apart. On a unit grid that gap is at least one cell without diagonals
+and ``√2/2`` of one with them, so a ``safety_distance`` up to that holds;
+ask for more and :meth:`TrajectorySet.min_separation` is the check, as it is
+for anything else this model does not see.
 
 Deviations from the paper: profiles are rest-to-rest per run (the paper
 allows any speed within limits, at the cost of a second bound per move and an
@@ -519,7 +528,8 @@ def _check_parking(stays, passages) -> None:
 def _safety_edges(
     stays, halts, runs, index, limits_for
 ) -> List[Tuple[int, int, float]]:
-    """One safety constraint per pair of runs that share a vertex.
+    """One safety constraint per pair of runs that share a vertex, and one
+    per pair that comes too close without sharing one (:func:`_near_misses`).
 
     The discrete plan says which of the two is first at the shared vertices
     (it is the same one at all of them: two runs sharing several vertices
@@ -565,22 +575,137 @@ def _safety_edges(
                 "%r and %r pass each other head-on between shared vertices; "
                 "plan is not valid" % (key_a[0], key_b[0])
             )
-        lim_l, lim_f = limits_for(leader[0]), limits_for(follower[0])
-        explicit = [
-            lim.safety_time for lim in (lim_l, lim_f) if lim.safety_time is not None
-        ]
-        if explicit:
-            delay = order + max(explicit)
-        else:
-            wanted = max(lim_l.safety_distance, lim_f.safety_distance)
-            delay = _pair_delay(
-                runs[leader[0]][leader[1]],
-                runs[follower[0]][follower[1]],
-                order,
-                wanted,
-            )
-        edges.append((index[leader], index[follower], delay))
+        edges.append(_ordered(leader, follower, order, runs, index, limits_for))
+    for leader, follower, order, tied in _near_misses(
+        stays, halts, runs, limits_for, pairs
+    ):
+        # A simultaneous crossing has no order in the discrete plan, and the
+        # wrong guess can close a cycle that the other one avoids: three
+        # agents trading places at once, two of them crossing diagonally.
+        # So it follows the order the constraints so far already imply.
+        if tied and _reaches(edges, index[follower], index[leader]):
+            leader, follower, order = follower, leader, -order
+        edges.append(_ordered(leader, follower, order, runs, index, limits_for))
     return edges
+
+
+def _reaches(edges, source: int, target: int) -> bool:
+    """Whether ``target`` is constrained, through ``edges``, to follow ``source``."""
+    after: Dict[int, List[int]] = {}
+    for src, dst, _w in edges:
+        after.setdefault(src, []).append(dst)
+    seen, frontier = {source}, [source]
+    while frontier:
+        for nxt in after.get(frontier.pop(), ()):
+            if nxt == target:
+                return True
+            if nxt not in seen:
+                seen.add(nxt)
+                frontier.append(nxt)
+    return False
+
+
+def _ordered(leader, follower, order, runs, index, limits_for):
+    """The edge ``dep(follower) >= dep(leader) + delay`` for one ordered pair."""
+    lim_l, lim_f = limits_for(leader[0]), limits_for(follower[0])
+    explicit = [
+        lim.safety_time for lim in (lim_l, lim_f) if lim.safety_time is not None
+    ]
+    if explicit:
+        delay = order + max(explicit)
+    else:
+        wanted = max(lim_l.safety_distance, lim_f.safety_distance)
+        delay = _pair_delay(
+            runs[leader[0]][leader[1]],
+            runs[follower[0]][follower[1]],
+            order,
+            wanted,
+        )
+    return index[leader], index[follower], delay
+
+
+def _closest_approach(p1: Point, q1: Point, p2: Point, q2: Point):
+    """``(distance, s, t)``: how close segments ``p1q1`` and ``p2q2`` come, at
+    fractions ``s`` and ``t`` along each (Ericson, *Real-Time Collision
+    Detection*, 5.1.9). Neither segment may be a point."""
+
+    def dot(u, v):
+        return sum(x * y for x, y in zip(u, v))
+
+    def clamp(x):
+        return min(1.0, max(0.0, x))
+
+    d1 = [y - x for x, y in zip(p1, q1)]
+    d2 = [y - x for x, y in zip(p2, q2)]
+    r = [x - y for x, y in zip(p1, p2)]
+    a, b, e = dot(d1, d1), dot(d1, d2), dot(d2, d2)
+    c, f = dot(d1, r), dot(d2, r)
+    denominator = a * e - b * b
+    s = clamp((b * f - c * e) / denominator) if denominator > 1e-12 * a * e else 0.0
+    t = (b * s + f) / e
+    if t < 0.0:
+        t, s = 0.0, clamp(-c / a)
+    elif t > 1.0:
+        t, s = 1.0, clamp((b - c) / a)
+    return distance(lerp(p1, q1, s), lerp(p2, q2, t)), s, t
+
+
+def _near_misses(stays, halts, runs, limits_for, shared):
+    """Pairs of runs that come too close without sharing a vertex.
+
+    Yields ``(leader, follower, order, tied)`` as a shared vertex would,
+    with the point of closest approach standing in for the vertex: the
+    leader is whichever run the discrete plan has there first (its discrete
+    time is interpolated along the run), and ``order`` is the follower's
+    least delay that keeps it second there. ``tied`` marks a simultaneous
+    crossing, which the discrete plan does not order at all. "Too close" is the pair's
+    safety distance; under an explicit ``safety_time``, which is a rule
+    about shared points, only an actual crossing counts.
+
+    Candidates come from a sweep over the runs' bounding boxes along the
+    first axis, so a plan whose runs are far apart costs one sort.
+    """
+    reach = max((limits_for(agent).safety_distance for agent in runs), default=0.0)
+    boxes = []
+    for agent, agent_runs in runs.items():
+        for i, run in enumerate(agent_runs):
+            low = [min(x, y) - reach for x, y in zip(run.origin, run.destination)]
+            high = [max(x, y) + reach for x, y in zip(run.origin, run.destination)]
+            departs = stays[agent][halts[agent][i]][2]
+            arrives = stays[agent][halts[agent][i + 1]][1]
+            boxes.append((low, high, (agent, i), departs, arrives - departs))
+    boxes.sort(key=lambda box: box[0][0])
+    for x, (low_a, high_a, key_a, dep_a, steps_a) in enumerate(boxes):
+        for low_b, high_b, key_b, dep_b, steps_b in boxes[x + 1 :]:
+            if low_b[0] > high_a[0]:
+                break
+            if key_a[0] == key_b[0] or (min(key_a, key_b), max(key_a, key_b)) in shared:
+                continue
+            if any(lo > hi for lo, hi in zip(low_b, high_a)) or any(
+                lo > hi for lo, hi in zip(low_a, high_b)
+            ):
+                continue
+            lim_a, lim_b = limits_for(key_a[0]), limits_for(key_b[0])
+            run_a, run_b = runs[key_a[0]][key_a[1]], runs[key_b[0]][key_b[1]]
+            gap, s, t = _closest_approach(
+                run_a.origin, run_a.destination, run_b.origin, run_b.destination
+            )
+            if lim_a.safety_time is not None or lim_b.safety_time is not None:
+                if gap > 1e-9:
+                    continue
+            elif gap >= max(lim_a.safety_distance, lim_b.safety_distance) - 1e-9:
+                continue
+            tau_a = run_a.profile.time_to_travel(s * run_a.profile.length)
+            tau_b = run_b.profile.time_to_travel(t * run_b.profile.length)
+            # Equal times there go to the earlier departure, so that every
+            # edge points forward in discrete time; a full tie, to the name.
+            there_a = (dep_a + s * steps_a, dep_a, key_a)
+            there_b = (dep_b + t * steps_b, dep_b, key_b)
+            tied = there_a[:2] == there_b[:2]
+            if there_a <= there_b:
+                yield key_a, key_b, tau_a - tau_b, tied
+            else:
+                yield key_b, key_a, tau_b - tau_a, tied
 
 
 def _assemble(stays, halts, runs, coords, times, index) -> TrajectorySet:

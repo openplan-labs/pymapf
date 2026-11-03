@@ -470,6 +470,43 @@ def test_merging_runs_never_makes_a_valid_plan_infeasible():
     assert merged.min_separation(0.01)[0] >= 0.9 - 5e-3
 
 
+def test_diagonal_moves_that_cross_between_vertices_keep_their_distance():
+    """Diagonal moves can cross mid-cell without sharing a vertex, so the
+    shared-vertex constraints never saw them: CBS returns this swap as valid,
+    and the schedule flew both agents through (0.5, 0.5) at once, 0.004
+    apart for a 0.5 requirement."""
+    grid = pymapf.GridMap([[0, 0], [0, 0]])
+    agents = [pymapf.Agent("a", (0, 0), (1, 1)), pymapf.Agent("b", (0, 1), (1, 0))]
+    problem = pymapf.MAPFProblem(grid, agents, allow_diagonals=True)
+    solution = pymapf.solve(problem, "cbs")
+    assert solution.paths == {"a": [(0, 0), (1, 1)], "b": [(0, 1), (1, 0)]}
+    limits = KinematicLimits(v_max=1.0, a_max=1.0, safety_distance=0.5)
+    assert plan_trajectories(solution, limits=limits).min_separation(0.01)[0] >= (
+        0.5 - 5e-3
+    )
+
+
+def test_a_simultaneous_crossing_takes_the_order_the_plan_implies():
+    """C and D cross diagonally while A trades places with both. Which of C
+    and D goes first is free, and the wrong choice closes a cycle with A's
+    hand-overs (from an 8-connected CBS plan, random_obstacles 7x7 seed 4)."""
+    solution = Solution(
+        {
+            "A": [(5, 3), (5, 4), (4, 5)],
+            "B": [(2, 4), (2, 3), (2, 2), (2, 1), (1, 1)],
+            "C": [(4, 4), (5, 3), (4, 2), (3, 2)],
+            "D": [(5, 4), (4, 3), (5, 2), (4, 2)],
+            "E": [(2, 5), (2, 4), (2, 3), (1, 3)],
+            "F": [(3, 5), (2, 5), (2, 4), (2, 3)],
+        }
+    )
+    assert solution.is_valid()
+    for safety in (0.5, 0.7):
+        limits = KinematicLimits(v_max=1.3, safety_distance=safety)
+        trajectories = plan_trajectories(solution, limits=limits)
+        assert trajectories.min_separation(0.01)[0] >= safety - 5e-3
+
+
 def test_runs_that_share_an_endpoint_are_allowed():
     # Both leave (0, 0) along the same row, one after the other: sharing the
     # origin must not be mistaken for a permanent collision there.

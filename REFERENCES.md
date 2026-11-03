@@ -499,9 +499,13 @@ because a full-speed rule lets a right-angle hand-over between rest-to-rest
 agents get within 0.2 of a 0.5 that was asked for. Only simultaneous motion
 is simulated: treating a halted agent as parked forever made two runs that
 share an endpoint look like a permanent collision, which the plan may well
-require. The remaining gap is passing on *adjacent* vertices without a shared
-one, which the model does not see; on a unit grid that keeps one cell, and
-`TrajectorySet.min_separation` samples the rest.
+require. Runs that come within the safety distance *without* sharing a vertex
+-- diagonal moves crossing mid-cell, which the discrete plan calls valid and
+which were scheduled 0.004 apart for a 0.5 requirement -- are ordered at
+their point of closest approach as if it were a shared vertex. The remaining
+gap is an agent *halted* near another's path, which no ordering moves apart;
+on a unit grid that keeps one cell without diagonals and √2/2 of one with
+them, and `TrajectorySet.min_separation` samples the rest.
 
 **Joint trajectory optimisation** follows Augugliaro et al.'s formulation --
 minimum-snap polynomials, separation linearised as the supporting half-space

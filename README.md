@@ -272,7 +272,9 @@ vehicle that can hover or coast actually does. The safety margin between two
 agents at a shared vertex is not one number: the scheduler simulates the two
 vehicles' actual motion through it, at their actual speeds and the actual
 angle between them, and finds the smallest delay at which they never come
-within `safety_distance`. Heterogeneous fleets pass `limits_by_agent`;
+within `safety_distance`. Two moves that come that close without sharing a
+vertex — diagonals crossing mid-cell — are ordered the same way at their
+point of closest approach. Heterogeneous fleets pass `limits_by_agent`;
 general graphs take coordinates from `ExplicitGraph.positions`; a margin too
 long for a cycle of agents raises `InfeasibleScheduleError` rather than a
 schedule that never finishes.
