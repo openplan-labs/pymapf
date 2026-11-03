@@ -153,13 +153,17 @@ def sipp(
                 departure = arrival - 1
                 if departure >= hi:
                     continue
-                if constraints.blocks_edge(cell, neighbour, arrival):
-                    # An edge constraint only forbids this exact crossing time;
-                    # arriving one step later is still legal if the interval
-                    # allows it.
+                # An edge constraint only forbids this exact crossing time, so
+                # wait one more step and try again -- for as long as there are
+                # back-to-back constraints and both intervals still allow it.
+                while (
+                    constraints.blocks_edge(cell, neighbour, arrival)
+                    and arrival < n_hi
+                    and arrival - 1 < hi
+                ):
                     arrival += 1
-                    if arrival >= n_hi or arrival - 1 >= hi or arrival > horizon_bound:
-                        continue
+                if arrival >= n_hi or arrival - 1 >= hi or arrival > horizon_bound:
+                    continue
                 n_state = (neighbour, n_index)
                 if n_state in closed:
                     continue

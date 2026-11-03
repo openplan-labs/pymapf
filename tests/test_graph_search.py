@@ -234,3 +234,44 @@ def test_distance_table_follows_one_way_edges_backwards():
     assert distance_table(graph, "c") == {"c": 0, "b": 1, "a": 2}
     solution = pymapf.solve(MAPFProblem(graph, [Agent("r", "b", "c")]), "cbs")
     assert solution.paths["r"] == ["b", "c"]
+
+
+def test_sipp_waits_out_back_to_back_edge_constraints():
+    # Crossing (0, 1) -> (0, 0) is forbidden at t = 1 *and* t = 2; SIPP used to
+    # step past the first constraint only and cross at t = 2 anyway.
+    grid = GridMap([[0, 0]])
+    constraints = Constraints()
+    constraints.add_edge((0, 1), (0, 0), 1)
+    constraints.add_edge((0, 1), (0, 0), 2)
+    expected = [(0, 1), (0, 1), (0, 1), (0, 0)]
+    assert sipp(grid, (0, 1), (0, 0), constraints=constraints) == expected
+    assert space_time_astar(grid, (0, 1), (0, 0), constraints=constraints) == expected
+
+
+def test_sipp_matches_space_time_astar_under_random_constraints():
+    import random
+
+    rng = random.Random(3)
+    grid = GridMap([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
+    free = [(r, c) for r in range(3) for c in range(3) if grid.is_free((r, c))]
+    for _ in range(300):
+        start, goal = rng.sample(free, 2)
+        constraints = Constraints()
+        for _ in range(rng.randint(0, 8)):
+            u = rng.choice(free)
+            t = rng.randint(1, 6)
+            if rng.random() < 0.5:
+                if (u, t) != (start, 0):
+                    constraints.add_vertex(u, t)
+            else:
+                v = rng.choice(grid.neighbors(u))  # swaps; never a wait
+                constraints.add_edge(u, v, t)
+        reference = space_time_astar(grid, start, goal, constraints=constraints)
+        path = sipp(grid, start, goal, constraints=constraints)
+        assert (path is None) == (reference is None)
+        if path is not None:
+            assert len(path) == len(reference)
+            assert path[0] == start and path[-1] == goal
+            for t in range(1, len(path)):
+                assert not constraints.blocks_vertex(path[t], t)
+                assert not constraints.blocks_edge(path[t - 1], path[t], t)
