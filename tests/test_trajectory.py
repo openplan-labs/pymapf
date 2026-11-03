@@ -466,6 +466,29 @@ def test_waypoints_from_a_solution_keep_the_corners_and_drop_the_rest():
     assert np.allclose(scaled["a"], [(0, 0), (0, 1.5), (1, 1.5)])
 
 
+def test_a_wait_on_a_corner_keeps_the_corner_and_a_parked_agent_has_a_leg():
+    pymapf = pytest.importorskip("pymapf")
+    solution = pymapf.Solution(
+        {
+            "a": [(0, 0), (0, 1), (0, 2), (0, 3), (0, 3), (1, 3), (2, 3)],
+            "b": [(4, 4)],
+        }
+    )
+    waypoints = waypoints_from_solution(solution)
+    # The wait used to hide the corner from the collinearity test, and the
+    # seed cut straight across whatever the discrete plan went around.
+    assert np.allclose(waypoints["a"], [(0, 0), (0, 3), (2, 3)])
+    # One vertex used to be one waypoint, which the planner refuses.
+    assert np.allclose(waypoints["b"], [(4, 4), (4, 4)])
+    plan = plan_joint_trajectories(
+        [Vehicle("a", (0, 0), (2, 3)), Vehicle("b", (4, 4), (4, 4))],
+        waypoints=waypoints,
+        samples=30,
+        iterations=5,
+    )
+    assert plan.trajectories["b"](0.5 * plan.duration) == pytest.approx([4.0, 4.0])
+
+
 def test_a_discrete_plan_seeds_the_optimiser_through_an_obstacle_field():
     pymapf = pytest.importorskip("pymapf")
     scenario = pymapf.build_scenario(

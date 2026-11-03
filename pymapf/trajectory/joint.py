@@ -378,11 +378,11 @@ def waypoints_from_solution(
         solution: any valid plan, on a grid, a volume or an explicit graph.
         positions: ``{vertex: point}`` when the vertices are not themselves
             coordinates; grid cells are, scaled by ``cell_size``.
-        simplify: drop waypoints that lie on the straight line between their
-            neighbours. A grid path has a waypoint per cell, and pinning the
-            optimiser's knots to every one of them wastes segments on a
-            corridor where one would do; the corners are what carry the
-            routing decision.
+        simplify: drop waits, and waypoints that lie on the straight line
+            between their neighbours. A grid path has a waypoint per cell,
+            and pinning the optimiser's knots to every one of them wastes
+            segments on a corridor where one would do; the corners are what
+            carry the routing decision.
 
     Use the result as ``waypoints=`` to :func:`plan_joint_trajectories`.
     """
@@ -392,6 +392,21 @@ def waypoints_from_solution(
             points = [np.asarray(positions[v], dtype=float) for v in path]
         else:
             points = [np.asarray(v, dtype=float) * cell_size for v in path]
+        if simplify:
+            # A wait repeats a vertex; drop the repeats before looking for
+            # corners. The continuous plan decides its own timing, and a
+            # collinearity test straddling a wait would skip the corner the
+            # agent happened to wait on.
+            distinct = [points[0]]
+            for point in points[1:]:
+                if np.linalg.norm(point - distinct[-1]) > 1e-12:
+                    distinct.append(point)
+            points = distinct
+        if len(points) == 1:
+            # Already at its goal: a leg of length zero, so that it still
+            # has a trajectory -- parked -- for the others to avoid.
+            out[name] = np.array([points[0], points[0]])
+            continue
         kept = [points[0]]
         for previous, current, following in zip(points, points[1:], points[2:]):
             if not simplify:
@@ -399,14 +414,11 @@ def waypoints_from_solution(
                 continue
             before = current - previous
             after = following - current
-            n_before = np.linalg.norm(before)
-            n_after = np.linalg.norm(after)
-            if n_before < 1e-12 or n_after < 1e-12:
-                continue  # a wait: the continuous plan decides its own timing
-            if np.linalg.norm(before / n_before - after / n_after) > 1e-9:
+            before /= np.linalg.norm(before)
+            after /= np.linalg.norm(after)
+            if np.linalg.norm(before - after) > 1e-9:
                 kept.append(current)
-        if len(points) > 1:
-            kept.append(points[-1])
+        kept.append(points[-1])
         out[name] = np.array(kept)
     return out
 
