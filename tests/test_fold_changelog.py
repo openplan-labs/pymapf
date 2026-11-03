@@ -11,8 +11,7 @@ from fold_changelog import fold  # noqa: E402
 HEADER = "# Changelog\n\nIntro text.\n\n"
 
 AS_RELEASE_PLEASE_WRITES_IT = (
-    HEADER
-    + "## [0.10.0](https://example.org/compare/v0.9.0...v0.10.0) (2026-11-03)\n"
+    HEADER + "## [0.10.0](https://example.org/compare/v0.9.0...v0.10.0) (2026-11-03)\n"
     "\n"
     "\n"
     "### Bug Fixes\n"
