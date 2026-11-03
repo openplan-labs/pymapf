@@ -44,3 +44,17 @@ def test_unsolvable_corridor_swap_returns_none():
         corridor, [Agent("a", (0, 0), (0, 4)), Agent("b", (0, 4), (0, 0))]
     )
     assert PrioritizedPlanning().solve(prob) is None
+
+
+def test_priority_with_a_repeated_name_raises():
+    import pytest
+
+    from pymapf.algorithms.prioritized_planning import PrioritizedPlanning
+    from pymapf.core import Agent, GridMap, MAPFProblem
+
+    problem = MAPFProblem(
+        GridMap([[0, 0, 0], [0, 0, 0]]),
+        [Agent("a", (0, 0), (0, 2)), Agent("b", (1, 0), (1, 2))],
+    )
+    with pytest.raises(ValueError, match="exactly once"):
+        PrioritizedPlanning(priority=["a", "a", "b"]).solve(problem)

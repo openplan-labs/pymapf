@@ -143,3 +143,9 @@ def test_a_plan_that_never_moves_is_not_scored_as_solved():
         del _REGISTRY["_stay_put"]
     assert not row.solved and not row.valid
     assert "not its goal" in row.note
+
+
+def test_a_misspelled_solver_option_raises_instead_of_being_dropped():
+    scenario = pymapf.build_scenario("empty_room", n_agents=2, seed=1)
+    with pytest.raises(ValueError, match="time_limt"):
+        run_once(scenario, "cbs", time_limt=5)

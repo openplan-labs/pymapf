@@ -57,8 +57,12 @@ class PrioritizedPlanning(MAPFSolver):
         started = time.perf_counter()
         agents = {a.name: a for a in problem.agents}
         order = self.priority or [a.name for a in problem.agents]
-        if set(order) != set(agents):
-            raise ValueError("priority must list exactly the problem's agent names")
+        if sorted(order) != sorted(agents):
+            # A set comparison would let a repeated name through, and that
+            # agent would then be planned twice.
+            raise ValueError(
+                "priority must list each of the problem's agent names exactly once"
+            )
 
         emit("root", agents=list(order), cost=0)
         reservations: Dict[str, List[Cell]] = {}

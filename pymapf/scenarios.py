@@ -329,6 +329,13 @@ def bottleneck(room: int = 5, corridor: int = 5, n_agents: int = 4, seed: int = 
 
     left = sorted((r, c) for r in range(1, height - 1) for c in left_cols)
     right = sorted((r, c) for r in range(1, height - 1) for c in right_cols)
+    # Each room hosts the starts of one side and the goals of the other: n
+    # cells per room in total.
+    if not 1 <= n_agents <= len(left):
+        raise ValueError(
+            "bottleneck with room=%d fits 1 to %d agents, got %d"
+            % (room, len(left), n_agents)
+        )
     rng = random.Random(seed)
     rng.shuffle(left)
     rng.shuffle(right)
@@ -421,10 +428,16 @@ def from_ascii(text: str, name: str = "ascii", allow_diagonals: bool = False):
         for c, char in enumerate(line):
             if char in WALL_CHARS:
                 occupancy[r][c] = 1
-            elif char.islower():
-                starts[char.upper()] = (r, c)
-            elif char.isupper():
-                goals[char] = (r, c)
+            elif char.islower() or char.isupper():
+                # A repeated letter used to overwrite the earlier cell
+                # silently, dropping that start or goal from the instance.
+                key, table = (char.upper(), starts) if char.islower() else (char, goals)
+                if key in table:
+                    raise ValueError(
+                        "%r appears twice, at %s and %s"
+                        % (char, table[key], (r, c))
+                    )
+                table[key] = (r, c)
 
     missing = set(starts) ^ set(goals)
     if missing:

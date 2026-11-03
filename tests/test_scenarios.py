@@ -117,3 +117,17 @@ def test_sampling_fails_loudly_when_the_map_is_too_small():
     with pytest.raises(ValueError) as error:
         build_scenario("empty_room", height=4, width=4, n_agents=8)
     assert "reachable cells" in str(error.value)
+
+
+@pytest.mark.parametrize("text", ["#a.a.A#", "#a.A.A#"])
+def test_from_ascii_rejects_a_repeated_letter(text):
+    with pytest.raises(ValueError, match="appears twice"):
+        from_ascii(text)
+
+
+@pytest.mark.parametrize("n_agents", [0, 46, 100])
+def test_bottleneck_rejects_agent_counts_it_cannot_place(n_agents):
+    # room=5 has 45 cells per side; 0 used to give one agent, 100 an IndexError.
+    with pytest.raises(ValueError, match="fits 1 to 45 agents"):
+        build_scenario("bottleneck", n_agents=n_agents)
+    assert build_scenario("bottleneck", n_agents=45).n_agents == 45

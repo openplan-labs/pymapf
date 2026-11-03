@@ -167,11 +167,27 @@ def _supported(algorithm: str, kwargs: Dict) -> Dict:
     """Drop constructor kwargs a given solver does not accept.
 
     Benchmarks are configured once and run across every algorithm, so
-    ``time_limit=5`` must not blow up on a solver that has no such knob.
+    ``time_limit=5`` must not blow up on a solver that has no such knob. An
+    option that *no* registered solver accepts is a typo, though
+    (``time_limt=5``), and dropping it silently would run the benchmark with
+    the default -- so that raises.
     """
     import inspect
 
     from .core.solver import _REGISTRY
+
+    known = set()
+    for solver_cls in _REGISTRY.values():
+        params = inspect.signature(solver_cls.__init__).parameters.values()
+        if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params):
+            known = None  # some solver takes anything: nothing is a typo
+            break
+        known.update(p.name for p in params)
+    unknown = sorted(key for key in kwargs if known is not None and key not in known)
+    if unknown:
+        raise ValueError(
+            "no registered solver accepts %s" % ", ".join(repr(k) for k in unknown)
+        )
 
     cls = _REGISTRY.get(algorithm.lower())
     if cls is None:
