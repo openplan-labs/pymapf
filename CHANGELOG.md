@@ -9,6 +9,42 @@ from Conventional Commit messages (see CONTRIBUTING.md). Each release entry
 holds the notes written under *Unreleased* followed by the generated list of
 commits.
 
+## [0.10.0](https://github.com/openplan-labs/pymapf/compare/v0.9.0...v0.10.0) (2026-11-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **aerial:** plan_docking raises ValueError for vehicle or station positions that are not voxel centres, instead of silently snapping them.
+* **swarm:** CompositeBehavior raises ValueError when its parts declare different outputs, and a composite built without params adopts its first part's.
+
+### Features
+
+* **trajectory:** declare numpy for pymapf.trajectory as the `trajectory` extra ([be8a7c1](https://github.com/openplan-labs/pymapf/commit/be8a7c1eedc0a64ecd3e8c4e121284f7e0a0d6d6))
+
+
+### Bug Fixes
+
+* add utf-8 encoding in test_docs_assets.py for Windows ([945758f](https://github.com/openplan-labs/pymapf/commit/945758f7d1c4872706fc8657961465c78b7fedda))
+* add utf-8 encoding in test_docs_assets.py for Windows ([2a1ade3](https://github.com/openplan-labs/pymapf/commit/2a1ade3fa5f5d56e2caeb56efcb96535759eb454))
+* **aerial:** refuse docking positions off voxel centres instead of snapping them ([60cffde](https://github.com/openplan-labs/pymapf/commit/60cffde89bc9cc7921e8a5e44cdaedb672035c0f))
+* **centralized:** make cooperative A* return conflict-free plans ([2353b39](https://github.com/openplan-labs/pymapf/commit/2353b396bfdb27b93c52214c8373f0c5a501ab70))
+* **decentralized:** let the first NMPC agent see the others ([b40bfc1](https://github.com/openplan-labs/pymapf/commit/b40bfc10f657c9b6b05ff21e96075e5ec68c51e3))
+* **decentralized:** let the legacy flocking simulate() run custom controller functions ([24c08cc](https://github.com/openplan-labs/pymapf/commit/24c08ccc5f40711ada174014b711f885aab23c04))
+* **decentralized:** NMPC obstacle prediction, hash and seeded warm start ([067b068](https://github.com/openplan-labs/pymapf/commit/067b06859133b5f83e287c928f0905f73eb01054))
+* **decentralized:** stop legacy planners changing global matplotlib and logging state ([5dd0475](https://github.com/openplan-labs/pymapf/commit/5dd04751501a5ca2bf5319b359e0005b24c347ed))
+* **decentralized:** velocity obstacle agents now see each other ([51c8e0d](https://github.com/openplan-labs/pymapf/commit/51c8e0d51e0c786d371520c21422398c8759934a))
+* **kinodynamic:** fall back to halted runs when merge_straight closes a false cycle ([f2c7e9e](https://github.com/openplan-labs/pymapf/commit/f2c7e9e9930219ceca5fa0fa940d263433d7821c))
+* **kinodynamic:** order runs that cross or pass close without sharing a vertex ([fe125ea](https://github.com/openplan-labs/pymapf/commit/fe125ea4dcc1a491cf2453d004f77ec1cbe64edf))
+* **swarm:** coverage feed-forward feedback, adaptive scoring and run-to-run state ([914aedb](https://github.com/openplan-labs/pymapf/commit/914aedbdcc927d781e28b019d1e4a1ee0646fcc3))
+* **swarm:** honour behaviour params, the simulator timestep and composite contracts ([9f2cf0d](https://github.com/openplan-labs/pymapf/commit/9f2cf0d95002c8abaec418d1630781311e8d796a))
+* **swarm:** judge BearingFormation by bearing rigidity, not distance rigidity ([a42a891](https://github.com/openplan-labs/pymapf/commit/a42a8919583ce229c8489c8470e09610c0e3b7ed))
+* **swarm:** small API and documentation inconsistencies ([548d853](https://github.com/openplan-labs/pymapf/commit/548d85390f39e1d1ccb3be679216e8916cc33e9a))
+* **trajectory:** give every seeded vehicle room to manoeuvre; state what a seed carries ([7602647](https://github.com/openplan-labs/pymapf/commit/7602647357547b6a8e790655f5541f519afe4191))
+* **trajectory:** keep corners after waits and give a parked agent a leg in waypoints_from_solution ([cc0710d](https://github.com/openplan-labs/pymapf/commit/cc0710d8c1e142d9e3fe06f9873f4f06240bba28))
+* **trajectory:** keep joint trajectories inside an inscribed speed/acceleration polytope ([be523e8](https://github.com/openplan-labs/pymapf/commit/be523e8e996df81210ad02d07c8ced9571b96473))
+* **trajectory:** plan parked fleets and tiny hops instead of calling them inconsistent ([0bec579](https://github.com/openplan-labs/pymapf/commit/0bec579ca58d4bf533e171da34ffa5e20f3ef076))
+* **trajectory:** report JointPlan.cost for the trajectories actually returned ([86c5c7c](https://github.com/openplan-labs/pymapf/commit/86c5c7c91e56565c088c09a7d484ebc5c8acecfa))
+
 ## [Unreleased]
 
 ### Added
