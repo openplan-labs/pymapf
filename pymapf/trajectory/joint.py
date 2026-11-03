@@ -339,6 +339,16 @@ class _Affine:
             self.basis = np.eye(size)
             self.rank = 0
             return
+        # Equilibrate the rows first. A derivative row carries 1/T^d, so on
+        # a short segment the jerk rows outweigh the position rows by many
+        # orders of magnitude, the rank test below mistakes the position
+        # rows for noise, and a perfectly good 1 cm hop was reported as
+        # "inconsistent". Scaling rows changes neither the solution set nor
+        # its minimum-norm point.
+        norms = np.linalg.norm(a, axis=1)
+        norms[norms == 0.0] = 1.0
+        a = a / norms[:, None]
+        b = b / norms
         u, singular, vt = np.linalg.svd(a, full_matrices=True)
         tol = max(a.shape) * (singular[0] if singular.size else 0.0) * 1e-12
         rank = int((singular > tol).sum())
@@ -944,14 +954,27 @@ def _seed(fleet, waypoints, segments, dimension, duration, v_max):
             raise ValueError("waypoints for %r need at least two points" % name)
         seeds[name] = _split_legs(points, segments)
     if duration is None:
-        # Cruising at 70% of the limit leaves room to accelerate into the
-        # corners and to detour around whoever is in the way.
-        cruise = 0.7 * v_max
-        duration = max(
-            float(np.linalg.norm(np.diff(points, axis=0), axis=1).sum()) / cruise
+        longest = max(
+            float(np.linalg.norm(np.diff(points, axis=0), axis=1).sum())
             for points in seeds.values()
         )
-        duration = max(duration, 1e-3)
+        if longest <= 0.0:
+            # Nobody moves, so any makespan is as good as another. (This
+            # used to floor at a millisecond, and the derivative rows of a
+            # 1 ms segment are too ill-conditioned for the equalities to be
+            # solved: a parked fleet was reported as "inconsistent".)
+            duration = 1.0
+        elif not 0.0 < v_max < math.inf:
+            raise ValueError(
+                "duration=None sizes the flight from v_max, which must be "
+                "finite and positive; pass a duration"
+            )
+        else:
+            # Cruising at 70% of the limit leaves room to accelerate into
+            # the corners and to detour around whoever is in the way.
+            duration = longest / (0.7 * v_max)
+    elif not 0.0 < duration < math.inf:
+        raise ValueError("duration must be positive and finite")
     durations = {
         name: _time_allocation(points, duration, v_max)
         for name, points in seeds.items()
@@ -1030,7 +1053,9 @@ def _dilate(plan: JointPlan, limits: Mapping[str, Tuple[float, float]]) -> None:
     optimiser established would no longer mean anything. So the factor is
     the worst vehicle's, and the rest fly further inside their envelopes.
     """
-    times = plan.times(0.01)
+    # At least a thousand samples: a fixed 10 ms step saw a sub-centimetre
+    # hop at t = 0 only, and stretched nothing.
+    times = plan.times(min(0.01, plan.duration / 1000.0))
     factor = 1.0
     for name, trajectory in plan.trajectories.items():
         speed_limit, acceleration_limit = limits[name]

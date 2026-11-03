@@ -721,6 +721,26 @@ def test_ill_posed_fleets_are_refused():
         )
 
 
+def test_a_parked_fleet_and_a_tiny_hop_are_planned_not_refused():
+    # Every vehicle already at its goal: the makespan used to floor at 1 ms,
+    # and the equalities of a 1 ms segment were reported as "inconsistent".
+    parked = plan_joint_trajectories(
+        [Vehicle("a", (1.0, 1.0), (1.0, 1.0)), Vehicle("b", (3.0, 0.0), (3.0, 0.0))]
+    )
+    assert parked.converged
+    assert parked.trajectories["a"](0.5 * parked.duration) == pytest.approx([1, 1])
+    # A 1 cm hop sizes a 7 ms flight; it is planned, and then slowed down
+    # until it meets the limits, which a fixed 10 ms check step never saw.
+    hop = plan_joint_trajectories([Vehicle("a", (0.0, 0.0), (0.01, 0.0))])
+    assert hop.trajectories["a"](hop.duration) == pytest.approx([0.01, 0.0])
+    step = hop.duration / 5000
+    assert hop.max_speed(step) <= 2.0 + 1e-6
+    assert hop.max_acceleration(step) <= 4.0 + 1e-6
+    # An infinite speed limit cannot size the flight; say so.
+    with pytest.raises(ValueError, match="pass a duration"):
+        plan_joint_trajectories([Vehicle("a", (0.0, 0.0), (4.0, 0.0))], v_max=math.inf)
+
+
 def test_the_summary_reports_what_a_caller_needs():
     fleet = crossing(2)
     plan = plan_joint_trajectories(
