@@ -98,21 +98,20 @@ class MultiAgentNMPC:
         except BaseException as e:
             logging.debug(e)
             obstacles = []
+        # What every agent knows about the others: their position and velocity
+        # at the end of the previous step, as ``[x, y, vx, vy]``.  Everyone
+        # decides simultaneously from the same snapshot, so the first agent is
+        # not blind to the rest (it was, when this list was rebuilt from
+        # scratch inside the step) and registration order does not matter.
+        last_seen = {
+            key: np.concatenate((agent.start, np.zeros(2)))
+            for key, agent in self.agents.items()
+        }
         for i in range(self.number_of_timesteps):
-            # self.other_agents = dict()
-            other_agents = []
-            # threads = []
+            snapshot = dict(last_seen)
             for key, agent in self.agents.items():
-                other_agents = self.__agent_step(key, agent, i, obstacles, other_agents)
-            #     threads.append(
-            #         threading.Thread(
-            #             target=self.__agent_step,
-            #             args=(key, agent, i, obstacles),
-            #         )
-            #     )
-            #     threads[-1].start()
-            # for t in threads:
-            #     t.join()
+                others = [obs for other, obs in snapshot.items() if other != key]
+                last_seen[key] = self.__agent_step(key, agent, i, obstacles, others)
         self.simulation_complete = True
 
     def visualize(self, saved_file, map_length, map_height):
@@ -123,19 +122,9 @@ class MultiAgentNMPC:
         self.__plot(saved_file, map_length, map_height)
 
     def __agent_step(self, key, agent, i, obstacles, other_agents_lst):
-        # other_agents = self.other_agents.copy()
-        # try:
-        #     del other_agents[key]
-        # except BaseException as e:
-        #     logging.debug(e)
-        #     pass
-        # other_agents_lst = list(other_agents.values())
         state_history, vel, state = agent.simulate_step(i, obstacles, other_agents_lst)
-        agent_as_obstacle = self.__agent_to_obstacle(vel, state)
-        # self.other_agents[key] = agent_as_obstacle
-        other_agents_lst.append(agent_as_obstacle)
         self.global_state_history[key] = state_history
-        return other_agents_lst
+        return self.__agent_to_obstacle(vel, state)
 
     def __agent_to_obstacle(self, velocity, pos):
         return np.concatenate((pos, velocity))
