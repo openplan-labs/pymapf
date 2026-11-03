@@ -129,6 +129,54 @@ def test_focal_search_respects_its_bound():
     assert len(focal) - 1 <= 1.5 * (len(optimal) - 1)
 
 
+_FOCAL_TRAP = [
+    ".#.#.##.....",
+    "....##.....#",
+    "#...........",
+    "..##........",
+    "...#.##....#",
+    ".#.#..#...#.",
+    "...#.#......",
+    "..###.#..##.",
+    "....#...#...",
+    ".#....######",
+    "#...#.....#.",
+    "...##.#.....",
+]
+
+
+def test_focal_search_reopens_nodes_to_keep_its_bound():
+    # Optimum 13; without reopening, focal search returned 21 > 1.5 * 13.
+    grid = GridMap([[int(ch == "#") for ch in row] for row in _FOCAL_TRAP])
+    distance, _ = dijkstra(grid, (2, 10))
+    assert distance[(5, 2)] == 13
+    path = focal_astar(grid, (2, 10), (5, 2), weight=1.5)
+    assert len(path) - 1 <= 1.5 * 13
+
+
+def test_focal_search_bound_holds_for_an_adversarial_tie_breaker():
+    # Preferring the *deepest* node drives FOCAL as far from A* as the bound
+    # allows, which is where a missed reopening or a stale FOCAL shows up.
+    import random
+
+    rng = random.Random(7)
+    for _ in range(60):
+        n = rng.choice([6, 9, 12])
+        grid = GridMap([[int(rng.random() < 0.3) for _ in range(n)] for _ in range(n)])
+        free = [(r, c) for r in range(n) for c in range(n) if grid.is_free((r, c))]
+        start, goal = rng.sample(free, 2)
+        distance, _ = dijkstra(grid, start)
+        for weight in (1.0, 1.5, 2.0):
+            path = focal_astar(
+                grid, start, goal, weight=weight, tie_breaker=lambda node, g: -g
+            )
+            if goal not in distance:
+                assert path is None
+                continue
+            assert path[0] == start and path[-1] == goal
+            assert len(path) - 1 <= weight * distance[goal]
+
+
 def test_unreachable_goal_returns_none():
     grid = GridMap([[0, 1, 0], [0, 1, 0], [0, 1, 0]])
     assert astar(grid, (0, 0), (0, 2)) is None
