@@ -164,11 +164,43 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   kept as a reference.
 - CI runs on pull requests, including those from forks. It used to run on
   `push` only, which never fires for a fork's branch.
+- MAPPO's critic input is now the global state plus a one-hot of the agent
+  being valued, so `critic_dim` is `state_size + n_agents`. The agents share a
+  state but not a reward; fed the bare state, the critic could only learn the
+  average of their values (three agents with rewards -0.01, -0.12 and -0.48
+  all got -0.1755). This is the agent-specific global state of Yu et al.
+  (2022). Checkpoints saved by an earlier MAPPO do not load into this one.
 
 ### Fixed
 
 - The playground footer and the promo film said the project was Apache 2.0
   licensed. It is MIT, as `LICENSE` and `pyproject.toml` say.
+- **The goal bonus could be farmed.** It was paid on every arrival and never
+  taken back, and an agent on its goal pays no step cost, so stepping off and
+  back on was worth +8.6 over twenty steps where parking was worth 0, under
+  both `sparse` and `shaped`. The optimal policy never parked. The bonus is
+  now repaid on leaving, which makes it a potential like the shaping term.
+- **Truncated episodes were treated as finished.** The trainer cut GAE at a
+  truncation exactly as at a real terminal state, valuing the future at zero.
+  The last reward of a truncated stream now carries `gamma * V(final state)`.
+  `VectorMAPFEnv` already kept the final observation for this and nothing read
+  it; it now also keeps `final_state`, so MAPPO bootstraps too. Lifelong
+  episodes only ever end by truncation, so every one of them was affected.
+- Lifelong mode counted an agent with nowhere new to go (every free cell
+  taken) as completing its goal again on every step: 102 completions for 4
+  arrivals in a full 2x3 room. Only arrivals count now.
+- `action_space(agent)` and `observation_space(agent)` return the same object
+  on every call, as PettingZoo expects, so seeding a space has an effect.
+- A randomised `reset` draws another scenario seed when one cannot place the
+  team (8 in 3,000 for six agents on a dense 8x8) instead of raising partway
+  through a training run.
+- `evaluate` caught any `TypeError` from a policy's `act` and retried without
+  `deterministic`, hiding real errors and silently changing the mode. It now
+  checks the signature. The `pymapf.rl` docstring's example passed
+  `trainer.policy`, which crashes; it passes the trainer.
+- Visualisation: `plot_separation` on one vehicle, `plot_spacetime` on an
+  empty plan, `animate_trajectories` leaving its figure open, and `save()`
+  overwriting a user's `animation.ffmpeg_path` unconditionally.
 
 ## [0.9.0]
 
