@@ -189,7 +189,10 @@ class Vicsek(Behavior):
 class CuckerSmale(Behavior):
     """Velocity consensus with a power-law influence (Cucker and Smale 2007).
 
-    ``a_i = K * sum_j (1 + |x_i - x_j|^2)^(-beta) (v_j - v_i)``
+    ``a_i = (K / |N_i|) * sum_{j in N_i} (1 + |x_i - x_j|^2)^(-beta) (v_j - v_i)``
+
+    Averaged over the neighbourhood ``N_i`` -- the original model averages over
+    all ``N`` agents -- so the gain does not grow with the number of neighbours.
 
     The theory is the reason to have it: for ``beta <= 1/2`` the flock converges
     to a common velocity from *any* initial condition. It has no repulsion, so
@@ -685,10 +688,13 @@ class MinimalisticFlocking(ActiveElastic):
     Two things change as a result, and both matter on real hardware. The
     potential is *bounded in attraction*: a neighbour that drifts far away pulls
     with a force that decays instead of growing without limit, so a straggler
-    cannot drag the flock apart the way a linear spring does. And it is
-    *unbounded in repulsion* as separation goes to zero, so the safety margin is
-    enforced by the potential itself rather than by a separate avoidance rule --
-    which is exactly what you want when the failure mode is a mid-air collision.
+    cannot drag the flock apart the way a linear spring does. And its repulsion
+    *diverges* as separation goes to zero, so the safety margin is enforced by
+    the potential itself rather than by a separate avoidance rule -- which is
+    exactly what you want when the failure mode is a mid-air collision. (In
+    :meth:`proximal` the force is clipped at ``4 * max_acceleration``, because
+    an infinite command is not executable; within that bound, repulsion keeps
+    growing as agents close in, while attraction fades with distance.)
 
     The trade is that the flock is softer. A Lennard-Jones well is shallow away
     from its minimum, so cohesion is looser and convergence slower than the

@@ -154,11 +154,18 @@ class ConeNeighborhood(Neighborhood):
 class GaussianKernelNeighborhood(Neighborhood):
     """A smooth, distance-weighted neighbourhood (Manoni et al. 2022).
 
-    Every agent inside ``cutoff`` is a neighbour, but its influence is
+    Every agent inside the cutoff radius is a neighbour, but its influence is
     ``exp(-d^2 / 2 sigma^2)``. Two consequences matter:
 
-    * the command is continuous in the positions -- an agent drifting across
-      the sensing boundary does not cause a step change in anyone's control;
+    * distant neighbours count for little, so an agent drifting across the
+      sensing boundary causes a much *smaller* step in everyone's control than
+      a hard metric neighbourhood does -- smaller, not zero. The cutoff is
+      ``min(sensing_range, cutoff_sigmas * sigma)``, which with the default
+      parameters (sigma = reference distance = 3, sensing range 6) is only
+      ``2 sigma``, where the kernel is still ``exp(-2) ~ 0.14``. And the
+      weights are normalised to mean 1 (see :meth:`weights`), so a neighbour
+      entering or leaving rescales everyone else's weight too. Widen the
+      sensing range to ``3 sigma`` or more if the residual jump matters;
     * ``sigma`` becomes a single knob arbitrating between local and global
       cohesion, which is what makes it adaptive: raise it and the swarm behaves
       as one group, lower it and it splits into locally coherent clusters.

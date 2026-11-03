@@ -21,7 +21,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from ..swarm.base import SwarmParams, SwarmState, get_behavior
+from ..swarm.base import Behavior, SwarmParams, SwarmState, get_behavior
 from ..swarm.simulator import SwarmMetrics, SwarmSimulator
 
 __all__ = [
@@ -117,6 +117,24 @@ CONTROLLERS: Dict[str, Callable] = {
 }
 
 
+class _FunctionBehavior(Behavior):
+    """Adapts an old-style controller function to the :class:`Behavior` API.
+
+    The function has the facade's signature, ``(state, index, params)`` ->
+    acceleration, and its command is used exactly as returned.
+    """
+
+    name = "custom"
+
+    def __init__(self, function: Callable, params: Optional[FlockParams] = None):
+        super().__init__(params=params)
+        self.function = function
+        self.name = getattr(function, "__name__", "custom")
+
+    def command(self, state: SwarmState, index: int) -> np.ndarray:
+        return np.asarray(self.function(state, index, self.params), dtype=float)
+
+
 def get_controller(name):
     """Resolve a controller by name (or pass a callable through)."""
     if callable(name) and not isinstance(name, str):
@@ -142,12 +160,18 @@ def simulate(
 ) -> Tuple[List[SwarmState], SwarmMetrics]:
     """Run a flock; returns ``(history, metrics)`` as it always did."""
     params = params or FlockParams()
-    name = (
-        controller
-        if isinstance(controller, str)
-        else getattr(controller, "__name__", "acceleration")
-    )
-    behavior = _build(name, params)
+    if isinstance(controller, str):
+        behavior = _build(controller, params)
+    else:
+        # A library wrapper maps back to its model. Anything else is the
+        # caller's own law and runs as given: looking it up by ``__name__``
+        # rejected custom functions, and silently swapped one that happened
+        # to be called ``boids`` for the library's Boids.
+        library = {function: key for key, function in CONTROLLERS.items()}
+        if controller in library:
+            behavior = _build(library[controller], params)
+        else:
+            behavior = _FunctionBehavior(controller, params)
     simulator = SwarmSimulator(
         behavior,
         n_agents=n_agents,

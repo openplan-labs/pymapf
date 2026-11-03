@@ -280,7 +280,13 @@ class AnnulusDomain(Domain):
         offsets = positions - self.centre
         norms = np.linalg.norm(offsets, axis=1, keepdims=True)
         clamped = np.clip(norms, self.inner, self.outer)
-        return self.centre + offsets / np.maximum(norms, 1e-9) * clamped
+        # The exact centre has no direction to push along; without a fallback
+        # it would stay put, inside the hole. Any direction is as close as any
+        # other, so take +x.
+        directions = np.where(
+            norms > 1e-9, offsets / np.maximum(norms, 1e-9), np.array([1.0, 0.0])
+        )
+        return self.centre + directions * clamped
 
     @property
     def measure(self) -> float:

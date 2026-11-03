@@ -179,6 +179,12 @@ commits.
   joint-state Dijkstra on 80 tiny instances (4-connected and diagonal), with
   WCBS(1.5) checked against the same optimum. The WCBS bound tests used CBS
   as their reference, so a CBS bug would have hidden in both.
+- `Behavior.set_timestep(dt)`: the simulator tells every behaviour the step it
+  integrates with (composites forward it to their parts).
+- `CoverageController.reset()` (called by `CoverageSimulator.run()`) and
+  `CoverageController.cost_weights()` hooks.
+- `is_infinitesimally_bearing_rigid` (Zhao and Zelazo 2016) and a per-controller
+  `is_rigid()` hook on the formation controllers.
 
 ### Changed
 
@@ -225,6 +231,20 @@ commits.
   LNS docstring now says a repair is accepted only on a strict improvement,
   as the code does. `find_first_conflict` documents that with diagonals two
   agents crossing through one 2x2 block are not a conflict in this model.
+- `CompositeBehavior` now requires its parts to agree on `output` (all
+  accelerations or all velocities) and raises `ValueError` otherwise; it takes
+  that common output, and adopts its first part's `SwarmParams` when none are
+  passed.
+- `SwarmSimulator(instance)` without `params` keeps the instance's parameters
+  instead of replacing them with defaults; explicit `params` still win.
+- `register_shape` raises on a duplicate name, like `register_behavior`.
+- The legacy `MultiAgentVelocityObstacle`, `MultiAgentNMPC` and
+  `CooperativeAStar` no longer create `./logs`, call `logging.basicConfig` or
+  install `coloredlogs` on the root logger; each module logs through
+  `logging.getLogger(__name__)` and `log_level` only sets the level of that
+  planner's own package logger. `CooperativeAStar.register_agent` ignores (with
+  a warning) an agent that shares a start or goal with one already registered.
+- `NMPCAgent` takes a `seed=0` keyword for its warm-start generator.
 
 ### Fixed
 
@@ -304,6 +324,81 @@ commits.
   goal" while the code sums `len(path) - 1`; it now says what it computes and
   why that equals the standard sum of costs for every built-in solver (LaCAM
   and PIBT trim trailing goal waits). Reported costs are unchanged.
+- **Legacy Velocity Obstacle avoided nothing**: `MultiAgentVelocityObstacle`
+  unpacked `simulate_step`'s `(history, state, velocity)` in the wrong order,
+  so other agents appeared as `[vx, vy, x, y, vx, vy]`, and the list of other
+  agents was rebuilt from empty each step, so the first agent never saw
+  anybody. A head-on swap passed at 0.06 m between centres against a radius sum
+  of 1.0; every agent now decides from one snapshot of everyone's previous
+  state and the pair keeps 1.11 m apart. `MultiAgentNMPC` had the same
+  "first agent is blind" defect and is fixed the same way.
+- **Legacy NMPC obstacle prediction**: `NMPCAgent` evaluated
+  `obstacles[:, step, :]`, discarded it and looped over the time axis, so two
+  obstacles produced a silently meaningless cost and three raised a broadcast
+  error. It now rolls each obstacle's state at the current step over the
+  horizon. `__hash__` returned a `str` (agents could not go in a set) and the
+  SLSQP warm start drew from the global unseeded `np.random`; runs are now
+  reproducible.
+- **Legacy cooperative A\* returned conflicting plans**: no swap (edge)
+  check, the diagonal and non-diagonal conflict branches were identical, an
+  agent accepted a goal that an earlier-planned agent drove through
+  afterwards, and `World.get_start_goal` only re-drew when start *and* goal
+  had both been used. Over 150 seeded 10x10 six-agent instances the plans held
+  61 swapping pairs and 53 vertex conflicts (29 shared starts). The planner now
+  checks vertex, swap and diagonal-crossing conflicts, only stops at a goal
+  nobody passes through later, keys every search node by `(x, y, t)` (the
+  start was keyed by state and the rest by cell, so a later arrival could
+  reopen a closed node), and starts and goals are unique: no conflicts on the
+  same instances with or without diagonals, and 122 of 1800 agents left
+  without a path instead of 339.
+- `velocity_obstacle.py`, `nmpc.py` and `centralized/animator.py` called
+  `matplotlib.use("TkAgg")` at import whenever `DISPLAY` was set, overriding
+  `MPLBACKEND=Agg`, failing without tkinter and switching the backend under
+  `pymapf.viz` too. Removed.
+- `SwarmSimulator(Boids(params=SwarmParams(migration_point=(200, 0))))`
+  dropped the waypoint (centroid x -1.5 after 200 steps instead of 144), and
+  params set on a `CompositeBehavior` never reached its parts.
+- `CompositeBehavior` declared `output="acceleration"` whatever its parts
+  returned and never called their per-step `commands()` hook: ActiveElastic
+  flew at order 0.98 / speed 2.08 alone and 0.41 / 5.02 when wrapped, and a
+  `DisplacementFormation` part never reassigned slots. A one-part composite
+  now flies exactly like its part.
+- `BufferedVoronoi`, `ORCA` and `ActiveElastic` kept their own `dt=0.1`
+  whatever the simulator integrated with; the 12-agent BVC circle swap at
+  `dt=0.25` had 52 colliding steps (0 now).
+- `SwarmSimulator.run()` re-seeds the noise generator, so two runs of one
+  simulator are identical (they differed by up to 1.02 m).
+- `TimeVaryingCoverage` differenced against its previous *extrapolated*
+  target, feeding its own feed-forward back in (`e_t = -lookahead e_(t-1)`):
+  on a static density targets kept flipping 1.16 either side of the
+  centroids and the team never stopped moving (0.32 per step after 100
+  iterations). It now differences the raw centroids.
+- `AdaptiveCoverage.cost` scored against its own moving estimate, so a run
+  that removed 82% of the true locational cost reported an improvement of
+  -190%; it now scores against the true density when it has one. Controller
+  memory no longer leaks between `CoverageSimulator.run()` calls (a second
+  adaptive run started at cost 3264 instead of 2054).
+- `pymapf.decentralized.flocking.simulate` looked a callable up by
+  `__name__`: a custom controller function raised, and one called `boids`
+  silently ran the library's Boids. Custom functions now run as given.
+- `BearingFormation` warned that a planar circle in 3D "will not converge"
+  (then held it with every radius at 1.70 and zero z spread): it was judged by
+  distance rigidity. It now uses bearing rigidity, for the warning and when
+  augmenting a sparse interaction graph.
+- Formation controllers dropped `spacing` unless the shape name was
+  lower-case (`shape="V"`); `AnnulusDomain.project` left a point at the exact
+  centre inside the hole; the `pymapf.swarm` docstring example looped over
+  every behaviour, two of which raise `TypeError` without a target density.
+- Docstrings: `GaussianKernelNeighborhood` promised a command continuous in
+  the positions (the default cutoff is 2 sigma, where the kernel is still
+  0.14, and mean-normalisation rescales every weight when the neighbour set
+  changes); `MinimalisticFlocking` called its repulsion unbounded (it is
+  clipped at `4 * max_acceleration`); `CuckerSmale`'s formula omitted the
+  `1/|N_i|` average.
+- Tests: `assert a.all() == b.all()` (always true) in the velocity-agent and
+  NMPC-agent tests is now a real array comparison; the cooperative A\* tests
+  are seeded, and the legacy visualisation tests write their GIFs to
+  `tmp_path` instead of the working directory.
 
 ## [0.9.0]
 

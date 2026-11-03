@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize, Bounds
 import time
-import logging
 
 
 class NMPCAgent:
@@ -19,6 +18,7 @@ class NMPCAgent:
         vmax=2,
         vmin=0.2,
         horizon_length=4,
+        seed=0,
     ):
         # Initializations
         self.ident = ident
@@ -40,6 +40,10 @@ class NMPCAgent:
         self.lower_bound = [-(1 / np.sqrt(2)) * self.vmax] * self.horizon_length * 2
         self.radius = radius
 
+        # The optimiser starts from a random control sequence (it breaks the
+        # symmetry of head-on encounters); seed it so runs are reproducible.
+        self.rng = np.random.default_rng(seed)
+
         # Current State
         self.current_state = self.start
         self.state_history = np.empty((4, self.number_of_timesteps))
@@ -59,7 +63,7 @@ class NMPCAgent:
         return self.state_history, vel, self.current_state
 
     def __compute_velocity(self, robot_state, obstacle_predictions, xref):
-        u0 = np.random.rand(2 * self.horizon_length)
+        u0 = self.rng.random(2 * self.horizon_length)
 
         def cost_fn(u):
             return self.__total_cost(u, robot_state, obstacle_predictions, xref)
@@ -115,17 +119,17 @@ class NMPCAgent:
 
     def __predict_obstacle_positions(self, obstacles, step, other_agents):
         obstacle_predictions = []
-        try:
-            obstacles[:, step, :]
-            for i in range(np.shape(obstacles)[1]):
-                obstacle = obstacles[:, i]
+        # ``obstacles`` is the manager's ``(4, timesteps, n_obstacles)`` stack
+        # of ``[x, y, vx, vy]`` trajectories (or an empty list when there are
+        # none).  Take every obstacle's state *at this step* and roll it
+        # forward at constant velocity over the horizon.
+        if np.size(obstacles):
+            for obstacle in np.asarray(obstacles)[:, step, :].T:
                 obstacle_position = obstacle[:2]
                 obstacle_vel = obstacle[2:]
                 u = np.vstack([np.eye(2)] * self.horizon_length) @ obstacle_vel
                 obstacle_prediction = self.__update_state(obstacle_position, u)
                 obstacle_predictions.append(obstacle_prediction)
-        except BaseException as e:
-            logging.debug(e)
 
         for agent in other_agents:
             agent_position = agent[:2]
@@ -150,8 +154,8 @@ class NMPCAgent:
         return new_state
 
     def __hash__(self):
-        h = str(self.ident) + str(self.start) + str(self.goal) + str(self.radius)
-        return h
+        # Consistent with ``__eq__``, which compares identifiers only.
+        return hash(self.ident)
 
     def __eq__(self, other):
         return self.ident == other.ident

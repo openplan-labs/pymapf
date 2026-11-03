@@ -128,6 +128,77 @@ def test_composite_requires_parts():
         CompositeBehavior([])
 
 
+def test_composite_rejects_parts_with_different_outputs():
+    # A velocity summed into an acceleration is not a command.
+    with pytest.raises(ValueError, match="different outputs"):
+        CompositeBehavior([(get_behavior("active_elastic"), 1.0), (get_behavior("boids"), 1.0)])
+
+
+def test_composite_of_one_part_flies_like_the_part():
+    # The composite used to declare "acceleration" whatever its parts said, so
+    # ActiveElastic's velocity was integrated as an acceleration (order 0.41,
+    # speed 5.0 instead of 0.98 and 2.1).
+    params = SwarmParams(seed=3)
+    alone = SwarmSimulator(get_behavior("active_elastic"), n_agents=12, params=params)
+    composite = CompositeBehavior([(get_behavior("active_elastic"), 1.0)])
+    assert composite.output == "velocity"
+    wrapped = SwarmSimulator(composite, n_agents=12, params=params)
+    a, b = alone.run(steps=60), wrapped.run(steps=60)
+    assert np.allclose(a.final.positions, b.final.positions)
+
+
+def test_composite_runs_each_parts_per_step_hook():
+    # Per-step bookkeeping lives in ``commands``; the composite used to call
+    # only ``command`` per agent, so a formation part never reassigned slots.
+    from pymapf.swarm.formation import DisplacementFormation
+
+    params = SwarmParams(seed=0)
+    part = DisplacementFormation(shape="v", reassign_every=5, params=params)
+    SwarmSimulator(CompositeBehavior([(part, 1.0)]), n_agents=9, params=params).run(steps=20)
+    assert part._steps == 20
+    assert part._assignment_step == 20
+
+
+def test_simulator_keeps_a_configured_instances_params():
+    far = (200.0, 0.0)
+    boids = get_behavior("boids", params=SwarmParams(migration_point=far))
+    simulator = SwarmSimulator(boids, n_agents=10)
+    assert simulator.params.migration_point == far  # used to be reset to None
+    assert simulator.run(steps=200).final.centroid[0] > 100.0
+
+
+def test_explicit_params_reach_composite_parts():
+    params = SwarmParams(migration_point=(200.0, 0.0))
+    composite = CompositeBehavior([(get_behavior("boids"), 1.0)])
+    SwarmSimulator(composite, n_agents=10, params=params)
+    assert composite.parts[0][0].params is params
+    # ...and a composite built without params adopts its part's.
+    part = get_behavior("boids", params=params)
+    assert CompositeBehavior([(part, 1.0)]).params is params
+
+
+def test_simulator_dt_reaches_behaviors_that_use_one():
+    from pymapf.swarm import circle_swap
+
+    composite = CompositeBehavior([(get_behavior("active_elastic"), 1.0)])
+    SwarmSimulator(composite, n_agents=4, dt=0.05)
+    assert composite.parts[0][0].dt == 0.05
+    # BufferedVoronoi's "never leave your cell in one step" used its own dt of
+    # 0.1 whatever the simulator integrated with: 52 colliding steps at 0.25.
+    state, goals = circle_swap(n=12, radius=8.0)
+    result = SwarmSimulator(
+        "buffered_voronoi", initial=state, goals=goals, dt=0.25
+    ).run(steps=160)
+    assert result.metrics.collisions == 0
+
+
+def test_noisy_runs_of_one_simulator_are_identical():
+    simulator = SwarmSimulator("boids", n_agents=8, params=SwarmParams(noise=0.5, seed=1))
+    first = simulator.run(steps=50).final.positions
+    second = simulator.run(steps=50).final.positions
+    assert np.array_equal(first, second)
+
+
 def test_state_rejects_mismatched_shapes():
     with pytest.raises(ValueError):
         SwarmState(np.zeros((3, 2)), np.zeros((4, 2)))
@@ -317,6 +388,28 @@ def test_annulus_rejects_inverted_radii():
         AnnulusDomain(inner=10.0, outer=5.0)
 
 
+def test_annulus_pushes_its_centre_out_of_the_hole():
+    projected = AnnulusDomain(inner=6, outer=10).project(np.array([[0.0, 0.0]]))
+    assert np.linalg.norm(projected[0]) == pytest.approx(6.0)
+
+
+def test_package_docstring_example_runs():
+    # Its loop used to run every registered behaviour, two of which cannot be
+    # built without a target density (TypeError).
+    import textwrap
+
+    import pymapf.swarm
+
+    lines = []
+    for line in pymapf.swarm.__doc__.split("::\n\n", 1)[1].splitlines():
+        if line.strip() and not line.startswith("    "):
+            break  # the end of the indented code block
+        lines.append(line)
+    code = textwrap.dedent("\n".join(lines)).replace("steps=300", "steps=2")
+    assert "SwarmSimulator(" in code
+    exec(code, {})
+
+
 def test_mesh_domain_snaps_to_its_points():
     points = np.array([[0.0, 0.0], [5.0, 0.0], [0.0, 5.0]])
     domain = MeshDomain(points)
@@ -452,6 +545,40 @@ def test_time_varying_coverage_tracks_a_moving_density():
     ).run(steps=30)
     # The team must have followed the peak to the right, not stayed put.
     assert result.final[:, 0].mean() > result.history[0][:, 0].mean()
+
+
+def test_time_varying_coverage_settles_on_a_static_density():
+    # The finite difference used to be taken against the previous *target*,
+    # feed-forward included, so e_t = -lookahead * e_(t-1): with the swarm
+    # frozen, the target kept flipping 1.16 either side of the centroid.
+    from pymapf.swarm.coverage import CoverageController
+
+    simulator = CoverageSimulator("time_varying", n_agents=6, seed=0)
+    controller = simulator.controller
+    moved = controller.step(simulator.initial_positions(), 1.0)
+    centroids = CoverageController.targets(controller, moved, 0.0)
+    controller.targets(moved, 2.0)  # still sees the motion of the last step
+    for time in (3.0, 4.0, 5.0):
+        assert np.allclose(controller.targets(moved, time), centroids)
+
+
+def test_adaptive_coverage_is_scored_against_the_truth_and_reset_per_run():
+    from pymapf.swarm.coverage import CoverageController
+    from pymapf.swarm.density import GaussianDensity
+
+    truth = GaussianDensity(mean=(15, 15), sigma=3.0)
+    simulator = CoverageSimulator("adaptive", n_agents=8, truth=truth, seed=0)
+    first = simulator.run(steps=30)
+    # Scored against the moving estimate, this run "lost" 190% of its cost
+    # while it actually removed 82% of it under the true density.
+    scorer = CoverageController(density=truth)
+    assert np.allclose(first.costs, [scorer.cost(p) for p in first.history])
+    assert first.improvement > 0.5
+    # A second run used to start from the first run's estimate (initial cost
+    # 3264 instead of 2054) and append to its history.
+    second = simulator.run(steps=30)
+    assert np.allclose(first.costs, second.costs)
+    assert len(second.extras["estimation_error"]) == 30
 
 
 def test_unknown_coverage_controller_is_rejected():

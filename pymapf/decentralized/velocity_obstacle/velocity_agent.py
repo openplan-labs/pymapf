@@ -2,6 +2,8 @@ import numpy as np
 import time
 import logging
 
+logger = logging.getLogger(__name__)
+
 
 class VelocityAgent:
     def __init__(
@@ -63,7 +65,7 @@ class VelocityAgent:
             number_of_obstacles = np.shape(obstacles)[1]
 
         except BaseException as e:
-            logging.debug(e)
+            logger.debug(e)
             pos_agent = state[:2]
             number_of_obstacles = 0
 
@@ -140,7 +142,7 @@ class VelocityAgent:
             min_index = np.where(norm == np.amin(norm))[0][0]
             cmd_vel = v_satisfying_constraints[:, min_index]
         except BaseException as e:
-            logging.debug(e)
+            logger.debug(e)
             cmd_vel = np.array([0, 0])
         return cmd_vel
 

@@ -202,6 +202,18 @@ class Behavior(ABC):
     def reset(self, state: SwarmState) -> None:
         """Hook for behaviors with memory (integral terms, filters, roles)."""
 
+    def set_timestep(self, dt: float) -> None:
+        """Tell the behavior the integration step it is being run at.
+
+        A few laws depend on it -- turning a displacement into a speed that
+        cannot overshoot in one step, or integrating an internal heading -- and
+        keep it in ``self.dt``. The simulator calls this so that value always
+        matches the step it actually integrates with; a stale ``dt`` silently
+        breaks the "never overshoot" guarantees.
+        """
+        if hasattr(self, "dt"):
+            self.dt = dt
+
     def neighbors(self, state: SwarmState, index: int) -> np.ndarray:
         return self.neighborhood.of(state, index, self.params)
 
@@ -265,6 +277,16 @@ class CompositeBehavior(Behavior):
     the parts stay independently testable.
 
         blend = CompositeBehavior([(Vicsek(), 0.5), (AccelerationFlocking(), 1.0)])
+
+    The parts must agree on what their command means (all accelerations, or all
+    velocities): a velocity added to an acceleration is not a command. The
+    composite takes that common ``output``, and it computes each step by
+    calling every part's :meth:`~Behavior.commands` once -- the per-step hook
+    where a part keeps its own bookkeeping (a step counter, a reassignment).
+
+    The parts share one :class:`SwarmParams` object, so limits cannot disagree:
+    the one passed here, or else the first part's own. Assigning
+    ``composite.params`` later (the simulator does) reaches every part.
     """
 
     name = "composite"
@@ -275,23 +297,62 @@ class CompositeBehavior(Behavior):
         params: Optional[SwarmParams] = None,
         neighborhood=None,
     ):
-        super().__init__(params=params, neighborhood=neighborhood)
         if not parts:
             raise ValueError("a composite needs at least one behavior")
-        self.parts = list(parts)
-        for behavior, _ in self.parts:
-            # One shared parameter object, so limits cannot disagree.
-            behavior.params = self.params
+        parts = list(parts)
+        outputs = {getattr(behavior, "output", "acceleration") for behavior, _ in parts}
+        if len(outputs) > 1:
+            raise ValueError(
+                "cannot sum behaviors with different outputs (%s): %s"
+                % (
+                    " and ".join(sorted(outputs)),
+                    ", ".join(
+                        "%s -> %s" % (b.name, getattr(b, "output", "acceleration"))
+                        for b, _ in parts
+                    ),
+                )
+            )
+        self.output = outputs.pop()
+        self.parts = parts
+        super().__init__(params=params or parts[0][0].params, neighborhood=neighborhood)
+
+    @property
+    def params(self) -> SwarmParams:
+        return self._params
+
+    @params.setter
+    def params(self, value: SwarmParams) -> None:
+        # One shared parameter object, and it stays shared when it is swapped.
+        self._params = value
+        for behavior, _ in getattr(self, "parts", ()):
+            behavior.params = value
 
     def reset(self, state: SwarmState) -> None:
         for behavior, _ in self.parts:
             behavior.reset(state)
 
+    def set_timestep(self, dt: float) -> None:
+        for behavior, _ in self.parts:
+            behavior.set_timestep(dt)
+
+    def _clamp(self, command: np.ndarray) -> np.ndarray:
+        if self.output == "velocity":
+            return limit(command, self.params.max_speed)
+        return limit(command, self.params.max_acceleration)
+
     def command(self, state: SwarmState, index: int) -> np.ndarray:
         total = np.zeros(state.dimension)
         for behavior, weight in self.parts:
             total = total + weight * behavior.command(state, index)
-        return limit(total, self.params.max_acceleration)
+        return self._clamp(total)
+
+    def commands(self, state: SwarmState) -> np.ndarray:
+        # Through each part's ``commands``, once per step, so a part's per-step
+        # bookkeeping runs exactly as it does when the part flies alone.
+        total = np.zeros_like(state.positions)
+        for behavior, weight in self.parts:
+            total = total + weight * np.asarray(behavior.commands(state), dtype=float)
+        return np.array([self._clamp(row) for row in total])
 
     def __repr__(self) -> str:
         return "CompositeBehavior(%s)" % ", ".join(

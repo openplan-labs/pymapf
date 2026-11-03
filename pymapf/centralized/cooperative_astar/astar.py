@@ -6,6 +6,8 @@ from .state import State
 import logging
 from .agent import Agent
 
+logger = logging.getLogger(__name__)
+
 
 class AStar:
     """
@@ -59,6 +61,10 @@ class AStar:
         self.reached = False
 
     def search(self) -> List[Tuple[int]]:
+        # Space-time A*: a node is a cell *at a time step*, so every node is
+        # keyed by its ``State`` (x, y, t), the start included.  Keying some
+        # nodes by cell instead let a later arrival overwrite an already
+        # closed node and reopen it.
         opened_nodes = 0
         while self.opened_nodes > 0:
             # Open Nodes are sorted using __lt__
@@ -68,8 +74,12 @@ class AStar:
             )
             current_node = self.nodes[current_key]
 
-            if current_node.pos == self.target.pos:
-                logging.debug("Found path for agent [%s]" % str(self.agent.ident))
+            # Stop at the goal only if nobody planned earlier still has to
+            # pass through it: we are going to stay there.
+            if current_node.pos == self.target.pos and self.agent.can_stay(
+                current_node.state, self.global_paths
+            ):
+                logger.debug("Found path for agent [%s]" % str(self.agent.ident))
                 self.agent.opened_nodes = opened_nodes
                 self.agent.path = self.retrace_path(current_node)
                 return self.agent.path
@@ -85,20 +95,15 @@ class AStar:
             opened_nodes += len(successors)
 
             for child_node in successors:
-                if child_node.state in self.nodes:
-                    if self.nodes[child_node.state].is_closed:
-                        continue
-                    if not self.nodes[child_node.pos].is_open:
-                        self.nodes[child_node.state] = child_node
-                        self.opened_nodes += 1
-                    else:
-                        if child_node.g_cost < self.nodes[child_node.pos].g_cost:
-                            self.nodes[child_node.pos] = child_node
-                            self.opened_nodes += 1
-                else:
-                    self.nodes[child_node.pos] = child_node
+                known = self.nodes.get(child_node.state)
+                if known is None:
+                    self.nodes[child_node.state] = child_node
                     self.opened_nodes += 1
-        logging.warning("Path not found for agent [%s]" % str(self.agent.ident))
+                elif known.is_open and child_node.g_cost < known.g_cost:
+                    # Same cell, same time, cheaper way there: replace it.
+                    self.nodes[child_node.state] = child_node
+                # Otherwise it is closed, or already open at least as cheaply.
+        logger.warning("Path not found for agent [%s]" % str(self.agent.ident))
         return [self.start.state]
 
     def get_successors(self, parent: Node) -> List[Node]:
