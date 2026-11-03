@@ -5,6 +5,8 @@ To do: add radius
 
 import logging
 
+logger = logging.getLogger(__name__)
+
 
 class Agent:
     def __init__(
@@ -66,7 +68,7 @@ class Agent:
                 )
 
             if conflict:
-                logging.debug(
+                logger.debug(
                     "Found conflict between agent %s and agent %s" % (self.ident, key)
                 )
                 self.conflicts_found += 1

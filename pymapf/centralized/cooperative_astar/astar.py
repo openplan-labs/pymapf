@@ -6,6 +6,8 @@ from .state import State
 import logging
 from .agent import Agent
 
+logger = logging.getLogger(__name__)
+
 
 class AStar:
     """
@@ -77,7 +79,7 @@ class AStar:
             if current_node.pos == self.target.pos and self.agent.can_stay(
                 current_node.state, self.global_paths
             ):
-                logging.debug("Found path for agent [%s]" % str(self.agent.ident))
+                logger.debug("Found path for agent [%s]" % str(self.agent.ident))
                 self.agent.opened_nodes = opened_nodes
                 self.agent.path = self.retrace_path(current_node)
                 return self.agent.path
@@ -101,7 +103,7 @@ class AStar:
                     # Same cell, same time, cheaper way there: replace it.
                     self.nodes[child_node.state] = child_node
                 # Otherwise it is closed, or already open at least as cheaply.
-        logging.warning("Path not found for agent [%s]" % str(self.agent.ident))
+        logger.warning("Path not found for agent [%s]" % str(self.agent.ident))
         return [self.start.state]
 
     def get_successors(self, parent: Node) -> List[Node]:

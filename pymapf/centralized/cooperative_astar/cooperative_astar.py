@@ -5,8 +5,9 @@ from ..common import TIME
 from ..world import World
 from .state import State
 from ..animator import Animator
-import coloredlogs
 import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CooperativeAStar:
@@ -20,18 +21,20 @@ class CooperativeAStar:
 
         # Flags
         self.simulation_complete = False
-        self.__init_logger(log_level)
-        coloredlogs.install(level=log_level)
+        # ``log_level`` sets the level of this planner's own loggers (this
+        # package) only.  The library does not configure the root logger or
+        # write log files: attach a handler in your application to see them.
+        logging.getLogger(__package__).setLevel(log_level)
 
     def register_agent(self, ident, start, goal):
         if ident in self.agents:
-            logging.warning("Agent ID already registered, ignoring...")
+            logger.warning("Agent ID already registered, ignoring...")
             return
         # A shared start collides at t = 0 and a shared goal can only be held
         # by one agent: neither instance has a conflict-free solution.
         for other in self.agents.values():
             if tuple(other.init_pos) == tuple(start) or tuple(other.goal_pos) == tuple(goal):
-                logging.warning(
+                logger.warning(
                     "Agent %s shares a start or goal with agent %s, ignoring..."
                     % (ident, other.ident)
                 )
@@ -48,28 +51,16 @@ class CooperativeAStar:
             try:
                 self.searches_sim_times.append(self.paths[agent.ident][-1].t)
             except BaseException as e:
-                logging.debug(e)
+                logger.debug(e)
 
         self.simulation_complete = True
 
     def visualize(self, save_file):
         if not self.simulation_complete:
-            logging.warning("Simulation isn't yet complete: can't visualize.")
+            logger.warning("Simulation isn't yet complete: can't visualize.")
             return
         anim = Animator(
             self.world, self.paths, self.agents, max(self.searches_sim_times)
         )
         anim.save(save_file)
         anim.show()
-
-    def __init_logger(self, log_level):
-        import os
-
-        if not os.path.exists("logs"):
-            os.makedirs("logs")
-        logging.basicConfig(
-            filename="logs/main.log",
-            format="%(levelname)s:%(message)s",
-            filemode="w",
-            level=log_level,
-        )

@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize, Bounds
 import time
-import logging
 
 
 class NMPCAgent:

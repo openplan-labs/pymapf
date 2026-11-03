@@ -8,21 +8,14 @@ from .velocity_agent import VelocityAgent
 import numpy as np
 import matplotlib as mpl
 from random import random
-import os
-
-if "DISPLAY" not in os.environ:
-    mpl.use("agg")
-else:
-    mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 # import threading
 from matplotlib.patches import Circle
-import coloredlogs
 import logging
 
-logging.getLogger("matplotlib").setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
 
 
 class MultiAgentVelocityObstacle:
@@ -40,12 +33,14 @@ class MultiAgentVelocityObstacle:
 
         # Flags
         self.simulation_complete = False
-        self.__init_logger(log_level)
-        coloredlogs.install(level=log_level)
+        # ``log_level`` sets the level of this planner's own loggers (this
+        # package) only.  The library does not configure the root logger or
+        # write log files: attach a handler in your application to see them.
+        logging.getLogger(__package__).setLevel(log_level)
 
     def register_agent(self, ident, start, goal, radius=0.5, vmax=2, vmin=0.2):
         if ident in self.agents:
-            logging.warning("Failed to register agent: ID has already been registered.")
+            logger.warning("Failed to register agent: ID has already been registered.")
             return
         agent = VelocityAgent(
             ident,
@@ -78,7 +73,7 @@ class MultiAgentVelocityObstacle:
         try:
             obstacles = self.obstacles
         except BaseException as e:
-            logging.debug(e)
+            logger.debug(e)
             obstacles = []
         # What every agent knows about the others: their position and velocity
         # at the end of the previous step, as ``[x, y, vx, vy]``.  Everyone
@@ -99,7 +94,7 @@ class MultiAgentVelocityObstacle:
 
     def visualize(self, saved_file, map_length, map_height):
         if not self.simulation_complete:
-            logging.warning("Failed to visualize: simulation must be complete")
+            logger.warning("Failed to visualize: simulation must be complete")
             return
 
         self.__plot(saved_file, map_length, map_height)
@@ -114,16 +109,6 @@ class MultiAgentVelocityObstacle:
 
     def __agent_to_obstacle(self, velocity, pos):
         return np.concatenate((pos, velocity))
-
-    def __init_logger(self, log_level):
-        if not os.path.exists("logs"):
-            os.makedirs("logs")
-        logging.basicConfig(
-            filename="logs/main.log",
-            format="%(levelname)s:%(message)s",
-            filemode="w",
-            level=log_level,
-        )
 
     def __plot(self, saved_file, map_length, map_height):
         fig = plt.figure()
@@ -162,7 +147,7 @@ class MultiAgentVelocityObstacle:
                     )
                 )
         except BaseException as e:
-            logging.debug(e)
+            logger.debug(e)
 
         def init():
             for agent in agents_list:

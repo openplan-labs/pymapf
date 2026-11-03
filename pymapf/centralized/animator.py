@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 import matplotlib
 from random import random
-import os
-
-if "DISPLAY" not in os.environ:
-    matplotlib.use("agg")
-else:
-    matplotlib.use("TkAgg")
 from matplotlib.patches import Circle, Rectangle, Arrow
 from matplotlib.collections import PatchCollection
 import matplotlib.pyplot as plt
@@ -15,7 +9,7 @@ from matplotlib import animation
 import math
 import logging
 
-logging.getLogger("matplotlib").setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
 
 Colors = ["skyblue", "blue", "orange"]
 
@@ -72,7 +66,7 @@ class Animator:
                     )
                 )
         except BaseException as e:
-            logging.debug(e)
+            logger.debug(e)
 
     def __initialize_agents(self):
         for _, agent in self.coop_agents.items():
@@ -113,7 +107,7 @@ class Animator:
 
     def save(self, file_name):
         self.anim.save(file_name + ".gif", "ffmpeg", fps=5)
-        logging.debug("Saved file as %s" % file_name + ".gif")
+        logger.debug("Saved file as %s" % file_name + ".gif")
 
     def show(self):
         plt.show()
@@ -130,7 +124,7 @@ class Animator:
             try:
                 pos = (path[i].x, path[i].y)
             except BaseException as e:
-                logging.debug(e)
+                logger.debug(e)
                 pos = (path[-1].x, path[-1].y)
             p = (pos[0], pos[1])
             self.agents[agent_name].center = p
