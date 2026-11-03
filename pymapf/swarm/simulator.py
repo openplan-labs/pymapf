@@ -123,10 +123,14 @@ class SwarmSimulator:
         behavior: name, class or instance. Names come from
             :func:`~pymapf.swarm.base.available_behaviors`.
         params: shared limits/gains; the behavior's own knobs stay in its
-            constructor.
+            constructor. When omitted, an instance keeps the parameters it was
+            built with (anything else gets the defaults); when given, they
+            replace the instance's -- composite parts included.
         dt: integration step. Semi-implicit Euler (velocity first, then
             position) -- the integrator a flight controller effectively runs,
-            and it does not inject the energy explicit Euler does.
+            and it does not inject the energy explicit Euler does. Behaviors
+            whose law uses the step get this value too
+            (:meth:`~pymapf.swarm.base.Behavior.set_timestep`).
     """
 
     def __init__(
@@ -140,12 +144,17 @@ class SwarmSimulator:
         spacing: Optional[float] = None,
         **behavior_kwargs,
     ):
+        if params is None and isinstance(behavior, Behavior):
+            # A configured instance brought its own parameters (a waypoint,
+            # obstacles...): replacing them with defaults would drop them.
+            params = behavior.params
         self.params = params or SwarmParams()
         self.behavior: Behavior = get_behavior(
             behavior, params=self.params, **behavior_kwargs
         )
         self.behavior.params = self.params
         self.dt = dt
+        self.behavior.set_timestep(dt)
         self.n_agents = n_agents
         self.dimension = dimension
         self.rng = np.random.default_rng(self.params.seed)
@@ -203,7 +212,11 @@ class SwarmSimulator:
         observer: Optional[Callable[[int, SwarmState], None]] = None,
     ) -> SwarmResult:
         state = self.initial_state()
+        self.behavior.set_timestep(self.dt)
         self.behavior.reset(state)
+        # Same seed, same noise: two runs of one simulator are identical, like
+        # two runs of two identically configured simulators.
+        self.rng = np.random.default_rng(self.params.seed)
 
         history = [state.copy()]
         metrics = SwarmMetrics()

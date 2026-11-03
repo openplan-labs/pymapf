@@ -128,6 +128,77 @@ def test_composite_requires_parts():
         CompositeBehavior([])
 
 
+def test_composite_rejects_parts_with_different_outputs():
+    # A velocity summed into an acceleration is not a command.
+    with pytest.raises(ValueError, match="different outputs"):
+        CompositeBehavior([(get_behavior("active_elastic"), 1.0), (get_behavior("boids"), 1.0)])
+
+
+def test_composite_of_one_part_flies_like_the_part():
+    # The composite used to declare "acceleration" whatever its parts said, so
+    # ActiveElastic's velocity was integrated as an acceleration (order 0.41,
+    # speed 5.0 instead of 0.98 and 2.1).
+    params = SwarmParams(seed=3)
+    alone = SwarmSimulator(get_behavior("active_elastic"), n_agents=12, params=params)
+    composite = CompositeBehavior([(get_behavior("active_elastic"), 1.0)])
+    assert composite.output == "velocity"
+    wrapped = SwarmSimulator(composite, n_agents=12, params=params)
+    a, b = alone.run(steps=60), wrapped.run(steps=60)
+    assert np.allclose(a.final.positions, b.final.positions)
+
+
+def test_composite_runs_each_parts_per_step_hook():
+    # Per-step bookkeeping lives in ``commands``; the composite used to call
+    # only ``command`` per agent, so a formation part never reassigned slots.
+    from pymapf.swarm.formation import DisplacementFormation
+
+    params = SwarmParams(seed=0)
+    part = DisplacementFormation(shape="v", reassign_every=5, params=params)
+    SwarmSimulator(CompositeBehavior([(part, 1.0)]), n_agents=9, params=params).run(steps=20)
+    assert part._steps == 20
+    assert part._assignment_step == 20
+
+
+def test_simulator_keeps_a_configured_instances_params():
+    far = (200.0, 0.0)
+    boids = get_behavior("boids", params=SwarmParams(migration_point=far))
+    simulator = SwarmSimulator(boids, n_agents=10)
+    assert simulator.params.migration_point == far  # used to be reset to None
+    assert simulator.run(steps=200).final.centroid[0] > 100.0
+
+
+def test_explicit_params_reach_composite_parts():
+    params = SwarmParams(migration_point=(200.0, 0.0))
+    composite = CompositeBehavior([(get_behavior("boids"), 1.0)])
+    SwarmSimulator(composite, n_agents=10, params=params)
+    assert composite.parts[0][0].params is params
+    # ...and a composite built without params adopts its part's.
+    part = get_behavior("boids", params=params)
+    assert CompositeBehavior([(part, 1.0)]).params is params
+
+
+def test_simulator_dt_reaches_behaviors_that_use_one():
+    from pymapf.swarm import circle_swap
+
+    composite = CompositeBehavior([(get_behavior("active_elastic"), 1.0)])
+    SwarmSimulator(composite, n_agents=4, dt=0.05)
+    assert composite.parts[0][0].dt == 0.05
+    # BufferedVoronoi's "never leave your cell in one step" used its own dt of
+    # 0.1 whatever the simulator integrated with: 52 colliding steps at 0.25.
+    state, goals = circle_swap(n=12, radius=8.0)
+    result = SwarmSimulator(
+        "buffered_voronoi", initial=state, goals=goals, dt=0.25
+    ).run(steps=160)
+    assert result.metrics.collisions == 0
+
+
+def test_noisy_runs_of_one_simulator_are_identical():
+    simulator = SwarmSimulator("boids", n_agents=8, params=SwarmParams(noise=0.5, seed=1))
+    first = simulator.run(steps=50).final.positions
+    second = simulator.run(steps=50).final.positions
+    assert np.array_equal(first, second)
+
+
 def test_state_rejects_mismatched_shapes():
     with pytest.raises(ValueError):
         SwarmState(np.zeros((3, 2)), np.zeros((4, 2)))
