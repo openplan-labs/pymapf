@@ -202,6 +202,12 @@ class NumpyActorCritic(ActorCritic):
     parameters and couples the two losses, and the coupling is what makes PPO
     implementations sensitive to the value-loss coefficient; keeping them apart
     is the boring choice that behaves.
+
+    A consequence worth knowing: each network has its own Adam optimiser and
+    its own gradient clipping, and Adam normalises away a constant scale on a
+    gradient. ``value_coefficient`` therefore has almost no effect here (it
+    only shifts where clipping starts); it matters on the torch backend, which
+    optimises the summed loss with one optimiser.
     """
 
     def __init__(
@@ -345,8 +351,11 @@ class TorchActorCritic(ActorCritic):
 
     Kept deliberately thin: identical architecture, identical PPO objective, so
     a discrepancy between the two backends is a bug in one of them rather than
-    a difference of opinion. The test suite runs the same learning check against
-    whichever backends are installed.
+    a difference of opinion. The optimisation differs in one respect: this
+    backend steps actor and critic with one Adam on the summed loss and clips
+    their gradients jointly, where the numpy one keeps them apart (see
+    :class:`NumpyActorCritic`). The test suite runs the same learning check
+    against whichever backends are installed.
     """
 
     def __init__(

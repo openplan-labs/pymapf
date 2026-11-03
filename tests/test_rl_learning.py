@@ -259,7 +259,8 @@ def test_the_only_difference_between_ippo_and_mappo_is_the_critic_input():
 
     obs_dim = env.observation_space("A").shape[0]
     assert ippo.policy.critic_dim == obs_dim
-    assert mappo.policy.critic_dim == env.state_size
+    # The global state plus a one-hot of the agent being valued.
+    assert mappo.policy.critic_dim == env.state_size + len(env.possible_agents)
     assert ippo.policy.obs_dim == mappo.policy.obs_dim  # the actors are identical
 
 
@@ -353,3 +354,40 @@ def test_planner_failures_are_absorbed_but_bugs_are_not():
     # An unknown solver is a mistake in the caller, not an unsolvable instance.
     with pytest.raises(ValueError):
         plan(env.problem, "no_such_solver")
+
+
+def test_a_truncated_episode_is_bootstrapped_from_its_final_state():
+    """Truncation is the time limit, not the end of the task: the last reward
+    of a truncated episode carries gamma * V(final state) so GAE, which cuts
+    the recursion there, does not treat the future as worth zero."""
+    for name in ("ippo", "mappo"):
+        env = MAPFEnv(
+            "empty_room", height=6, width=6, n_agents=2, randomise=False, max_steps=3
+        )
+        trainer = make_trainer(name, env, n_envs=1, rollout_steps=3, seed=0)
+        observations = trainer.vector.reset(seed=0)
+        captured = {}
+        original = trainer._truncation_bootstrap
+
+        def spy(infos):
+            values = original(infos)
+            captured.setdefault("values", []).append(values)
+            return values
+
+        trainer._truncation_bootstrap = spy
+        trainer.collect(observations)
+        before, at_horizon = captured["values"][:2], captured["values"][2]
+        # Nothing to bootstrap before the horizon; every agent at it.
+        assert all(not values.any() for values in before)
+        assert np.all(at_horizon != 0.0)
+
+
+def test_the_centralized_critic_can_tell_the_agents_apart():
+    """Agents share a global state but not a reward; without an identity in the
+    critic's input every agent got the same value."""
+    env = MAPFEnv("empty_room", height=6, width=6, n_agents=3, randomise=False)
+    trainer = make_trainer("mappo", env, n_envs=2, rollout_steps=4, seed=0)
+    observations = trainer.vector.reset(seed=0)
+    inputs = trainer._critic_inputs(observations)
+    assert inputs.shape == (2 * 3, env.state_size + 3)
+    assert len({row.tobytes() for row in inputs[:3]}) == 3

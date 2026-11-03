@@ -503,3 +503,79 @@ def test_the_problem_is_reachable_without_touching_privates():
     env.reset(seed=0)
     optimal = pymapf.solve(env.problem, "cbs")
     assert optimal is not None and optimal.is_valid()
+
+
+# --------------------------------------------------------------------------
+# regressions found in review
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", ["sparse", "shaped"])
+def test_leaving_the_goal_and_coming_back_is_not_worth_more_than_staying(name):
+    """The goal bonus used to be paid on every arrival and never taken back, so
+    stepping off the goal and on again earned +8.6 over twenty steps where
+    parking earned 0 -- and the optimal policy never parked."""
+    # B sits far from its goal so the episode does not end when A parks.
+    grid = pymapf.GridMap([[0, 0, 0, 1, 1], [0, 0, 0, 0, 0]])
+    problem = pymapf.MAPFProblem(
+        grid,
+        [pymapf.Agent("A", (0, 1), (0, 1)), pymapf.Agent("B", (1, 4), (1, 0))],
+    )
+    gamma = 0.99
+
+    def discounted_return(moves):
+        env = MAPFEnv(problem, reward=name, max_steps=100)
+        env.reset(seed=0)
+        total = 0.0
+        for t, move in enumerate(moves):
+            _, rewards, _, _, _ = env.step({"A": move, "B": STAY})
+            total += gamma**t * rewards["A"]
+        return total
+
+    park = discounted_return([STAY] * 20)
+    farm = discounted_return([RIGHT, LEFT] * 10)
+    assert park > farm
+
+
+def test_spaces_are_the_same_object_on_every_call_and_can_be_seeded():
+    env = open_env(2)
+    assert env.action_space("A") is env.action_space("A")
+    assert env.observation_space("A") is env.observation_space("A")
+
+    def seeded_samples():
+        env.action_space("A").seed(0)
+        return [env.action_space("A").sample() for _ in range(10)]
+
+    assert seeded_samples() == seeded_samples()
+
+
+def test_a_randomised_reset_survives_seeds_that_cannot_place_the_team():
+    """Some seeds leave too few free cells on a dense map; reset draws again
+    rather than raising halfway through a training run."""
+    env = MAPFEnv(
+        "random_obstacles", height=8, width=8, n_agents=6, density=0.3, seed=0
+    )
+    for _ in range(200):
+        observations, _ = env.reset()
+        assert set(observations) == set(env.possible_agents)
+
+
+def test_the_package_docstring_example_evaluates_a_trainer():
+    """`evaluate(env, trainer, ...)` is what the package docstring shows."""
+    from pymapf.rl import evaluate, make_trainer
+
+    env = open_env(2)
+    trainer = make_trainer("ippo", env, n_envs=1, rollout_steps=4, seed=0)
+    results = evaluate(env, trainer, episodes=2, baseline=None)
+    assert results
+
+
+def test_evaluate_does_not_hide_a_type_error_raised_inside_a_policy():
+    from pymapf.rl import evaluate
+
+    class Broken:
+        def act(self, observations, deterministic=True):
+            raise TypeError("a real bug inside the policy")
+
+    with pytest.raises(TypeError, match="a real bug"):
+        evaluate(open_env(2), Broken(), episodes=1, baseline=None)

@@ -192,6 +192,24 @@ class MAPFEnv:
             # enough that a hopeless one does not burn the rollout budget.
             self.max_steps = int(4 * (self.grid.height + self.grid.width))
         self._components: Dict[Cell, frozenset] = {}
+        # Built per agent and kept, not rebuilt on every call: PettingZoo
+        # expects `action_space(a) is action_space(a)`, and a space rebuilt on
+        # each call forgets the seed it was given. A randomised reset binds a
+        # new instance, so an equal space is carried over rather than replaced.
+        self._observation_spaces = self._keep_spaces(
+            getattr(self, "_observation_spaces", {}), lambda: self.encoder.space(self)
+        )
+        self._action_spaces = self._keep_spaces(
+            getattr(self, "_action_spaces", {}), lambda: Discrete(len(self.actions))
+        )
+
+    def _keep_spaces(self, previous: Dict[str, object], build) -> Dict[str, object]:
+        spaces = {}
+        for agent in self.possible_agents:
+            space = build()
+            kept = previous.get(agent)
+            spaces[agent] = kept if kept is not None and kept == space else space
+        return spaces
 
     @property
     def problem(self) -> "object":
@@ -299,10 +317,10 @@ class MAPFEnv:
     # spaces (PettingZoo calls these as methods)
     # ------------------------------------------------------------------
     def observation_space(self, agent: str) -> Box:
-        return self.encoder.space(self)
+        return self._observation_spaces[agent]
 
     def action_space(self, agent: str) -> Discrete:
-        return Discrete(len(self.actions))
+        return self._action_spaces[agent]
 
     @property
     def observation_spaces(self) -> Dict[str, Box]:
@@ -332,8 +350,20 @@ class MAPFEnv:
             from pymapf import build_scenario
 
             kwargs = dict(self._scenario_kwargs)
-            kwargs["seed"] = int(self._random.integers(1 << 30))
-            self._bind(build_scenario(self._family, **kwargs).to_problem())
+            # Some seeds leave too few free cells for the team (8 in 3,000 for
+            # six agents on a dense 8x8). Draw again rather than let a long
+            # training run die at reset number 2,000. Still reproducible: the
+            # retries come from the same seeded generator.
+            for attempt in range(100):
+                kwargs["seed"] = int(self._random.integers(1 << 30))
+                try:
+                    scenario = build_scenario(self._family, **kwargs)
+                except ValueError:
+                    if attempt == 99:
+                        raise
+                    continue
+                break
+            self._bind(scenario.to_problem())
 
         self._reset_state()
         self._episode += 1
@@ -389,7 +419,12 @@ class MAPFEnv:
             # observation already shows the new goal.
             for agent in self.possible_agents:
                 if at_goal[agent]:
-                    self.goals_completed += 1
+                    # Count arrivals, not steps spent on a goal: when no free
+                    # cell is left to hand out, `_new_goal` keeps the current
+                    # goal and the agent stays on it, which is not another
+                    # completed task. It is re-tasked as soon as a cell frees.
+                    if not was_at_goal[agent]:
+                        self.goals_completed += 1
                     self.goals[agent] = self._new_goal(agent)
 
         terminations = {agent: solved for agent in self.agents}

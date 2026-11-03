@@ -13,7 +13,7 @@ code::
     env = MAPFEnv("random_obstacles", n_agents=4, width=10, height=10)
     trainer = make_trainer("mappo", env)
     trainer.learn(total_steps=200_000)
-    print(evaluate(env, trainer.policy, episodes=100, baseline="cbs"))
+    print(evaluate(env, trainer, episodes=100, baseline="cbs"))
 
 Everything is a registry, matching the rest of the library: observations,
 rewards and algorithms are all chosen by name and extended from outside with a
