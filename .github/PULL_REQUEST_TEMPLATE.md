@@ -15,6 +15,7 @@
 - [ ] `flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics` passes
 - [ ] `MPLBACKEND=Agg pytest` passes (or the relevant test files, listed above)
 - [ ] New behaviour is tested against what it claims (validity, optimality or bound, determinism)
+- [ ] Commit messages follow Conventional Commits (`fix(scope): ...`, `feat(scope): ...`, `!` for breaking); they decide the version bump
 - [ ] `CHANGELOG.md` has an entry under `[Unreleased]`
 - [ ] New algorithms cite their paper in the module docstring and in `REFERENCES.md`
 - [ ] `core`, `algorithms`, `scenarios.py` and `benchmark.py` still import nothing outside the standard library
