@@ -9,7 +9,7 @@
 # that still supports it. renovate.json keeps each line inside its series.
 numpy==2.2.6; python_version < "3.11"
 numpy==2.4.6; python_version == "3.11"
-numpy==2.5.4; python_version >= "3.12"
+numpy==2.5.5; python_version >= "3.12"
 scipy==1.15.3; python_version < "3.11"
 scipy==1.17.1; python_version == "3.11"
 scipy==1.18.1; python_version >= "3.12"
